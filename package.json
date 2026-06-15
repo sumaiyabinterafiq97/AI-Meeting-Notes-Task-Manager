@@ -1,0 +1,34 @@
+{
+  "name": "ai-meeting-notes-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Meeting Notes & Task Manager — SaaS monorepo",
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c blue,green \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "build": "npm run build --prefix frontend && npm run build --prefix backend",
+    "lint": "npm run lint --prefix frontend && npm run lint --prefix backend",
+    "test": "npm run test --prefix frontend && npm run test --prefix backend",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.4"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx}": [
+      "npm run lint --prefix frontend -- --fix",
+      "prettier --write"
+    ],
+    "backend/**/*.{ts}": [
+      "npm run lint --prefix backend -- --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
+  }
+}
