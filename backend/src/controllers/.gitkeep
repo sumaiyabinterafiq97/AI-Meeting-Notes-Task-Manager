@@ -1,0 +1,2 @@
+// Domain controllers will be organized here or within feature modules.
+// Auth controller lives in src/modules/auth/
