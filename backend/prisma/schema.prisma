@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+enum MeetingStatus {
+  DRAFT
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_MENTION
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  INVITATION
+  MEETING_PROCESSED
+}
+
+// =============================================================================
+// Core Models
+// =============================================================================
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  displayName     String    @map("display_name") @db.VarChar(100)
+  avatarUrl       String?   @map("avatar_url")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  workspaceMemberships WorkspaceMember[]
+  createdWorkspaces    Workspace[]       @relation("WorkspaceCreator")
+  createdMeetings      Meeting[]         @relation("MeetingCreator")
+  createdTasks         Task[]            @relation("TaskCreator")
+  assignedTasks        Task[]            @relation("TaskAssignee")
+  comments             Comment[]
+  notifications        Notification[]
+  activityLogs         ActivityLog[]
+
+  @@index([email], map: "users_email_idx")
+  @@map("users")
+}
+
+model Workspace {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(100)
+  slug        String    @unique @db.VarChar(120)
+  description String?
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  createdBy     User              @relation("WorkspaceCreator", fields: [createdById], references: [id])
+  members       WorkspaceMember[]
+  meetings      Meeting[]
+  tasks         Task[]
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid()) @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now()) @map("joined_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId], map: "idx_wm_user_id")
+  @@map("workspace_members")
+}
+
+model Meeting {
+  id              String        @id @default(uuid()) @db.Uuid
+  workspaceId     String        @map("workspace_id") @db.Uuid
+  createdById     String        @map("created_by_id") @db.Uuid
+  title           String        @db.VarChar(200)
+  meetingDate     DateTime      @map("meeting_date") @db.Timestamptz
+  durationMinutes Int?          @map("duration_minutes")
+  attendees       Json          @default("[]")
+  tags            String[]      @default([])
+  agenda          String?
+  status          MeetingStatus @default(DRAFT)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  createdBy User      @relation("MeetingCreator", fields: [createdById], references: [id])
+  tasks     Task[]
+
+  @@index([workspaceId, meetingDate(sort: Desc)], map: "idx_meetings_workspace_date")
+  @@map("meetings")
+}
+
+model Task {
+  id          String       @id @default(uuid()) @db.Uuid
+  workspaceId String       @map("workspace_id") @db.Uuid
+  meetingId   String?      @map("meeting_id") @db.Uuid
+  createdById String       @map("created_by_id") @db.Uuid
+  assigneeId  String?      @map("assignee_id") @db.Uuid
+  title       String       @db.VarChar(300)
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?    @map("due_date") @db.Date
+  position    Int          @default(0)
+  completedAt DateTime?    @map("completed_at") @db.Timestamptz
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?    @map("deleted_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  meeting   Meeting?  @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  createdBy User      @relation("TaskCreator", fields: [createdById], references: [id])
+  assignee  User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  comments  Comment[]
+
+  @@index([workspaceId, status], map: "idx_tasks_workspace_status")
+  @@index([assigneeId, status], map: "idx_tasks_assignee")
+  @@map("tasks")
+}
+
+model Comment {
+  id        String    @id @default(uuid()) @db.Uuid
+  taskId    String    @map("task_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  content   String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId], map: "idx_comments_task_id")
+  @@map("comments")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  workspaceId String?          @map("workspace_id") @db.Uuid
+  type        NotificationType
+  payload     Json             @default("{}")
+  isRead      Boolean          @default(false) @map("is_read")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user")
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  actorId     String   @map("actor_id") @db.Uuid
+  action      String   @db.VarChar(50)
+  entityType  String   @map("entity_type") @db.VarChar(50)
+  entityId    String   @map("entity_id") @db.Uuid
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id])
+
+  @@index([workspaceId, createdAt(sort: Desc)], map: "idx_activity_workspace")
+  @@map("activity_logs")
+}
