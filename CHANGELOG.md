@@ -3,10 +3,11 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.1.0] - 2025-06-15
+## [0.1.0] - 2026-06-15
 
 ### Added
 
+- Project documentation: README, architecture, API design, database schema, and requirements (`docs/`)
 - Monorepo root tooling: Husky, lint-staged, Prettier, concurrent dev scripts
 - Docker Compose stack: PostgreSQL 16, backend, frontend with hot reload
 - Backend Express 5 API scaffold with health endpoint and middleware stack
