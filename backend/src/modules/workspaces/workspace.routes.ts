@@ -8,7 +8,6 @@ import {
   updateMemberRoleValidation,
   workspaceIdParamValidation,
   memberParamsValidation,
-  invitationTokenParamValidation,
 } from './workspace.validator';
 import { authenticate, validate } from '../../middlewares';
 import { requireWorkspaceMember, requireRole } from '../../middlewares/require-workspace';
