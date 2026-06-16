@@ -7,6 +7,11 @@ declare global {
         email: string;
         token?: string;
       };
+      workspace?: {
+        id: string;
+        role: 'OWNER' | 'MEMBER';
+        membershipId: string;
+      };
     }
   }
 }
