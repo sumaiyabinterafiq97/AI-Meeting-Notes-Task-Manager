@@ -176,18 +176,32 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `npm run prisma:migrate` | Create/apply migrations |
 | `npm run prisma:studio` | Prisma database GUI |
 
-## API Endpoints (Scaffolded)
+## API Endpoints
 
-| Method | Path | Status |
-|--------|------|--------|
-| `GET` | `/health` | ✅ Active |
-| `POST` | `/api/v1/auth/register` | 🔧 Scaffolded (validation only) |
-| `POST` | `/api/v1/auth/login` | 🔧 Scaffolded (validation only) |
-| `POST` | `/api/v1/auth/logout` | 🔧 Scaffolded (auth middleware) |
+Backend API **v0.2.0** — see [`docs/api-design.md`](./docs/api-design.md) for the full reference.
+
+| Domain | Base Path | Status |
+|--------|-----------|--------|
+| Health | `GET /health` | ✅ Active |
+| Auth | `/api/v1/auth/*` | ✅ Implemented |
+| Users | `/api/v1/users/*` | ✅ Implemented |
+| Workspaces | `/api/v1/workspaces/*` | ✅ Implemented |
+| Invitations | `/api/v1/invitations/*` | ✅ Implemented |
+| Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ Implemented |
+| AI processing | `.../meetings/:id/ai/*` | ✅ Implemented |
+| Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ Implemented |
+| Notifications | `/api/v1/notifications/*` | ✅ Implemented |
+| Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ Implemented |
+| Search | `/api/v1/workspaces/:id/search` | ✅ Implemented |
+| Frontend integration | — | 🔧 Pending |
+
+**Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
+
+**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or OpenAI locally.
 
 ## Database Models
 
-Initial Prisma models: `User`, `Workspace`, `WorkspaceMember`, `Meeting`, `Task`, `Comment`, `Notification`, `ActivityLog`.
+Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`.
 
 See [`docs/erd.md`](./docs/erd.md) and [`docs/database-architecture.md`](./docs/database-architecture.md) for the full schema design.
 
@@ -202,13 +216,13 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-This scaffold provides the foundation for feature development. Recommended implementation order:
+Backend MVP is complete (v0.2.0). Recommended next phase:
 
-1. **Auth** — Register, login, logout, JWT refresh
-2. **Workspaces** — CRUD, invitations, member management
-3. **Meetings** — CRUD, transcript upload
-4. **AI Processing** — OpenAI integration, job queue
-5. **Tasks** — Kanban board, comments, notifications
+1. **Frontend auth** — Wire login, register, logout, and token refresh to the API
+2. **Workspaces UI** — Workspace list, creation, invitations, member management
+3. **Meetings UI** — Meeting CRUD, transcript upload, AI results display
+4. **Tasks UI** — Kanban board, comments, action item acceptance
+5. **Notifications UI** — In-app notification center and preferences
 
 ## License
 
