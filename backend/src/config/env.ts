@@ -17,6 +17,17 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().default(12),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+  MAX_WORKSPACES_PER_USER: z.coerce.number().default(10),
+  INVITATION_EXPIRES_DAYS: z.coerce.number().default(7),
+  REDIS_URL: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4o'),
+  AI_USE_MOCK: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  EMAIL_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('noreply@example.com'),
 });
 
 export type Env = z.infer<typeof envSchema>;
