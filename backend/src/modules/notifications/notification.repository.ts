@@ -1,13 +1,6 @@
-import { NotificationType, Prisma, TaskStatus } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { PaginationParams } from '../../lib/pagination';
-
-const taskUserSelect = {
-  id: true,
-  email: true,
-  displayName: true,
-  avatarUrl: true,
-} as const;
 
 export class NotificationRepository {
   async create(data: {
