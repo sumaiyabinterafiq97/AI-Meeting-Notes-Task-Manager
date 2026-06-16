@@ -69,6 +69,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 2. Authentication
 
+> **Status:** Implemented (v1.0) — register, login, logout, refresh, forgot/reset password, `GET /auth/me`. Refresh token delivered via httpOnly cookie `refreshToken` on register/login; rotated on refresh. Rate limits active in non-test environments.
+
 ### POST `/auth/register`
 
 | | |
@@ -121,13 +123,6 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 | **Response 200** | `{ "message": "Password updated successfully" }` |
 | **Errors** | 400 invalid/expired token |
 
-### GET `/auth/me`
-
-| | |
-|--|--|
-| **Auth** | Required |
-| **Response 200** | `{ "id", "email", "displayName", "avatarUrl", "createdAt" }` |
-
 ### PATCH `/users/me`
 
 | | |
@@ -136,9 +131,20 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 | **Body** | `{ "displayName?": "string", "avatarUrl?": "string" }` |
 | **Response 200** | Updated user object |
 
+### GET `/auth/me`
+
+| | |
+|--|--|
+| **Auth** | Required |
+| **Response 200** | `{ "id", "email", "displayName", "avatarUrl", "createdAt" }` |
+
+> **Status:** Implemented (v1.0) — includes `PATCH /users/me` for profile updates. Password reset emails sent via Resend when `EMAIL_API_KEY` is set.
+
 ---
 
 ## 3. Workspaces
+
+> **Status:** Implemented (v1.0) — CRUD, invitations, member management, RBAC via `requireWorkspaceMember` + `requireRole`. Workspace limit: `MAX_WORKSPACES_PER_USER` (default 10). Invitations expire after `INVITATION_EXPIRES_DAYS` (default 7).
 
 ### POST `/workspaces`
 
@@ -228,6 +234,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 4. Meetings
 
+> **Status:** Implemented (v1.0) — CRUD, paginated list with filters, transcript upload, reprocess trigger. AI worker processes transcripts asynchronously (BullMQ + Redis) or synchronously when `AI_USE_MOCK=true` / no Redis.
+
 ### POST `/workspaces/:workspaceId/meetings`
 
 | | |
@@ -304,6 +312,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 5. AI Outputs
 
+> **Status:** Implemented (v1.0) — BullMQ worker with sync/mock fallback for tests; OpenAI structured JSON output; AI output CRUD, action-item accept/reject → tasks. Chat endpoints deferred (MVP+1). Run worker via `npm run worker` when `REDIS_URL` is set.
+
 ### GET `/workspaces/:workspaceId/meetings/:meetingId/ai-output`
 
 | | |
@@ -377,6 +387,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 6. Tasks
 
+> **Status:** Implemented (v1.0) — CRUD, paginated list with filters, Kanban board, comments with @mention notifications, status history logging, soft delete (creator or owner). Task assignment triggers in-app `TASK_ASSIGNED` notifications.
+
 ### POST `/workspaces/:workspaceId/tasks`
 
 | | |
@@ -444,6 +456,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 7. Dashboard & Search
 
+> **Status:** Implemented (v1.0) — workspace dashboard with stats, weekly productivity chart, avg completion time, and recent activity feed. Search across meetings (title, tags), tasks (title, description, assignee, status), and AI summary snippets with `type` filter and pagination.
+
 ### GET `/workspaces/:workspaceId/dashboard`
 
 | | |
@@ -491,6 +505,8 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 ---
 
 ## 8. Notifications
+
+> **Status:** Implemented (v1.0) — list (paginated, `unreadOnly` filter), mark single read, mark all read. Created automatically on task assignment and @mentions. Preferences at `GET/PATCH /users/me/notification-preferences`.
 
 ### GET `/notifications`
 
