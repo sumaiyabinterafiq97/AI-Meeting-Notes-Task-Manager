@@ -24,9 +24,70 @@ export class AuthRepository {
     });
   }
 
-  // Placeholder for refresh token management
-  async revokeRefreshToken(_tokenHash: string): Promise<void> {
-    // Implementation pending
+  async updateUserPassword(userId: string, passwordHash: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
+  async createRefreshToken(data: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+    userAgent?: string;
+    ipAddress?: string;
+  }) {
+    return prisma.refreshToken.create({ data });
+  }
+
+  async findActiveRefreshTokenByHash(tokenHash: string) {
+    return prisma.refreshToken.findFirst({
+      where: {
+        tokenHash,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+  }
+
+  async revokeRefreshToken(tokenHash: string) {
+    return prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async revokeAllRefreshTokensForUser(userId: string) {
+    return prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  async createPasswordResetToken(data: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }) {
+    return prisma.passwordResetToken.create({ data });
+  }
+
+  async findActivePasswordResetTokenByHash(tokenHash: string) {
+    return prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+  }
+
+  async markPasswordResetTokenUsed(tokenHash: string) {
+    return prisma.passwordResetToken.updateMany({
+      where: { tokenHash, usedAt: null },
+      data: { usedAt: new Date() },
+    });
   }
 }
 
