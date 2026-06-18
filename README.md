@@ -21,13 +21,11 @@ ai-meeting-notes-manager/
 │   ├── src/
 │   │   ├── app/              # App shell, providers
 │   │   ├── components/       # Shared UI (Shadcn) + common
-│   │   ├── features/         # Feature modules (auth, meetings, tasks…)
+│   │   ├── features/         # Feature modules (auth, workspaces, meetings, tasks…)
 │   │   ├── hooks/            # Shared React hooks
-│   │   ├── layouts/          # AppLayout, AuthLayout
+│   │   ├── layouts/          # AppLayout, AuthLayout, mobile nav
 │   │   ├── lib/              # API client, utils, constants
-│   │   ├── pages/            # Route-level page components
 │   │   ├── routes/           # Router config + guards
-│   │   ├── services/         # API service layer
 │   │   ├── store/            # Client state
 │   │   ├── types/            # TypeScript types
 │   │   └── utils/            # Utility functions
@@ -176,18 +174,31 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `npm run prisma:migrate` | Create/apply migrations |
 | `npm run prisma:studio` | Prisma database GUI |
 
-## API Endpoints (Scaffolded)
+## API Endpoints
 
-| Method | Path | Status |
-|--------|------|--------|
-| `GET` | `/health` | ✅ Active |
-| `POST` | `/api/v1/auth/register` | 🔧 Scaffolded (validation only) |
-| `POST` | `/api/v1/auth/login` | 🔧 Scaffolded (validation only) |
-| `POST` | `/api/v1/auth/logout` | 🔧 Scaffolded (auth middleware) |
+Full-stack MVP **v0.3.0** — see [`docs/api-design.md`](./docs/api-design.md) for the API reference and [`frontend/README.md`](./frontend/README.md) for UI routes.
+
+| Domain | Base Path | Backend | Frontend |
+|--------|-----------|---------|----------|
+| Health | `GET /health` | ✅ | — |
+| Auth | `/api/v1/auth/*` | ✅ | ✅ |
+| Users | `/api/v1/users/*` | ✅ | ✅ |
+| Workspaces | `/api/v1/workspaces/*` | ✅ | ✅ |
+| Invitations | `/api/v1/invitations/*` | ✅ | ✅ |
+| Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ | ✅ |
+| AI processing | `.../meetings/:id/ai/*` | ✅ | ✅ |
+| Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ | ✅ |
+| Notifications | `/api/v1/notifications/*` | ✅ | ✅ |
+| Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ | ✅ |
+| Search | `/api/v1/workspaces/:id/search` | ✅ | ✅ |
+
+**Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
+
+**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or OpenAI locally.
 
 ## Database Models
 
-Initial Prisma models: `User`, `Workspace`, `WorkspaceMember`, `Meeting`, `Task`, `Comment`, `Notification`, `ActivityLog`.
+Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`.
 
 See [`docs/erd.md`](./docs/erd.md) and [`docs/database-architecture.md`](./docs/database-architecture.md) for the full schema design.
 
@@ -202,13 +213,13 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-This scaffold provides the foundation for feature development. Recommended implementation order:
+Full-stack MVP is complete (v0.3.0). Recommended next phase:
 
-1. **Auth** — Register, login, logout, JWT refresh
-2. **Workspaces** — CRUD, invitations, member management
-3. **Meetings** — CRUD, transcript upload
-4. **AI Processing** — OpenAI integration, job queue
-5. **Tasks** — Kanban board, comments, notifications
+1. **E2E tests** — Playwright or Cypress flows for auth, meetings, and tasks
+2. **Email delivery** — Wire invitation and password-reset emails (SMTP/Resend)
+3. **Production deploy** — Docker production config, env secrets, CI/CD pipeline
+4. **Performance** — Frontend code-splitting, API pagination tuning
+5. **Polish** — Accessibility audit, error boundaries, offline handling
 
 ## License
 
