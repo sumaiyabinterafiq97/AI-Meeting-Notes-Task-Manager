@@ -71,5 +71,30 @@
     @apply bg-background text-foreground antialiased;
     margin: 0;
     min-height: 100vh;
+    min-height: 100dvh;
+    width: 100%;
+    overflow-x: clip;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100dvh;
+  }
+
+  dialog:modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    margin: 0;
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    border: none;
+    padding: 0;
+    overflow: auto;
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
   }
 }
