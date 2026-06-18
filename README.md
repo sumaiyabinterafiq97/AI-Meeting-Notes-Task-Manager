@@ -21,13 +21,11 @@ ai-meeting-notes-manager/
 │   ├── src/
 │   │   ├── app/              # App shell, providers
 │   │   ├── components/       # Shared UI (Shadcn) + common
-│   │   ├── features/         # Feature modules (auth, meetings, tasks…)
+│   │   ├── features/         # Feature modules (auth, workspaces, meetings, tasks…)
 │   │   ├── hooks/            # Shared React hooks
-│   │   ├── layouts/          # AppLayout, AuthLayout
+│   │   ├── layouts/          # AppLayout, AuthLayout, mobile nav
 │   │   ├── lib/              # API client, utils, constants
-│   │   ├── pages/            # Route-level page components
 │   │   ├── routes/           # Router config + guards
-│   │   ├── services/         # API service layer
 │   │   ├── store/            # Client state
 │   │   ├── types/            # TypeScript types
 │   │   └── utils/            # Utility functions
@@ -178,22 +176,21 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 
 ## API Endpoints
 
-Backend API **v0.2.0** — see [`docs/api-design.md`](./docs/api-design.md) for the full reference.
+Full-stack MVP **v0.3.0** — see [`docs/api-design.md`](./docs/api-design.md) for the API reference and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
-| Domain | Base Path | Status |
-|--------|-----------|--------|
-| Health | `GET /health` | ✅ Active |
-| Auth | `/api/v1/auth/*` | ✅ Implemented |
-| Users | `/api/v1/users/*` | ✅ Implemented |
-| Workspaces | `/api/v1/workspaces/*` | ✅ Implemented |
-| Invitations | `/api/v1/invitations/*` | ✅ Implemented |
-| Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ Implemented |
-| AI processing | `.../meetings/:id/ai/*` | ✅ Implemented |
-| Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ Implemented |
-| Notifications | `/api/v1/notifications/*` | ✅ Implemented |
-| Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ Implemented |
-| Search | `/api/v1/workspaces/:id/search` | ✅ Implemented |
-| Frontend integration | — | 🔧 Pending |
+| Domain | Base Path | Backend | Frontend |
+|--------|-----------|---------|----------|
+| Health | `GET /health` | ✅ | — |
+| Auth | `/api/v1/auth/*` | ✅ | ✅ |
+| Users | `/api/v1/users/*` | ✅ | ✅ |
+| Workspaces | `/api/v1/workspaces/*` | ✅ | ✅ |
+| Invitations | `/api/v1/invitations/*` | ✅ | ✅ |
+| Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ | ✅ |
+| AI processing | `.../meetings/:id/ai/*` | ✅ | ✅ |
+| Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ | ✅ |
+| Notifications | `/api/v1/notifications/*` | ✅ | ✅ |
+| Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ | ✅ |
+| Search | `/api/v1/workspaces/:id/search` | ✅ | ✅ |
 
 **Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
@@ -216,13 +213,13 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-Backend MVP is complete (v0.2.0). Recommended next phase:
+Full-stack MVP is complete (v0.3.0). Recommended next phase:
 
-1. **Frontend auth** — Wire login, register, logout, and token refresh to the API
-2. **Workspaces UI** — Workspace list, creation, invitations, member management
-3. **Meetings UI** — Meeting CRUD, transcript upload, AI results display
-4. **Tasks UI** — Kanban board, comments, action item acceptance
-5. **Notifications UI** — In-app notification center and preferences
+1. **E2E tests** — Playwright or Cypress flows for auth, meetings, and tasks
+2. **Email delivery** — Wire invitation and password-reset emails (SMTP/Resend)
+3. **Production deploy** — Docker production config, env secrets, CI/CD pipeline
+4. **Performance** — Frontend code-splitting, API pagination tuning
+5. **Polish** — Accessibility audit, error boundaries, offline handling
 
 ## License
 

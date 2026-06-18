@@ -3,6 +3,34 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.3.0] - 2026-06-18
+
+### Added
+
+- Frontend auth: login, register, password reset, silent session restore, token refresh
+- Workspaces UI: list, create, switcher, settings, member management, invitation accept
+- Meetings UI: CRUD, transcript upload, AI processing status, action item review
+- Tasks UI: Kanban board, task detail, comments with @mentions, drag-and-drop
+- Dashboard: workspace stats, productivity chart, activity feed
+- Global and mobile workspace search
+- In-app notifications bell and notification preferences page
+- Responsive mobile navigation (bottom tab bar, slide-over menu)
+- Shared UI components: FormField, MentionTextarea, SlideOver, dialog primitives
+- Frontend Vitest suite expanded to 51 tests across feature modules
+- Frontend README with per-feature routes and user flows
+
+### Changed
+
+- Migrated from placeholder pages to feature-based architecture under `src/features/`
+- API client now handles 401 refresh with request queuing and unauthorized callback
+- App layout wired with workspace switcher, search, notifications, and sign out
+- Root README updated for full-stack MVP status
+
+### Removed
+
+- v0.1.0 scaffold placeholder pages in `src/pages/`
+- Unused `auth.service.ts` stub
+
 ## [0.2.0] - 2026-06-16
 
 ### Added
