@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meetingmind.ai/schemas/eval-fixture-case",
+  "title": "MeetingMind Eval Fixture Case",
+  "description": "Schema for a single test case in YAML golden fixtures",
+  "type": "object",
+  "required": ["id", "name", "tags", "input", "expect", "scoring"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TC-[A-Z]+-\\d+$",
+      "description": "Unique case ID e.g. TC-SUM-001"
+    },
+    "name": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "happy_path",
+          "edge_case",
+          "negative",
+          "empty",
+          "ambiguous",
+          "adversarial",
+          "injection",
+          "false_positive",
+          "boundary",
+          "i18n",
+          "grounded",
+          "memory",
+          "conflicting",
+          "streaming",
+          "v2.1",
+          "high_severity",
+          "uncertainty",
+          "empty_context",
+          "partial",
+          "format",
+          "hallucination_guard"
+        ]
+      }
+    },
+    "agent": { "type": "string" },
+    "prompt_version": { "type": "string" },
+    "schema_version": { "enum": ["2.0", "2.1"] },
+    "input": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "expect": {
+      "oneOf": [
+        { "$ref": "#/$defs/jsonExpect" },
+        { "$ref": "#/$defs/markdownExpect" },
+        { "$ref": "#/$defs/structuredExpect" }
+      ]
+    },
+    "scoring": {
+      "type": "object",
+      "properties": {
+        "weight": { "type": "number", "minimum": 0 },
+        "modes": {
+          "type": "array",
+          "items": {
+            "enum": ["schema_validity", "rule_based", "exact_match", "llm_judge"]
+          }
+        },
+        "pass_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "llm_judge": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "rubric": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "jsonExpect": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "json" },
+        "schema": { "type": "string" },
+        "must_parse": { "type": "boolean" },
+        "exact": { "type": "object" },
+        "array_paths": { "type": "object" },
+        "fields": { "type": "object" },
+        "items": { "type": "object" }
+      }
+    },
+    "markdownExpect": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "markdown" },
+        "must_contain": { "type": "array", "items": { "type": "string" } },
+        "must_contain_any": { "type": "array", "items": { "type": "string" } },
+        "must_not_contain": { "type": "array", "items": { "type": "string" } },
+        "must_match_regex": { "type": "array", "items": { "type": "string" } },
+        "refusal_patterns": { "type": "array", "items": { "type": "string" } },
+        "min_citations": { "type": "integer", "minimum": 0 },
+        "grounded_only": { "type": "boolean" },
+        "streaming": { "type": "object" }
+      }
+    },
+    "structuredExpect": {
+      "type": "object",
+      "required": ["type", "schema"],
+      "properties": {
+        "type": { "const": "structured" },
+        "schema": { "type": "string" },
+        "fields": { "type": "object" }
+      }
+    }
+  }
+}
