@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { ROUTES } from '@/lib/constants';
 import { useWorkspaceSearch } from '../hooks/useWorkspaceSearch';
 import { SearchResultsPanel } from './SearchResultsPanel';
+import { RecentSearches } from './RecentSearches';
 
 interface GlobalSearchProps {
   workspaceId: string;
@@ -16,8 +18,6 @@ export function GlobalSearch({ workspaceId }: GlobalSearchProps) {
   const [open, setOpen] = useState(false);
 
   const search = useWorkspaceSearch(workspaceId, open);
-
-  const showPanel = open && (search.query.length > 0 || search.canSearch);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -66,13 +66,34 @@ export function GlobalSearch({ workspaceId }: GlobalSearchProps) {
           placeholder="Search meetings and tasks…"
           className="h-9 pl-9"
           aria-label="Search workspace"
-          aria-expanded={showPanel}
+          aria-expanded={open}
           aria-controls="global-search-results"
           autoComplete="off"
         />
       </div>
 
-      {showPanel && (
+      {open && !search.query && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-md border bg-card p-3 shadow-lg">
+          {search.recentSearches.length > 0 ? (
+            <RecentSearches
+              items={search.recentSearches}
+              onSelect={(value) => {
+                search.setQuery(value);
+              }}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Search meetings, tasks, and AI summaries.</p>
+          )}
+          <Link
+            to={ROUTES.SEARCH(workspaceId)}
+            className="mt-3 block text-center text-xs font-medium text-primary hover:underline"
+          >
+            Advanced search
+          </Link>
+        </div>
+      )}
+
+      {open && search.query.length > 0 && (
         <SearchResultsPanel
           workspaceId={workspaceId}
           query={search.query}
@@ -85,6 +106,7 @@ export function GlobalSearch({ workspaceId }: GlobalSearchProps) {
           isError={search.isError}
           hasResults={search.hasResults}
           onNavigate={handleNavigate}
+          onSearchComplete={search.recordSearch}
           className="absolute left-0 right-0 top-full z-50 mt-1"
         />
       )}

@@ -54,6 +54,15 @@ const taskPayload = {
     expect(response.body.stats.totalMeetings).toBe(1);
     expect(response.body.stats.openTasks).toBe(0);
     expect(response.body.stats.completedThisWeek).toBe(1);
+    expect(response.body.aiMetrics).toMatchObject({
+      summariesGenerated: expect.any(Number),
+      pendingActionItems: expect.any(Number),
+      failedProcessing: expect.any(Number),
+    });
+    expect(Array.isArray(response.body.recommendations)).toBe(true);
+    expect(Array.isArray(response.body.tasksDueSoon)).toBe(true);
+    expect(Array.isArray(response.body.recentMeetings)).toBe(true);
+    expect(response.body.recentMeetings.length).toBeGreaterThanOrEqual(1);
     expect(response.body.productivity.tasksCompletedPerWeek).toHaveLength(8);
     expect(response.body.recentActivity.length).toBeGreaterThan(0);
   });

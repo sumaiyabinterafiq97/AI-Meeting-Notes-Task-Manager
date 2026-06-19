@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { MobileBottomNav } from '@/layouts/MobileBottomNav';
 
-function renderBottomNav(route = '/workspaces/ws-1/meetings') {
+function renderBottomNav(route = '/workspaces/ws-1/chat') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -20,18 +20,18 @@ function renderBottomNav(route = '/workspaces/ws-1/meetings') {
 }
 
 describe('MobileBottomNav', () => {
-  it('renders primary navigation tabs', () => {
+  it('renders AI-first navigation tabs', () => {
     renderBottomNav();
 
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^chat$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^search$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /meetings/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /tasks/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
   });
 
   it('marks the active tab', () => {
-    renderBottomNav('/workspaces/ws-1/meetings');
+    renderBottomNav('/workspaces/ws-1/search');
 
-    expect(screen.getByRole('link', { name: /meetings/i })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /^search$/i })).toHaveAttribute('aria-current', 'page');
   });
 });

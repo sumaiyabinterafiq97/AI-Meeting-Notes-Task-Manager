@@ -20,12 +20,12 @@ export function WorkspaceListPage() {
 
   const handleSelect = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
-    navigate(ROUTES.DASHBOARD(workspaceId));
+    navigate(ROUTES.CHAT(workspaceId));
   };
 
   const handleCreated = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
-    navigate(ROUTES.DASHBOARD(workspaceId));
+    navigate(ROUTES.CHAT(workspaceId));
   };
 
   return (

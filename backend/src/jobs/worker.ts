@@ -1,5 +1,5 @@
 import { env } from '../config/env';
-import { startMeetingAiWorker } from './queue';
+import { startMeetingAiWorker, startEmbedMeetingWorker, startWeeklyReportWorker, startTranscribeAudioWorker, startCalendarSyncWorker, scheduleHourlyCalendarSync } from './queue';
 
 if (!env.REDIS_URL) {
   console.error('[worker] REDIS_URL is not set. Start Redis or use AI_USE_MOCK=true for inline processing.');
@@ -11,18 +11,47 @@ if (env.AI_USE_MOCK) {
   process.exit(0);
 }
 
-const worker = startMeetingAiWorker();
+const meetingWorker = startMeetingAiWorker();
+const embedWorker = startEmbedMeetingWorker();
+const weeklyReportWorker = startWeeklyReportWorker();
+const transcribeAudioWorker = startTranscribeAudioWorker();
+const calendarSyncWorker = startCalendarSyncWorker();
 
-worker.on('error', (error) => {
-  console.error('[worker] Redis connection failed:', error.message);
-  console.error('[worker] Start Redis (e.g. docker run -p 6379:6379 redis) or set AI_USE_MOCK=true in .env');
+void scheduleHourlyCalendarSync();
+
+meetingWorker.on('error', (error) => {
+  console.error('[worker] Meeting AI Redis connection failed:', error.message);
   process.exit(1);
 });
 
-console.info('[worker] Meeting AI worker started (waiting for Redis)');
+embedWorker.on('error', (error) => {
+  console.error('[worker] Embed Redis connection failed:', error.message);
+  process.exit(1);
+});
+
+weeklyReportWorker.on('error', (error) => {
+  console.error('[worker] Weekly report Redis connection failed:', error.message);
+  process.exit(1);
+});
+
+transcribeAudioWorker.on('error', (error) => {
+  console.error('[worker] Transcribe audio Redis connection failed:', error.message);
+  process.exit(1);
+});
+
+calendarSyncWorker.on('error', (error) => {
+  console.error('[worker] Calendar sync Redis connection failed:', error.message);
+  process.exit(1);
+});
+
+console.info('[worker] Meeting AI + embed + weekly-report + transcribe-audio + calendar-sync workers started (waiting for Redis)');
 
 async function shutdown(): Promise<void> {
-  await worker.close();
+  await meetingWorker.close();
+  await embedWorker.close();
+  await weeklyReportWorker.close();
+  await transcribeAudioWorker.close();
+  await calendarSyncWorker.close();
   process.exit(0);
 }
 

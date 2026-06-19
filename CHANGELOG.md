@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] - 2026-06-19
+
+### Added
+
+- **MeetingMind AI** — pgvector-backed RAG chat, semantic/hybrid search, insights hub, weekly reports, and knowledge base
+- Multi-LLM provider layer (OpenAI, Anthropic, Gemini, mock) with fallback chain, circuit breaker, and retries
+- Document chunking, embedding pipeline, and vector retrieval with reciprocal rank fusion
+- Multi-agent orchestration: summarizer, task extractor, risk analyzer, decision agent, weekly report agent
+- Workspace chat with SSE streaming and meeting-scoped chat sessions
+- Insights, reports, and knowledge base APIs with dashboard AI recommendations
+- Audio transcription upload jobs and Google/Microsoft calendar OAuth with sync
+- LLM observability: invocation logging, daily usage aggregates, and cost tracking
+- Redis service in Docker Compose; pgvector-enabled PostgreSQL image
+- Frontend AI routes: Chat, Search, Insights, Reports, Knowledge with lazy loading and code-splitting
+- Dashboard AI metrics, recommendations, and tasks-due-soon surfaces
+- ~19 architecture docs (`rag-architecture.md`, `llm-architecture.md`, `agent-flow.md`, etc.)
+- Backend prompt registry with evaluation fixtures; expanded test suites (136 backend, 81 frontend tests)
+
+### Changed
+
+- Search upgraded to semantic/hybrid mode with dedicated search page, filters, and snippet cards
+- Meeting detail enriched with AI insights panel and meeting chat
+- Workspace navigation expanded for desktop and mobile (Chat, Insights, Search, Reports, Knowledge)
+- `AI_USE_MOCK=true` continues to support local dev without external LLM keys
+
 ## [0.3.0] - 2026-06-18
 
 ### Added

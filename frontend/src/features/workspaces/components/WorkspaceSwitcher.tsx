@@ -30,7 +30,7 @@ export function WorkspaceSwitcher() {
   const handleSelect = (id: string) => {
     setActiveWorkspaceId(id);
     setOpen(false);
-    navigate(ROUTES.DASHBOARD(id));
+    navigate(ROUTES.CHAT(id));
   };
 
   if (!workspaces.length) {

@@ -1,9 +1,12 @@
 import {
   DashboardActivityDto,
   DashboardDto,
+  DashboardRecentMeetingDto,
+  DashboardTaskDueSoonDto,
   WeeklyCompletionDto,
 } from './dashboard.dto';
 import { dashboardRepository, PRODUCTIVITY_WEEKS } from './dashboard.repository';
+import { buildWorkspaceRecommendations } from './dashboard-recommendations';
 import { toIsoWeek, weeksAgoUtc } from '../../lib/week';
 
 function buildWeeklyCompletions(
@@ -70,15 +73,62 @@ function toActivityDto(entry: {
 export class DashboardService {
   async getDashboard(workspaceId: string): Promise<DashboardDto> {
     const since = weeksAgoUtc(PRODUCTIVITY_WEEKS - 1);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
-    const [stats, completedTasks, recentActivity] = await Promise.all([
+    const [
+      stats,
+      aiMetrics,
+      pendingByMeeting,
+      meetingsWithRisks,
+      tasksDueSoon,
+      recentMeetings,
+      completedTasks,
+      recentActivity,
+    ] = await Promise.all([
       dashboardRepository.getStats(workspaceId),
+      dashboardRepository.getAiMetrics(workspaceId),
+      dashboardRepository.getPendingActionsByMeeting(workspaceId),
+      dashboardRepository.getMeetingsWithRisks(workspaceId),
+      dashboardRepository.getTasksDueSoon(workspaceId),
+      dashboardRepository.getRecentMeetings(workspaceId),
       dashboardRepository.getCompletedTasksForProductivity(workspaceId, since),
       dashboardRepository.getRecentActivity(workspaceId),
     ]);
 
+    const recommendations = buildWorkspaceRecommendations({
+      pendingByMeeting,
+      meetingsWithRisks: meetingsWithRisks.map((meeting) => ({
+        id: meeting.id,
+        title: meeting.title,
+        risks: meeting.aiOutput?.risks,
+      })),
+      overdueTasks: stats.overdueTasks,
+      openTasks: stats.openTasks,
+    });
+
     return {
       stats,
+      aiMetrics,
+      recommendations,
+      tasksDueSoon: tasksDueSoon.map((task): DashboardTaskDueSoonDto => ({
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate!.toISOString(),
+        status: task.status,
+        priority: task.priority,
+        assigneeName: task.assignee?.displayName ?? null,
+        isOverdue: task.dueDate! < today,
+      })),
+      recentMeetings: recentMeetings.map((meeting): DashboardRecentMeetingDto => ({
+        id: meeting.id,
+        title: meeting.title,
+        meetingDate: meeting.meetingDate.toISOString(),
+        status: meeting.status,
+        hasAiSummary: Boolean(
+          meeting.aiOutput?.processingStatus === 'COMPLETED' && meeting.aiOutput.summary,
+        ),
+      })),
       productivity: {
         tasksCompletedPerWeek: buildWeeklyCompletions(completedTasks),
         avgDaysToComplete: computeAvgDaysToComplete(completedTasks),

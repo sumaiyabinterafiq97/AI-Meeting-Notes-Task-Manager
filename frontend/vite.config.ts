@@ -10,6 +10,24 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/recharts')) {
+            return 'recharts';
+          }
+          if (
+            id.includes('node_modules/react-markdown') ||
+            id.includes('node_modules/remark-gfm') ||
+            id.includes('node_modules/rehype-sanitize')
+          ) {
+            return 'markdown';
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     host: true,

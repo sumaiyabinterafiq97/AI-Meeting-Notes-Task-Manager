@@ -11,6 +11,8 @@ import { validate } from '../../middlewares';
 import { requireWorkspaceMember } from '../../middlewares/require-workspace';
 import { aiProcessingRateLimiter } from '../../middlewares/rate-limit';
 import { aiRoutes } from '../ai/ai.routes';
+import { meetingChatRoutes } from '../chat/meeting-chat.routes';
+import { createTranscriptionRoutes } from '../transcription';
 
 const router = Router({ mergeParams: true });
 
@@ -51,6 +53,10 @@ router.post(
   validate(meetingParamsValidation),
   (req, res, next) => meetingController.reprocess(req, res, next),
 );
+
+router.use('/:meetingId', createTranscriptionRoutes());
+
+router.use('/:meetingId/chat', meetingChatRoutes);
 
 router.use('/:meetingId', aiRoutes);
 

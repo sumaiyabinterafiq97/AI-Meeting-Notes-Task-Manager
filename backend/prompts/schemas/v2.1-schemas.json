@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meetingmind.ai/schemas/v2.1",
+  "title": "MeetingMind AI Agent Output Schemas v2.1",
+  "description": "Extended schemas v2.1. Enable with PROMPT_SCHEMA_V2_1=true until backend migration complete.",
+  "version": "2.1.0",
+  "definitions": {
+    "MeetingSummaryOutputV21": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string", "maxLength": 4000 },
+        "keyTopics": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 120 },
+          "minItems": 0,
+          "maxItems": 8
+        },
+        "nextSteps": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 300 },
+          "maxItems": 5
+        },
+        "participantsDiscussed": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["summary", "keyTopics"],
+      "additionalProperties": false
+    },
+    "TaskExtractorOutputV21": {
+      "type": "object",
+      "properties": {
+        "actionItems": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string", "maxLength": 300 },
+              "description": { "type": "string", "maxLength": 1000 },
+              "suggestedAssignee": { "type": ["string", "null"] },
+              "suggestedDueDate": {
+                "type": ["string", "null"],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "priority": {
+                "type": ["string", "null"],
+                "enum": ["low", "medium", "high", "critical", null]
+              },
+              "dependencies": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 200 },
+                "maxItems": 5
+              },
+              "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "required": [
+              "title",
+              "description",
+              "suggestedAssignee",
+              "suggestedDueDate",
+              "priority",
+              "dependencies",
+              "confidenceScore"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["actionItems"],
+      "additionalProperties": false
+    },
+    "DecisionOutputV21": {
+      "type": "object",
+      "properties": {
+        "decisions": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string", "maxLength": 500 },
+              "context": { "type": "string", "maxLength": 1000 },
+              "stakeholders": {
+                "type": "array",
+                "items": { "type": "string" },
+                "maxItems": 10
+              },
+              "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+              "supportingEvidence": { "type": "string", "maxLength": 500 }
+            },
+            "required": [
+              "text",
+              "context",
+              "stakeholders",
+              "confidenceScore",
+              "supportingEvidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["decisions"],
+      "additionalProperties": false
+    },
+    "RiskAnalyzerOutputV21": {
+      "type": "object",
+      "properties": {
+        "risks": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string", "maxLength": 500 },
+              "severity": { "enum": ["low", "medium", "high"] },
+              "context": { "type": "string", "maxLength": 1000 },
+              "impact": { "type": "string", "maxLength": 500 },
+              "likelihood": { "enum": ["low", "medium", "high", "unknown"] },
+              "recommendation": { "type": "string", "maxLength": 500 },
+              "evidence": { "type": "string", "maxLength": 500 },
+              "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "required": [
+              "text",
+              "severity",
+              "context",
+              "impact",
+              "likelihood",
+              "recommendation",
+              "evidence",
+              "confidenceScore"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["risks"],
+      "additionalProperties": false
+    },
+    "KnowledgeOutputV21": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityType": {
+                "enum": ["definition", "process", "agreement", "technical", "people", "other"]
+              },
+              "title": { "type": "string", "maxLength": 300 },
+              "content": { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0.5, "maximum": 1 },
+              "sourceRef": {
+                "type": "object",
+                "properties": {
+                  "meetingId": { "type": "string" },
+                  "excerpt": { "type": "string", "maxLength": 300 },
+                  "timestamp": { "type": ["string", "null"] }
+                },
+                "required": ["meetingId", "excerpt"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["entityType", "title", "content", "confidence", "sourceRef"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entries"],
+      "additionalProperties": false
+    },
+    "WeeklyReportOutputV21": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "heading": { "type": "string" },
+              "content": { "type": "string" },
+              "meetingIds": { "type": "array", "items": { "type": "string" } },
+              "citations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index": { "type": "integer", "minimum": 1 },
+                    "chunkId": { "type": "string" },
+                    "meetingId": { "type": "string" }
+                  },
+                  "required": ["index"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["heading", "content"],
+            "additionalProperties": false
+          }
+        },
+        "taskStats": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "meetingCount": { "type": "number" }
+      },
+      "required": ["title", "sections", "taskStats", "meetingCount"],
+      "additionalProperties": false
+    },
+    "ChatAgentOutputV21": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer", "minimum": 1 },
+              "chunkId": { "type": "string" },
+              "meetingId": { "type": "string" },
+              "excerpt": { "type": "string" },
+              "claimText": { "type": "string" }
+            },
+            "required": ["index"],
+            "additionalProperties": false
+          }
+        },
+        "grounded": { "type": "boolean" },
+        "refusalReason": { "type": ["string", "null"] }
+      },
+      "required": ["content", "citations", "grounded"],
+      "additionalProperties": false
+    }
+  }
+}

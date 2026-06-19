@@ -1,10 +1,20 @@
 export type SearchType = 'meetings' | 'tasks' | 'all';
 
+export type SearchMode = 'keyword' | 'semantic' | 'hybrid';
+
+export type SearchMatchType = 'semantic' | 'keyword' | 'both';
+
 export interface SearchQuery {
   q?: string;
   type?: SearchType;
+  mode?: SearchMode;
   page?: string;
   limit?: string;
+  similarityMin?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sourceTypes?: string | string[];
+  meetingId?: string;
 }
 
 export interface SearchMeetingResult {
@@ -13,6 +23,8 @@ export interface SearchMeetingResult {
   meetingDate: Date;
   status: string;
   tags: string[];
+  relevanceScore?: number;
+  matchType?: SearchMatchType;
 }
 
 export interface SearchTaskResult {
@@ -22,6 +34,8 @@ export interface SearchTaskResult {
   priority: string;
   assigneeId: string | null;
   dueDate: Date | null;
+  relevanceScore?: number;
+  matchType?: SearchMatchType;
 }
 
 export interface SearchSnippetResult {
@@ -29,9 +43,16 @@ export interface SearchSnippetResult {
   meetingTitle: string;
   field: string;
   excerpt: string;
+  sourceType?: string;
+  relevanceScore?: number;
+  matchType?: SearchMatchType;
+  highlight?: string;
 }
 
 export interface SearchResponseDto {
+  query: string;
+  searchMode: SearchMode;
+  degraded?: boolean;
   meetings: SearchMeetingResult[];
   tasks: SearchTaskResult[];
   snippets: SearchSnippetResult[];
@@ -40,5 +61,7 @@ export interface SearchResponseDto {
     limit: number;
     meetingsTotal: number;
     tasksTotal: number;
+    snippetsTotal?: number;
+    searchDurationMs?: number;
   };
 }

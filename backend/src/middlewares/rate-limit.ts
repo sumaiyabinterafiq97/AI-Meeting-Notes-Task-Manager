@@ -89,6 +89,18 @@ export const aiProcessingRateLimiter =
         handler: rateLimitHandler,
       });
 
+export const chatRateLimiter =
+  env.NODE_ENV === 'test'
+    ? passthrough
+    : rateLimit({
+        windowMs: 60 * 60 * 1000,
+        max: 60,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: userOrIpKey,
+        handler: rateLimitHandler,
+      });
+
 export function validateRefreshOrigin(req: Request, _res: Response, next: NextFunction): void {
   const origin = req.headers.origin;
 

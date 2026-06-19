@@ -22,7 +22,7 @@ export function AcceptInvitationPage() {
     mutate(token, {
       onSuccess: (response) => {
         setActiveWorkspaceId(response.data.workspace.id);
-        navigate(ROUTES.DASHBOARD(response.data.workspace.id), { replace: true });
+        navigate(ROUTES.CHAT(response.data.workspace.id), { replace: true });
       },
     });
   }, [token, mutate, navigate, setActiveWorkspaceId]);

@@ -1,7 +1,9 @@
 import { JobStatus, Prisma } from '@prisma/client';
 import { aiRepository } from '../modules/ai/ai.repository';
-import { analyzeTranscript } from '../lib/openai';
+import { pipelineOrchestrator } from '../modules/agents/orchestrator/pipeline-orchestrator.service';
 import { fuzzyMatchAssignee } from '../lib/fuzzy-match';
+import { enqueueEmbedMeeting } from './queue';
+import { knowledgeExtractionService } from '../modules/knowledge/knowledge.service';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -45,14 +47,19 @@ export async function processMeetingJob(jobId: string): Promise<void> {
       ? (meeting.attendees as string[])
       : [];
 
-    const analysis = await analyzeTranscript({
+    const pipelineOutput = await pipelineOrchestrator.run({
       transcript: meeting.transcript.content,
       meetingTitle: meeting.title,
+      meetingDate: meeting.meetingDate.toISOString().slice(0, 10),
       attendees,
       memberNames,
+      workspaceId: currentJob.workspaceId,
+      meetingId: currentJob.meetingId,
+      jobId,
+      correlationId: jobId,
     });
 
-    const actionItems = analysis.result.actionItems.map((item) => ({
+    const actionItems = pipelineOutput.result.actionItems.map((item) => ({
       title: item.title.slice(0, 300),
       description: item.description,
       suggestedAssigneeId: fuzzyMatchAssignee(
@@ -67,18 +74,36 @@ export async function processMeetingJob(jobId: string): Promise<void> {
 
     await aiRepository.saveProcessingResult({
       meetingId: currentJob.meetingId,
-      summary: analysis.result.summary,
-      topics: analysis.result.topics,
-      decisions: analysis.result.decisions as unknown as Prisma.InputJsonValue,
-      risks: analysis.result.risks as unknown as Prisma.InputJsonValue,
+      summary: pipelineOutput.result.summary,
+      topics: pipelineOutput.result.topics,
+      decisions: pipelineOutput.result.decisions as unknown as Prisma.InputJsonValue,
+      risks: pipelineOutput.result.risks as unknown as Prisma.InputJsonValue,
       actionItems,
-      modelVersion: analysis.model,
-      promptTokens: analysis.promptTokens,
-      completionTokens: analysis.completionTokens,
-      rawResponse: analysis.rawResponse as object,
+      modelVersion: pipelineOutput.modelVersion,
+      promptTokens: pipelineOutput.promptTokens,
+      completionTokens: pipelineOutput.completionTokens,
+      rawResponse: pipelineOutput.rawResponse as object,
     });
 
     await aiRepository.markJobCompleted(jobId);
+
+    await enqueueEmbedMeeting({
+      meetingId: currentJob.meetingId,
+      workspaceId: currentJob.workspaceId,
+    });
+
+    try {
+      await knowledgeExtractionService.extractFromMeeting(
+        currentJob.meetingId,
+        currentJob.workspaceId,
+        jobId,
+      );
+    } catch (error) {
+      console.warn(
+        `[process-meeting] Knowledge extraction failed for ${currentJob.meetingId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
   } catch (error) {
     const message = getErrorMessage(error);
     const refreshed = await aiRepository.findJobById(jobId);

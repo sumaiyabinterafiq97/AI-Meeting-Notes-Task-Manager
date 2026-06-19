@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FullScreenPanel } from '@/components/common/FullScreenPanel';
+import { ROUTES } from '@/lib/constants';
 import { useWorkspaceSearch } from '../hooks/useWorkspaceSearch';
 import { SearchResultsPanel } from './SearchResultsPanel';
+import { RecentSearches } from './RecentSearches';
 
 interface MobileSearchProps {
   workspaceId: string;
@@ -71,6 +73,21 @@ export function MobileSearch({ workspaceId }: MobileSearchProps) {
             />
           </div>
 
+          {!search.query && search.recentSearches.length > 0 && (
+            <RecentSearches
+              items={search.recentSearches}
+              onSelect={(value) => search.setQuery(value)}
+            />
+          )}
+
+          <Link
+            to={ROUTES.SEARCH(workspaceId)}
+            className="block text-center text-sm font-medium text-primary hover:underline"
+            onClick={handleClose}
+          >
+            Advanced search
+          </Link>
+
           <SearchResultsPanel
             workspaceId={workspaceId}
             query={search.query}
@@ -83,6 +100,7 @@ export function MobileSearch({ workspaceId }: MobileSearchProps) {
             isError={search.isError}
             hasResults={search.hasResults}
             onNavigate={handleNavigate}
+            onSearchComplete={search.recordSearch}
             resultsId="mobile-search-results"
             className="border-0 shadow-none"
             scrollClassName="max-h-[calc(100dvh-14rem)]"
