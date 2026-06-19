@@ -1,4 +1,4 @@
-import { MeetingStatus, WorkspaceRole } from '@prisma/client';
+import { MeetingStatus, WorkspaceRole, MeetingSource } from '@prisma/client';
 import {
   CreateMeetingDto,
   UpdateMeetingDto,
@@ -27,6 +27,7 @@ function toMeetingDto(meeting: {
   tags: string[];
   agenda: string | null;
   status: MeetingStatus;
+  source?: MeetingSource;
   createdById: string;
   createdAt: Date;
   updatedAt?: Date;
@@ -45,6 +46,7 @@ function toMeetingDto(meeting: {
     status: meeting.status,
     createdById: meeting.createdById,
     createdAt: meeting.createdAt,
+    ...(meeting.source && { source: meeting.source }),
     ...(meeting.updatedAt && { updatedAt: meeting.updatedAt }),
   };
 }
@@ -153,6 +155,10 @@ export class MeetingService {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is currently processing');
     }
 
+    if (existing.status === MeetingStatus.TRANSCRIBING) {
+      throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is currently transcribing');
+    }
+
     const updated = await meetingRepository.updateMeeting(workspaceId, meetingId, {
       ...(data.title !== undefined && { title: data.title.trim() }),
       ...(data.meetingDate !== undefined && {
@@ -210,6 +216,10 @@ export class MeetingService {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is already processing');
     }
 
+    if (meeting.status === MeetingStatus.TRANSCRIBING) {
+      throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is currently transcribing');
+    }
+
     const content = data.content.normalize('NFC');
     const charCount = content.length;
     const byteLength = Buffer.byteLength(content, 'utf8');
@@ -256,6 +266,10 @@ export class MeetingService {
 
     if (meeting.status === MeetingStatus.PROCESSING) {
       throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is already processing');
+    }
+
+    if (meeting.status === MeetingStatus.TRANSCRIBING) {
+      throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is currently transcribing');
     }
 
     const hasTranscript = await meetingRepository.hasTranscript(meetingId);
