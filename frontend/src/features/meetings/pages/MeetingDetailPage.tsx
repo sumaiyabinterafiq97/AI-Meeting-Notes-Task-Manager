@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorAlert } from '@/components/common/ErrorAlert';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -11,9 +12,10 @@ import { formatDateTime } from '@/lib/utils';
 import { ProcessingStatusBadge } from '../components/ProcessingStatusBadge';
 import { MeetingMetadata } from '../components/MeetingMetadata';
 import { TranscriptUpload } from '../components/TranscriptUpload';
-import { ActionItemReview } from '../components/ActionItemReview';
 import { LinkedTasksList } from '../components/LinkedTasksList';
 import { EditMeetingDialog } from '../components/EditMeetingDialog';
+import { MeetingChatPanel } from '@/features/chat/components/MeetingChatPanel';
+import { MeetingInsightsPanel } from '@/features/insights/components/MeetingInsightsPanel';
 import { useMeeting } from '../hooks/useMeeting';
 import { useDeleteMeeting } from '../hooks/useDeleteMeeting';
 import { useReprocessMeeting } from '../hooks/useReprocessMeeting';
@@ -59,6 +61,25 @@ export function MeetingDetailPage() {
 
   const isProcessing = meeting.status === 'PROCESSING';
   const canReprocess = Boolean(meeting.transcript) && !isProcessing;
+  const canChat =
+    Boolean(meeting.transcript) &&
+    (meeting.status === 'READY' || meeting.status === 'PROCESSING');
+  const chatDisabled = isProcessing || meeting.status === 'FAILED' || meeting.status === 'DRAFT';
+  const chatDisabledReason = isProcessing
+    ? 'Chat is available once AI processing completes.'
+    : meeting.status === 'DRAFT'
+      ? 'Upload a transcript to start chatting about this meeting.'
+      : meeting.status === 'FAILED'
+        ? 'Chat is unavailable while AI processing has failed.'
+        : undefined;
+
+  const showInsightsPanel =
+    meeting.status === 'READY' ||
+    meeting.status === 'PROCESSING' ||
+    meeting.status === 'FAILED' ||
+    meeting.actionItems.length > 0;
+
+  const defaultTab = meeting.status === 'DRAFT' ? 'details' : 'insights';
 
   return (
     <div className="space-y-6">
@@ -131,7 +152,7 @@ export function MeetingDetailPage() {
           <CardContent className="flex items-center gap-3 p-4">
             <LoadingSpinner className="h-5 w-5" label="Processing transcript" />
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              AI is analyzing your transcript. This page updates automatically.
+              AI is analyzing your transcript. Insights and chat update automatically.
             </p>
           </CardContent>
         </Card>
@@ -146,80 +167,110 @@ export function MeetingDetailPage() {
         />
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-          <CardDescription>Meeting metadata and context.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MeetingMetadata meeting={meeting} />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue={defaultTab} className="space-y-4">
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+          <TabsTrigger value="details">Meeting info</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Transcript</CardTitle>
-          <CardDescription>
-            {meeting.transcript
-              ? `Uploaded ${formatDateTime(meeting.transcript.uploadedAt)} · ${meeting.transcript.charCount.toLocaleString()} characters · ${meeting.transcript.sourceFormat.toUpperCase()}`
-              : 'Upload or paste a transcript to start AI processing.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TranscriptUpload
-            workspaceId={workspaceId}
-            meetingId={meetingId}
-            meetingStatus={meeting.status}
-            hasTranscript={Boolean(meeting.transcript)}
-          />
-        </CardContent>
-      </Card>
+        <TabsContent value="insights">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meeting insights</CardTitle>
+              <CardDescription>
+                AI-generated summary, decisions, risks, and follow-ups for this meeting.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {showInsightsPanel ? (
+                <MeetingInsightsPanel
+                  embedded
+                  workspaceId={workspaceId}
+                  meetingId={meetingId}
+                  meetingStatus={meeting.status}
+                  aiOutput={meeting.aiOutput}
+                  actionItems={meeting.actionItems}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Upload a transcript in Meeting info to generate insights.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {meeting.status === 'READY' && meeting.aiOutput?.summary && (
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Summary</CardTitle>
-            <CardDescription>
-              {meeting.aiOutput.processedAt
-                ? `Generated ${formatDateTime(meeting.aiOutput.processedAt)}`
-                : 'Generated by AI'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{meeting.aiOutput.summary}</p>
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="chat">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meeting AI chat</CardTitle>
+              <CardDescription>
+                Ask questions about &ldquo;{meeting.title}&rdquo; with grounded, cited answers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {canChat || meeting.transcript ? (
+                <MeetingChatPanel
+                  embedded
+                  workspaceId={workspaceId}
+                  meetingId={meetingId}
+                  meetingTitle={meeting.title}
+                  disabled={chatDisabled}
+                  disabledReason={chatDisabledReason}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Upload a transcript in Meeting info to start chatting about this meeting.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {(meeting.status === 'READY' || meeting.actionItems.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Action Items</CardTitle>
-            <CardDescription>
-              Review AI-extracted follow-ups. Accept to create tasks or reject to dismiss.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ActionItemReview
-              workspaceId={workspaceId}
-              meetingId={meetingId}
-              actionItems={meeting.actionItems}
-            />
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="details" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>Meeting metadata and context.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MeetingMetadata meeting={meeting} />
+            </CardContent>
+          </Card>
 
-      {meeting.linkedTasks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Linked Tasks</CardTitle>
-            <CardDescription>Tasks created from accepted action items.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LinkedTasksList workspaceId={workspaceId} tasks={meeting.linkedTasks} />
-          </CardContent>
-        </Card>
-      )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Transcript</CardTitle>
+              <CardDescription>
+                {meeting.transcript
+                  ? `Uploaded ${formatDateTime(meeting.transcript.uploadedAt)} · ${meeting.transcript.charCount.toLocaleString()} characters · ${meeting.transcript.sourceFormat.toUpperCase()}`
+                  : 'Upload or paste a transcript to start AI processing.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TranscriptUpload
+                workspaceId={workspaceId}
+                meetingId={meetingId}
+                meetingStatus={meeting.status}
+                hasTranscript={Boolean(meeting.transcript)}
+              />
+            </CardContent>
+          </Card>
+
+          {meeting.linkedTasks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Linked Tasks</CardTitle>
+                <CardDescription>Tasks created from accepted action items.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <LinkedTasksList workspaceId={workspaceId} tasks={meeting.linkedTasks} />
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <EditMeetingDialog
         workspaceId={workspaceId}

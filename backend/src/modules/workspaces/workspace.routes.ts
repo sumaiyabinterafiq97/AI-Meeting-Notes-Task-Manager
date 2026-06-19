@@ -15,6 +15,11 @@ import { meetingRoutes } from '../meetings/meeting.routes';
 import { taskRoutes } from '../tasks/task.routes';
 import { dashboardRoutes } from '../dashboard/dashboard.routes';
 import { searchRoutes } from '../search/search.routes';
+import { workspaceChatRoutes } from '../chat/workspace-chat.routes';
+import { reportsRoutes } from '../reports/reports.routes';
+import { knowledgeRoutes } from '../knowledge/knowledge.routes';
+import { insightsRoutes } from '../insights/insights.routes';
+import { createWorkspaceCalendarRoutes } from '../calendar';
 
 const router = Router();
 
@@ -48,6 +53,36 @@ router.use(
   '/:workspaceId/search',
   validate(workspaceIdParamValidation),
   searchRoutes,
+);
+
+router.use(
+  '/:workspaceId/chat',
+  validate(workspaceIdParamValidation),
+  workspaceChatRoutes,
+);
+
+router.use(
+  '/:workspaceId/reports',
+  validate(workspaceIdParamValidation),
+  reportsRoutes,
+);
+
+router.use(
+  '/:workspaceId/knowledge',
+  validate(workspaceIdParamValidation),
+  knowledgeRoutes,
+);
+
+router.use(
+  '/:workspaceId/insights',
+  validate(workspaceIdParamValidation),
+  insightsRoutes,
+);
+
+router.use(
+  '/:workspaceId/calendar',
+  validate(workspaceIdParamValidation),
+  createWorkspaceCalendarRoutes(),
 );
 
 router.get(

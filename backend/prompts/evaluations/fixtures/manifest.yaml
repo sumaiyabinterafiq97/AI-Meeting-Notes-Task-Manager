@@ -1,0 +1,202 @@
+# MeetingMind AI — Eval Fixture Manifest
+version: "1.0.0"
+description: Golden fixture index for automated prompt evaluation
+
+defaults:
+  prompt_version: "2.1.0"
+  schema_version: "2.1"
+  model_hint: gpt-4o
+  runs_per_case: 3
+  consistency_threshold: 0.9
+  scoring:
+    modes: [schema_validity, rule_based]
+    pass_threshold: 1.0
+
+quality_gates:
+  schema_validity_min: 0.98
+  hallucination_rate_max: 0.05
+  precision_drop_max_vs_baseline: 0.05
+
+suites:
+  summarizer:
+    file: summarizer.yaml
+    agent: summarizer
+    alias: meeting-summary
+    case_count: 7
+    metrics: [hallucination_rate, topic_coverage, consistency]
+
+  task-extractor:
+    file: task-extractor.yaml
+    agent: task-extractor
+    case_count: 9
+    metrics: [precision, recall, assignee_accuracy]
+
+  decision-agent:
+    file: decision-agent.yaml
+    agent: decision-agent
+    case_count: 9
+    metrics: [precision, false_positive_rate, empty_array_accuracy]
+
+  risk-analyzer:
+    file: risk-analyzer.yaml
+    agent: risk-analyzer
+    case_count: 9
+    metrics: [recall, precision, severity_calibration]
+
+  chat-agent:
+    file: chat-agent.yaml
+    agent: chat-agent
+    model_hint: gpt-4o-mini
+    case_count: 10
+    metrics: [citation_accuracy, grounded_rate, injection_resistance]
+
+  weekly-report:
+    file: weekly-report.yaml
+    agent: weekly-report
+    case_count: 8
+    metrics: [factual_accuracy, citation_coverage, hallucination_rate]
+
+  knowledge-agent:
+    file: knowledge-agent.yaml
+    agent: knowledge-agent
+    case_count: 8
+    metrics: [precision, source_ref_completeness, false_positive_rate]
+
+schema_versions:
+  "2.0":
+    catalog: ../../response-format.prompt.md
+    strict: true
+    legacy: true
+  "2.1":
+    catalog: ../../schemas/v2.1-schemas.json
+    strict: true
+    feature_flag: PROMPT_SCHEMA_V2_1
+
+cases:
+  # summarizer
+  - id: TC-SUM-001
+    suite: summarizer
+  - id: TC-SUM-002
+    suite: summarizer
+  - id: TC-SUM-003
+    suite: summarizer
+  - id: TC-SUM-004
+    suite: summarizer
+  - id: TC-SUM-005
+    suite: summarizer
+  - id: TC-SUM-006
+    suite: summarizer
+  - id: TC-SUM-007
+    suite: summarizer
+  # task-extractor
+  - id: TC-TASK-001
+    suite: task-extractor
+  - id: TC-TASK-002
+    suite: task-extractor
+  - id: TC-TASK-003
+    suite: task-extractor
+  - id: TC-TASK-004
+    suite: task-extractor
+  - id: TC-TASK-005
+    suite: task-extractor
+  - id: TC-TASK-006
+    suite: task-extractor
+  - id: TC-TASK-007
+    suite: task-extractor
+  - id: TC-TASK-008
+    suite: task-extractor
+  - id: TC-TASK-009
+    suite: task-extractor
+  # decision-agent
+  - id: TC-DEC-001
+    suite: decision-agent
+  - id: TC-DEC-002
+    suite: decision-agent
+  - id: TC-DEC-003
+    suite: decision-agent
+  - id: TC-DEC-004
+    suite: decision-agent
+  - id: TC-DEC-005
+    suite: decision-agent
+  - id: TC-DEC-006
+    suite: decision-agent
+  - id: TC-DEC-007
+    suite: decision-agent
+  - id: TC-DEC-008
+    suite: decision-agent
+  - id: TC-DEC-009
+    suite: decision-agent
+  # risk-analyzer
+  - id: TC-RISK-001
+    suite: risk-analyzer
+  - id: TC-RISK-002
+    suite: risk-analyzer
+  - id: TC-RISK-003
+    suite: risk-analyzer
+  - id: TC-RISK-004
+    suite: risk-analyzer
+  - id: TC-RISK-005
+    suite: risk-analyzer
+  - id: TC-RISK-006
+    suite: risk-analyzer
+  - id: TC-RISK-007
+    suite: risk-analyzer
+  - id: TC-RISK-008
+    suite: risk-analyzer
+  - id: TC-RISK-009
+    suite: risk-analyzer
+  # chat-agent
+  - id: TC-CHAT-001
+    suite: chat-agent
+  - id: TC-CHAT-002
+    suite: chat-agent
+  - id: TC-CHAT-003
+    suite: chat-agent
+  - id: TC-CHAT-004
+    suite: chat-agent
+  - id: TC-CHAT-005
+    suite: chat-agent
+  - id: TC-CHAT-006
+    suite: chat-agent
+  - id: TC-CHAT-007
+    suite: chat-agent
+  - id: TC-CHAT-008
+    suite: chat-agent
+  - id: TC-CHAT-009
+    suite: chat-agent
+  - id: TC-CHAT-010
+    suite: chat-agent
+  # weekly-report
+  - id: TC-WR-001
+    suite: weekly-report
+  - id: TC-WR-002
+    suite: weekly-report
+  - id: TC-WR-003
+    suite: weekly-report
+  - id: TC-WR-004
+    suite: weekly-report
+  - id: TC-WR-005
+    suite: weekly-report
+  - id: TC-WR-006
+    suite: weekly-report
+  - id: TC-WR-007
+    suite: weekly-report
+  - id: TC-WR-008
+    suite: weekly-report
+  # knowledge-agent
+  - id: TC-KNOW-001
+    suite: knowledge-agent
+  - id: TC-KNOW-002
+    suite: knowledge-agent
+  - id: TC-KNOW-003
+    suite: knowledge-agent
+  - id: TC-KNOW-004
+    suite: knowledge-agent
+  - id: TC-KNOW-005
+    suite: knowledge-agent
+  - id: TC-KNOW-006
+    suite: knowledge-agent
+  - id: TC-KNOW-007
+    suite: knowledge-agent
+  - id: TC-KNOW-008
+    suite: knowledge-agent

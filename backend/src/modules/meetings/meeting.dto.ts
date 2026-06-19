@@ -1,6 +1,6 @@
-import { MeetingStatus, WorkspaceRole } from '@prisma/client';
+import { MeetingStatus, WorkspaceRole, MeetingSource } from '@prisma/client';
 
-export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt';
+export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt' | 'audio';
 
 export interface CreateMeetingDto {
   title: string;
@@ -35,6 +35,7 @@ export interface MeetingDto {
   tags: string[];
   agenda: string | null;
   status: MeetingStatus;
+  source?: MeetingSource;
   createdById: string;
   createdAt: Date;
   updatedAt?: Date;

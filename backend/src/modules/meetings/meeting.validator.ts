@@ -72,6 +72,6 @@ export const uploadTranscriptValidation = [
       return true;
     }),
   body('sourceFormat')
-    .isIn(['text', 'md', 'vtt', 'srt'])
-    .withMessage('sourceFormat must be text, md, vtt, or srt'),
+    .isIn(['text', 'md', 'vtt', 'srt', 'audio'])
+    .withMessage('sourceFormat must be text, md, vtt, srt, or audio'),
 ];

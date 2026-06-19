@@ -32,8 +32,13 @@ describe('MobileNav', () => {
     await user.click(screen.getByRole('button', { name: /open navigation menu/i }));
 
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^chat$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^insights$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^search$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /meetings/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /tasks/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /reports/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /knowledge/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /all workspaces/i })).toBeInTheDocument();
   });
 

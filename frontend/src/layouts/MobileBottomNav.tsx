@@ -1,17 +1,29 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, Settings } from 'lucide-react';
+import { MessageSquare, Search, FileText, LayoutDashboard } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 const bottomNavItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: (id: string) => ROUTES.DASHBOARD(id) },
+  { label: 'Chat', icon: MessageSquare, path: (id: string) => ROUTES.CHAT(id), matchPrefix: true },
+  { label: 'Search', icon: Search, path: (id: string) => ROUTES.SEARCH(id) },
   { label: 'Meetings', icon: FileText, path: (id: string) => ROUTES.MEETINGS(id) },
-  { label: 'Tasks', icon: CheckSquare, path: (id: string) => ROUTES.TASKS(id) },
-  { label: 'Settings', icon: Settings, path: (id: string) => ROUTES.SETTINGS(id) },
+  { label: 'Dashboard', icon: LayoutDashboard, path: (id: string) => ROUTES.DASHBOARD(id) },
 ] as const;
 
 interface MobileBottomNavProps {
   workspaceId: string;
+}
+
+function isBottomNavActive(
+  pathname: string,
+  workspaceId: string,
+  item: (typeof bottomNavItems)[number],
+): boolean {
+  const path = item.path(workspaceId);
+  if ('matchPrefix' in item && item.matchPrefix) {
+    return pathname === path || pathname.startsWith(`${path}/`);
+  }
+  return pathname === path;
 }
 
 export function MobileBottomNav({ workspaceId }: MobileBottomNavProps) {
@@ -26,7 +38,7 @@ export function MobileBottomNav({ workspaceId }: MobileBottomNavProps) {
       <ul className="mx-auto grid max-w-lg grid-cols-4">
         {bottomNavItems.map((item) => {
           const path = item.path(workspaceId);
-          const isActive = location.pathname === path;
+          const isActive = isBottomNavActive(location.pathname, workspaceId, item);
           const Icon = item.icon;
 
           return (
