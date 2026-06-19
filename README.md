@@ -7,8 +7,10 @@ A production-grade SaaS application that converts meeting transcripts into AI-ge
 | Layer | Technologies |
 |-------|--------------|
 | **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod |
-| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt |
-| **Database** | PostgreSQL 16 |
+| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt, BullMQ |
+| **AI** | OpenAI, Anthropic, Gemini (multi-provider), pgvector RAG, multi-agent orchestration |
+| **Database** | PostgreSQL 16 + pgvector |
+| **Cache / Jobs** | Redis (BullMQ workers) |
 | **DevOps** | Docker, Docker Compose |
 | **Code Quality** | ESLint, Prettier, Husky, lint-staged |
 | **Testing** | Vitest (frontend), Jest + Supertest (backend) |
@@ -89,7 +91,7 @@ cd ../backend && npm install
 **Option A — Docker (recommended):**
 
 ```bash
-docker compose up postgres -d
+docker compose up postgres redis -d
 ```
 
 **Option B — Local PostgreSQL:**
@@ -117,7 +119,7 @@ cd backend && npm run dev     # http://localhost:3001
 
 ## Docker Setup
 
-Run the full stack (frontend, backend, PostgreSQL):
+Run the full stack (frontend, backend, PostgreSQL with pgvector, Redis):
 
 ```bash
 cp .env.example .env
@@ -129,7 +131,8 @@ docker compose up --build
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:3001 |
 | Health check | http://localhost:3001/health |
-| PostgreSQL | localhost:5432 |
+| PostgreSQL (pgvector) | localhost:5432 |
+| Redis | localhost:6379 |
 
 ## Environment Variables
 
@@ -143,6 +146,11 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `VITE_API_URL` | Frontend API base URL |
 | `CORS_ORIGIN` | Allowed frontend origin |
 | `API_PORT` | Backend server port (default: 3001) |
+| `REDIS_URL` | Redis connection for BullMQ workers (optional with `AI_USE_MOCK=true`) |
+| `OPENAI_API_KEY` | OpenAI API key (optional with mock mode) |
+| `LLM_PRIMARY_PROVIDER` | Primary LLM provider (`openai`, `google`, `anthropic`, `mock`) |
+| `EMBEDDING_MODEL` | Embedding model for semantic search (default: `text-embedding-3-small`) |
+| `AI_USE_MOCK` | Run AI inline without Redis/OpenAI (`true` for local dev) |
 
 ## Development Commands
 
@@ -176,7 +184,7 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 
 ## API Endpoints
 
-Full-stack MVP **v0.3.0** — see [`docs/api-design.md`](./docs/api-design.md) for the API reference and [`frontend/README.md`](./frontend/README.md) for UI routes.
+**MeetingMind AI v0.4.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`docs/rag-architecture.md`](./docs/rag-architecture.md) for AI architecture, and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
 | Domain | Base Path | Backend | Frontend |
 |--------|-----------|---------|----------|
@@ -187,18 +195,25 @@ Full-stack MVP **v0.3.0** — see [`docs/api-design.md`](./docs/api-design.md) f
 | Invitations | `/api/v1/invitations/*` | ✅ | ✅ |
 | Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ | ✅ |
 | AI processing | `.../meetings/:id/ai/*` | ✅ | ✅ |
+| Audio transcription | `.../meetings/:id/audio/*` | ✅ | ✅ |
 | Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ | ✅ |
 | Notifications | `/api/v1/notifications/*` | ✅ | ✅ |
 | Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ | ✅ |
-| Search | `/api/v1/workspaces/:id/search` | ✅ | ✅ |
+| Search (keyword + semantic) | `/api/v1/workspaces/:id/search` | ✅ | ✅ |
+| Chat (SSE) | `/api/v1/workspaces/:id/chat/*` | ✅ | ✅ |
+| Insights | `/api/v1/workspaces/:id/insights/*` | ✅ | ✅ |
+| Reports | `/api/v1/workspaces/:id/reports/*` | ✅ | ✅ |
+| Knowledge | `/api/v1/workspaces/:id/knowledge/*` | ✅ | ✅ |
+| Calendar OAuth | `/api/v1/calendar/oauth/*` | ✅ | — |
+| Calendar sync | `/api/v1/workspaces/:id/calendar/*` | ✅ | — |
 
 **Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
-**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or OpenAI locally.
+**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or external LLM keys locally. Semantic search requires pgvector migrations applied.
 
 ## Database Models
 
-Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`.
+Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`, `DocumentChunk`, `EmbeddingJob`, `LlmInvocation`, `LlmUsageDaily`, `AgentExecution`, `ChatSession`, `ChatMessage`, `KnowledgeEntry`, `WorkspaceReport`, `MeetingAudio`, `CalendarConnection`, `CalendarSyncedEvent`.
 
 See [`docs/erd.md`](./docs/erd.md) and [`docs/database-architecture.md`](./docs/database-architecture.md) for the full schema design.
 
@@ -209,17 +224,20 @@ Full architecture and requirements live in [`docs/`](./docs/):
 - [requirements.md](./docs/requirements.md) — Product vision, personas, RBAC
 - [system-architecture.md](./docs/system-architecture.md) — Canonical architecture
 - [api-design.md](./docs/api-design.md) — REST API reference
+- [rag-architecture.md](./docs/rag-architecture.md) — RAG and semantic search design
+- [llm-architecture.md](./docs/llm-architecture.md) — Multi-provider LLM layer
+- [agent-flow.md](./docs/agent-flow.md) — Multi-agent orchestration
 - [project-structure.md](./docs/project-structure.md) — Detailed folder conventions
 
 ## Next Steps
 
-Full-stack MVP is complete (v0.3.0). Recommended next phase:
+MeetingMind AI platform is complete (v0.4.0). Recommended next phase:
 
-1. **E2E tests** — Playwright or Cypress flows for auth, meetings, and tasks
-2. **Email delivery** — Wire invitation and password-reset emails (SMTP/Resend)
-3. **Production deploy** — Docker production config, env secrets, CI/CD pipeline
-4. **Performance** — Frontend code-splitting, API pagination tuning
-5. **Polish** — Accessibility audit, error boundaries, offline handling
+1. **E2E tests** — Playwright flows for chat, semantic search, and meeting AI pipeline
+2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
+3. **Production deploy** — Redis + pgvector in production, secrets management, CI/CD
+4. **Calendar UI** — Frontend surfaces for calendar connect/sync and transcript reminders
+5. **Polish** — Prompt evaluation runner, reranker integration, API design doc v1.2
 
 ## License
 
