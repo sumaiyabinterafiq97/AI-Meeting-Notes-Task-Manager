@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: amnm-postgres
     restart: unless-stopped
     ports:
@@ -13,6 +13,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-meeting_notes}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: amnm-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -31,6 +45,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-meeting_notes}?schema=public
       DATABASE_URL_DIRECT: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-meeting_notes}?schema=public
+      REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost:5173
       FRONTEND_URL: http://localhost:5173
     volumes:
@@ -39,7 +54,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "npx prisma migrate deploy && npm run dev"
+      redis:
+        condition: service_healthy
+    command: sh -c "npm run prisma:deploy && npm run dev"
 
   frontend:
     build:
@@ -63,3 +80,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

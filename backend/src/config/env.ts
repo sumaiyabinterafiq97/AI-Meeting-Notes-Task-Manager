@@ -22,12 +22,61 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-4o'),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  LOCAL_LLM_BASE_URL: z.string().optional(),
+  LOCAL_LLM_MODEL: z.string().default('llama3'),
+  EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  LLM_PRIMARY_PROVIDER: z
+    .enum(['openai', 'anthropic', 'google', 'local', 'mock'])
+    .default('openai'),
+  LLM_FALLBACK_CHAIN: z.string().default('google,anthropic'),
+  LLM_MAX_RETRIES: z.coerce.number().default(3),
+  WORKSPACE_DAILY_TOKEN_BUDGET: z.coerce.number().default(500_000),
   AI_USE_MOCK: z
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
   EMAIL_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('noreply@example.com'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  RAG_CACHE_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  RERANKER_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  RAG_RETRIEVAL_CACHE_TTL_SECONDS: z.coerce.number().default(900),
+  RAG_EMBEDDING_CACHE_TTL_SECONDS: z.coerce.number().default(3600),
+  AI_PIPELINE_MODE: z.enum(['monolithic', 'multi-agent']).default('monolithic'),
+  KNOWLEDGE_EXTRACTION_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  TRANSCRIPTION_PROVIDER: z.enum(['mock', 'openai']).default('openai'),
+  OPENAI_WHISPER_MODEL: z.string().default('whisper-1'),
+  AUDIO_STORAGE_PATH: z.string().default('./storage/audio'),
+  AUDIO_MAX_BYTES: z.coerce.number().default(100 * 1024 * 1024),
+  CALENDAR_USE_MOCK: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
+  GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALENDAR_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3001/api/v1/calendar/oauth/google/callback'),
+  MICROSOFT_CALENDAR_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CALENDAR_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_CALENDAR_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3001/api/v1/calendar/oauth/microsoft/callback'),
+  CALENDAR_TOKEN_SECRET: z.string().optional(),
+  CALENDAR_SYNC_LOOKBACK_DAYS: z.coerce.number().default(7),
+  CALENDAR_SYNC_LOOKAHEAD_DAYS: z.coerce.number().default(30),
+  CALENDAR_REMINDER_GRACE_MINUTES: z.coerce.number().default(60),
 });
 
 export type Env = z.infer<typeof envSchema>;
