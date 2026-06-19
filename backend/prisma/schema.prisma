@@ -18,8 +18,16 @@ enum WorkspaceRole {
 
 enum MeetingStatus {
   DRAFT
+  TRANSCRIBING
   PROCESSING
   READY
+  FAILED
+}
+
+enum TranscriptionJobStatus {
+  PENDING
+  TRANSCRIBING
+  COMPLETED
   FAILED
 }
 
@@ -63,6 +71,63 @@ enum NotificationType {
   TASK_OVERDUE
   INVITATION
   MEETING_PROCESSED
+  MEETING_TRANSCRIPT_REMINDER
+}
+
+enum CalendarProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+enum CalendarConnectionStatus {
+  ACTIVE
+  REVOKED
+  ERROR
+}
+
+enum MeetingSource {
+  MANUAL
+  GOOGLE_CALENDAR
+  MICROSOFT_CALENDAR
+}
+
+// MeetingMind AI — vector / RAG
+enum DocumentSourceType {
+  TRANSCRIPT
+  SUMMARY
+  DECISION
+  ACTION_ITEM
+  KNOWLEDGE
+}
+
+enum EmbeddingJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// MeetingMind AI — chat
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// MeetingMind AI — observability
+enum LlmInvocationStatus {
+  COMPLETED
+  FAILED
+}
+
+// MeetingMind AI — knowledge base
+enum KnowledgeEntityType {
+  PERSON
+  PROJECT
+  DECISION
+  CONCEPT
+  PROCESS
+  OTHER
 }
 
 // =============================================================================
@@ -94,6 +159,9 @@ model User {
   sentInvitations         WorkspaceInvitation[]  @relation("InvitationSender")
   suggestedActionItems    ActionItemSuggestion[] @relation("SuggestedAssignee")
   notificationPreferences NotificationPreference?
+  chatSessions            ChatSession[]
+  chatMessages            ChatMessage[]
+  calendarConnections     CalendarConnection[] @relation("CalendarConnector")
 
   @@index([email], map: "users_email_idx")
   @@map("users")
@@ -147,6 +215,16 @@ model Workspace {
   notifications    Notification[]
   activityLogs     ActivityLog[]
   aiProcessingJobs AiProcessingJob[]
+  documentChunks   DocumentChunk[]
+  embeddingJobs    EmbeddingJob[]
+  llmInvocations   LlmInvocation[]
+  llmUsageDaily    LlmUsageDaily[]
+  agentExecutions  AgentExecution[]
+  chatSessions     ChatSession[]
+  knowledgeEntries KnowledgeEntry[]
+  workspaceReports WorkspaceReport[]
+  meetingAudios      MeetingAudio[]
+  calendarConnections CalendarConnection[]
 
   @@map("workspaces")
 }
@@ -195,6 +273,9 @@ model Meeting {
   tags            String[]      @default([])
   agenda          String?
   status          MeetingStatus @default(DRAFT)
+  source          MeetingSource @default(MANUAL)
+  externalCalendarEventId String? @map("external_calendar_event_id") @db.VarChar(255)
+  calendarConnectionId    String? @map("calendar_connection_id") @db.Uuid
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
@@ -206,7 +287,17 @@ model Meeting {
   actionItems      ActionItemSuggestion[]
   tasks            Task[]
   aiProcessingJobs AiProcessingJob[]
+  documentChunks   DocumentChunk[]
+  embeddingJobs    EmbeddingJob[]
+  llmInvocations   LlmInvocation[]
+  agentExecutions  AgentExecution[]
+  chatSessions     ChatSession[]
+  knowledgeEntries KnowledgeEntry[]
+  audio            MeetingAudio?
+  calendarConnection CalendarConnection? @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
+  calendarSyncedEvent CalendarSyncedEvent?
 
+  @@unique([workspaceId, externalCalendarEventId], map: "uq_meetings_workspace_external_event")
   @@index([workspaceId, meetingDate(sort: Desc)], map: "idx_meetings_workspace_date")
   @@map("meetings")
 }
@@ -279,8 +370,9 @@ model AiProcessingJob {
   completedAt    DateTime? @map("completed_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  meeting   Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  meeting          Meeting           @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agentExecutions  AgentExecution[]
 
   @@index([meetingId], map: "idx_ai_jobs_meeting")
   @@index([status], map: "idx_ai_jobs_status")
@@ -393,4 +485,295 @@ model ActivityLog {
 
   @@index([workspaceId, createdAt(sort: Desc)], map: "idx_activity_workspace")
   @@map("activity_logs")
+}
+
+// =============================================================================
+// MeetingMind AI — Vector / RAG
+// =============================================================================
+
+/// RAG document chunks with pgvector embeddings.
+/// `search_vector` (tsvector) is managed in SQL only — see migration.
+model DocumentChunk {
+  id             String             @id @default(uuid()) @db.Uuid
+  workspaceId    String             @map("workspace_id") @db.Uuid
+  meetingId      String?            @map("meeting_id") @db.Uuid
+  sourceType     DocumentSourceType @map("source_type")
+  sourceId       String             @map("source_id") @db.Uuid
+  chunkIndex     Int                @default(0) @map("chunk_index")
+  content        String
+  tokenCount     Int                @map("token_count")
+  embedding      Unsupported("vector(1536)")?
+  embeddingModel String             @default("text-embedding-3-small") @map("embedding_model") @db.VarChar(100)
+  metadata       Json               @default("{}")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  meeting   Meeting?  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, sourceType, sourceId, chunkIndex], map: "document_chunks_source_unique")
+  @@index([workspaceId], map: "idx_document_chunks_workspace")
+  @@index([meetingId], map: "idx_document_chunks_meeting")
+  @@index([workspaceId, sourceType], map: "idx_document_chunks_workspace_source")
+  @@map("document_chunks")
+}
+
+model EmbeddingJob {
+  id              String             @id @default(uuid()) @db.Uuid
+  workspaceId     String             @map("workspace_id") @db.Uuid
+  meetingId       String?            @map("meeting_id") @db.Uuid
+  status          EmbeddingJobStatus @default(PENDING)
+  chunksTotal     Int                @default(0) @map("chunks_total")
+  chunksProcessed Int                @default(0) @map("chunks_processed")
+  errorMessage    String?            @map("error_message")
+  startedAt       DateTime?          @map("started_at") @db.Timestamptz
+  completedAt     DateTime?          @map("completed_at") @db.Timestamptz
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  meeting   Meeting?  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status], map: "idx_embedding_jobs_workspace")
+  @@map("embedding_jobs")
+}
+
+// =============================================================================
+// MeetingMind AI — Observability
+// =============================================================================
+
+model LlmInvocation {
+  id               String              @id @default(uuid()) @db.Uuid
+  workspaceId      String              @map("workspace_id") @db.Uuid
+  meetingId        String?             @map("meeting_id") @db.Uuid
+  correlationId    String?             @map("correlation_id") @db.VarChar(255)
+  requestId        String?             @map("request_id") @db.VarChar(255)
+  workflow         String              @db.VarChar(50)
+  provider         String              @db.VarChar(50)
+  model            String              @db.VarChar(100)
+  promptTokens     Int                 @default(0) @map("prompt_tokens")
+  completionTokens Int                 @default(0) @map("completion_tokens")
+  totalTokens      Int                 @default(0) @map("total_tokens")
+  estimatedCostUsd Decimal             @default(0) @map("estimated_cost_usd") @db.Decimal(12, 6)
+  latencyMs        Int?                @map("latency_ms")
+  status           LlmInvocationStatus @default(COMPLETED)
+  errorMessage     String?             @map("error_message")
+  promptId         String?             @map("prompt_id") @db.VarChar(100)
+  promptVersion    String?             @map("prompt_version") @db.VarChar(50)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  meeting   Meeting?  @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)], map: "idx_llm_invocations_workspace")
+  @@index([correlationId], map: "idx_llm_invocations_correlation")
+  @@index([workflow, createdAt(sort: Desc)], map: "idx_llm_invocations_workflow")
+  @@map("llm_invocations")
+}
+
+model LlmUsageDaily {
+  id               String   @id @default(uuid()) @db.Uuid
+  workspaceId      String   @map("workspace_id") @db.Uuid
+  usageDate        DateTime @map("usage_date") @db.Date
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  embeddingTokens  Int      @default(0) @map("embedding_tokens")
+  estimatedCostUsd Decimal  @default(0) @map("estimated_cost_usd") @db.Decimal(12, 6)
+  invocationCount  Int      @default(0) @map("invocation_count")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, usageDate], map: "llm_usage_daily_workspace_date_unique")
+  @@map("llm_usage_daily")
+}
+
+model AgentExecution {
+  id              String    @id @default(uuid()) @db.Uuid
+  jobId           String?   @map("job_id") @db.Uuid
+  workspaceId     String    @map("workspace_id") @db.Uuid
+  meetingId       String?   @map("meeting_id") @db.Uuid
+  correlationId   String?   @map("correlation_id") @db.VarChar(255)
+  agentType       String    @map("agent_type") @db.VarChar(50)
+  status          JobStatus @default(PENDING)
+  inputTokens     Int?      @map("input_tokens")
+  outputTokens    Int?      @map("output_tokens")
+  latencyMs       Int?      @map("latency_ms")
+  model           String?   @db.VarChar(100)
+  provider        String?   @db.VarChar(50)
+  errorMessage    String?   @map("error_message")
+  startedAt       DateTime? @map("started_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  job       AiProcessingJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  meeting   Meeting?         @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  @@index([jobId], map: "idx_agent_executions_job")
+  @@index([workspaceId, createdAt(sort: Desc)], map: "idx_agent_executions_workspace")
+  @@index([agentType, status], map: "idx_agent_executions_agent")
+  @@map("agent_executions")
+}
+
+// =============================================================================
+// MeetingMind AI — Chat
+// =============================================================================
+
+model ChatSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  workspaceId    String    @map("workspace_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  meetingId      String?   @map("meeting_id") @db.Uuid
+  title          String?   @db.VarChar(200)
+  rollingSummary String?   @map("rolling_summary")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meeting   Meeting?      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@index([workspaceId, userId, updatedAt(sort: Desc)], map: "idx_chat_sessions_workspace_user")
+  @@index([meetingId, userId], map: "idx_chat_sessions_meeting_user")
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String    @id @default(uuid()) @db.Uuid
+  sessionId  String    @map("session_id") @db.Uuid
+  userId     String?   @map("user_id") @db.Uuid
+  role       ChatRole
+  content    String
+  citations  Json      @default("[]")
+  tokenUsage Json?     @map("token_usage")
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, createdAt], map: "idx_chat_messages_session")
+  @@map("chat_messages")
+}
+
+// =============================================================================
+// MeetingMind AI — Knowledge & Reports
+// =============================================================================
+
+model KnowledgeEntry {
+  id              String              @id @default(uuid()) @db.Uuid
+  workspaceId     String              @map("workspace_id") @db.Uuid
+  sourceMeetingId String?             @map("source_meeting_id") @db.Uuid
+  entityType      KnowledgeEntityType @map("entity_type")
+  title           String              @db.VarChar(300)
+  content         String
+  metadata        Json                @default("{}")
+  confidence      Float?
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceMeeting Meeting?  @relation(fields: [sourceMeetingId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, entityType], map: "idx_knowledge_entries_workspace")
+  @@index([sourceMeetingId], map: "idx_knowledge_entries_meeting")
+  @@map("knowledge_entries")
+}
+
+model WorkspaceReport {
+  id               String    @id @default(uuid()) @db.Uuid
+  workspaceId      String    @map("workspace_id") @db.Uuid
+  periodStart      DateTime  @map("period_start") @db.Date
+  periodEnd        DateTime  @map("period_end") @db.Date
+  title            String    @db.VarChar(300)
+  contentMarkdown  String    @map("content_markdown")
+  contentJson      Json      @default("{}") @map("content_json")
+  status           JobStatus @default(PENDING)
+  modelVersion     String?   @map("model_version") @db.VarChar(50)
+  promptTokens     Int?      @map("prompt_tokens")
+  completionTokens Int?      @map("completion_tokens")
+  generatedAt      DateTime? @map("generated_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, periodStart(sort: Desc)], map: "idx_workspace_reports_workspace")
+  @@map("workspace_reports")
+}
+
+model MeetingAudio {
+  id            String                 @id @default(uuid()) @db.Uuid
+  meetingId     String                 @unique @map("meeting_id") @db.Uuid
+  workspaceId   String                 @map("workspace_id") @db.Uuid
+  originalName  String                 @map("original_name") @db.VarChar(255)
+  mimeType      String                 @map("mime_type") @db.VarChar(100)
+  fileSizeBytes Int                    @map("file_size_bytes")
+  storageKey    String                 @map("storage_key") @db.VarChar(500)
+  status        TranscriptionJobStatus @default(PENDING)
+  errorMessage  String?                @map("error_message")
+  bullJobId     String?                @map("bull_job_id") @db.VarChar(255)
+  transcribedAt DateTime?              @map("transcribed_at") @db.Timestamptz
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  meeting   Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId], map: "idx_meeting_audio_workspace")
+  @@map("meeting_audio")
+}
+
+model CalendarConnection {
+  id               String                   @id @default(uuid()) @db.Uuid
+  workspaceId      String                   @map("workspace_id") @db.Uuid
+  connectedById    String                   @map("connected_by_id") @db.Uuid
+  provider         CalendarProvider
+  status           CalendarConnectionStatus @default(ACTIVE)
+  accessTokenEnc   String                   @map("access_token_enc")
+  refreshTokenEnc  String?                  @map("refresh_token_enc")
+  tokenExpiresAt   DateTime?                @map("token_expires_at") @db.Timestamptz
+  calendarId       String?                  @map("calendar_id") @db.VarChar(255)
+  accountEmail     String?                  @map("account_email") @db.VarChar(255)
+  syncEnabled      Boolean                  @default(true) @map("sync_enabled")
+  lastSyncAt       DateTime?                @map("last_sync_at") @db.Timestamptz
+  lastSyncError    String?                  @map("last_sync_error")
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectedBy User                 @relation("CalendarConnector", fields: [connectedById], references: [id])
+  syncedEvents CalendarSyncedEvent[]
+  meetings    Meeting[]
+
+  @@unique([workspaceId, provider], map: "uq_calendar_connection_workspace_provider")
+  @@index([workspaceId], map: "idx_calendar_connections_workspace")
+  @@map("calendar_connections")
+}
+
+model CalendarSyncedEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  connectionId     String    @map("connection_id") @db.Uuid
+  workspaceId      String    @map("workspace_id") @db.Uuid
+  externalEventId  String    @map("external_event_id") @db.VarChar(255)
+  meetingId        String?   @unique @map("meeting_id") @db.Uuid
+  eventTitle       String    @map("event_title") @db.VarChar(300)
+  eventStart       DateTime  @map("event_start") @db.Timestamptz
+  eventEnd         DateTime? @map("event_end") @db.Timestamptz
+  attendeeEmails   Json      @default("[]") @map("attendee_emails")
+  eventPayload     Json      @default("{}") @map("event_payload")
+  reminderSentAt   DateTime? @map("reminder_sent_at") @db.Timestamptz
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  connection CalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  meeting    Meeting?           @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+
+  @@unique([connectionId, externalEventId], map: "uq_calendar_synced_event_connection_external")
+  @@index([workspaceId, eventStart(sort: Desc)], map: "idx_calendar_synced_events_workspace")
+  @@map("calendar_synced_events")
 }
