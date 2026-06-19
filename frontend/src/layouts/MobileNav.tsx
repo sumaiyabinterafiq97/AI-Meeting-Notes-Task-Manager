@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SlideOver } from '@/components/common/SlideOver';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { workspaceNavItems } from './nav-items';
+import { workspaceNavItems, isNavItemActive } from './nav-items';
 
 interface MobileNavProps {
   workspaceId: string;
@@ -42,7 +42,7 @@ export function MobileNav({ workspaceId }: MobileNavProps) {
         <nav className="space-y-1" aria-label="Main navigation">
           {workspaceNavItems.map((item) => {
             const path = item.path(workspaceId);
-            const isActive = location.pathname === path;
+            const isActive = isNavItemActive(location.pathname, workspaceId, item);
 
             return (
               <Link

@@ -1,5 +1,5 @@
 import { Outlet, Link, useParams, useLocation } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, MessageSquare } from 'lucide-react';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { GlobalSearch } from '@/features/search/components/GlobalSearch';
 import { MobileSearch } from '@/features/search/components/MobileSearch';
 import { MobileNav } from '@/layouts/MobileNav';
 import { MobileBottomNav } from '@/layouts/MobileBottomNav';
-import { workspaceNavItems } from '@/layouts/nav-items';
+import { isNavItemActive, workspaceNavItems } from '@/layouts/nav-items';
 
 export function AppLayout() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -33,7 +33,7 @@ export function AppLayout() {
         <nav className="space-y-1 p-4" aria-label="Main navigation">
           {workspaceNavItems.map((item) => {
             const path = item.path(activeWorkspaceId);
-            const isActive = location.pathname === path;
+            const isActive = isNavItemActive(location.pathname, activeWorkspaceId, item);
 
             return (
               <Link
@@ -75,9 +75,16 @@ export function AppLayout() {
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
               {activeWorkspaceId && (
-                <div className="xl:hidden">
-                  <MobileSearch workspaceId={activeWorkspaceId} />
-                </div>
+                <>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 xl:hidden" asChild>
+                    <Link to={ROUTES.CHAT(activeWorkspaceId)} aria-label="Workspace chat">
+                      <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                  <div className="xl:hidden">
+                    <MobileSearch workspaceId={activeWorkspaceId} />
+                  </div>
+                </>
               )}
               <NotificationBell />
               {user && (
