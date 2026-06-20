@@ -10,6 +10,7 @@ import type {
   LLMEmbedResponse,
   LLMStreamChunk,
 } from '../types/llm.types';
+import { throwIfAborted } from '../services/streaming.service';
 
 let client: Anthropic | null = null;
 
@@ -97,6 +98,7 @@ export class ClaudeProvider implements ILLMProvider {
       });
 
       for await (const event of stream) {
+        throwIfAborted(request.signal);
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           yield { content: event.delta.text, done: false };
         }

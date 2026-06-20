@@ -1,4 +1,4 @@
-import { llmService } from '../../llm';
+import { embeddingService } from '../../embeddings/services/embedding.service';
 import type { DocumentChunk, HybridSearchQuery } from '../types/vector.types';
 import { vectorRepository } from '../repositories/vector.repository';
 import { reciprocalRankFusion } from './rrf.service';
@@ -15,13 +15,25 @@ export class VectorService {
     }
 
     if (query.mode === 'semantic') {
-      return this.semanticSearch(query);
+      const semantic = await this.semanticSearch(query);
+      if (semantic.length > 0) {
+        return semantic;
+      }
+      return vectorRepository.keywordSearch({ ...query, topK });
     }
 
     const [semantic, keyword] = await Promise.all([
       this.semanticSearch({ ...query, topK: Math.max(topK, 50) }),
       vectorRepository.keywordSearch({ ...query, topK: Math.max(topK, 50) }),
     ]);
+
+    if (semantic.length === 0 && keyword.length > 0) {
+      return keyword.slice(0, topK);
+    }
+
+    if (semantic.length === 0 && keyword.length === 0) {
+      return [];
+    }
 
     const fused = reciprocalRankFusion(
       [semantic, keyword],
@@ -36,21 +48,30 @@ export class VectorService {
   }
 
   async semanticSearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {
-    const embedResult = await llmService.embed({
-      texts: [query.query],
-      workspaceId: query.workspaceId,
-    });
+    try {
+      const embedResult = await embeddingService.generateBatch(
+        [query.query],
+        query.workspaceId,
+      );
 
-    const queryVector = embedResult.embeddings[0] ?? [];
+      const queryVector = embedResult.embeddings[0] ?? [];
+      if (queryVector.length === 0) {
+        return [];
+      }
 
-    return vectorRepository.similaritySearch({
-      workspaceId: query.workspaceId,
-      queryVector,
-      meetingId: query.meetingId,
-      sourceTypes: query.sourceTypes,
-      topK: query.topK ?? DEFAULT_TOP_K,
-      minSimilarity: SEMANTIC_MIN_SIMILARITY,
-    });
+      return vectorRepository.similaritySearch({
+        workspaceId: query.workspaceId,
+        queryVector,
+        meetingId: query.meetingId,
+        sourceTypes: query.sourceTypes,
+        topK: query.topK ?? DEFAULT_TOP_K,
+        minSimilarity: SEMANTIC_MIN_SIMILARITY,
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+      });
+    } catch {
+      return [];
+    }
   }
 
   async similaritySearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {

@@ -1,13 +1,15 @@
 import { contextBuilderService } from '../../../src/modules/rag/context-builders/context-builder.service';
 
 describe('context-builder', () => {
-  it('deduplicates chunks and assigns citation indices', () => {
+  it('deduplicates chunks by source identity and assigns citation indices', () => {
     const context = contextBuilderService.build([
       {
         id: 'a',
         content: 'Follow up with vendor about API delivery.',
         meetingId: 'm1',
-        sourceType: 'TRANSCRIPT',
+        sourceType: 'transcript',
+        sourceId: 'src-1',
+        chunkIndex: 0,
         similarity: 0.9,
         metadata: { meetingTitle: 'Vendor Sync', speaker: 'Alex' },
       },
@@ -15,7 +17,9 @@ describe('context-builder', () => {
         id: 'b',
         content: 'Follow up with vendor about API delivery.',
         meetingId: 'm1',
-        sourceType: 'TRANSCRIPT',
+        sourceType: 'transcript',
+        sourceId: 'src-1',
+        chunkIndex: 0,
         similarity: 0.8,
         metadata: { meetingTitle: 'Vendor Sync' },
       },
@@ -23,7 +27,9 @@ describe('context-builder', () => {
         id: 'c',
         content: 'Ship Friday was agreed.',
         meetingId: 'm1',
-        sourceType: 'DECISION',
+        sourceType: 'decision',
+        sourceId: 'src-2',
+        chunkIndex: 0,
         similarity: 0.7,
         metadata: { meetingTitle: 'Vendor Sync' },
       },
@@ -33,6 +39,34 @@ describe('context-builder', () => {
     expect(context.blocks[0].citationIndex).toBe(1);
     expect(context.blocks[1].citationIndex).toBe(2);
     expect(context.totalTokens).toBeGreaterThan(0);
+  });
+
+  it('sorts similar chunks chronologically as a tie-breaker', () => {
+    const context = contextBuilderService.build([
+      {
+        id: 'older',
+        content: 'Earlier discussion point.',
+        meetingId: 'm1',
+        sourceType: 'transcript',
+        sourceId: 'src-1',
+        chunkIndex: 0,
+        similarity: 0.81,
+        metadata: { meetingDate: '2026-06-10T10:00:00.000Z' },
+      },
+      {
+        id: 'newer',
+        content: 'Later discussion point.',
+        meetingId: 'm1',
+        sourceType: 'transcript',
+        sourceId: 'src-2',
+        chunkIndex: 0,
+        similarity: 0.8,
+        metadata: { meetingDate: '2026-06-12T10:00:00.000Z' },
+      },
+    ]);
+
+    expect(context.blocks[0].chunkId).toBe('older');
+    expect(context.blocks[1].chunkId).toBe('newer');
   });
 
   it('formats blocks with citation markers', () => {

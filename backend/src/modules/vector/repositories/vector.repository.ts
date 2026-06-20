@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../../config/database';
 import type { DocumentChunk, HybridSearchQuery, VectorSearchQuery } from '../types/vector.types';
 import { fromPrismaSourceType, toPgVectorLiteral, toPrismaSourceType } from '../utils/source-type';
+import { buildMeetingDateFilter } from './date-filter';
 
 interface ChunkRow {
   id: string;
@@ -67,6 +68,8 @@ export class VectorRepository {
       ? Prisma.sql`AND meeting_id = ${query.meetingId}::uuid`
       : Prisma.empty;
 
+    const { fromFilter, toFilter } = buildMeetingDateFilter(query.dateFrom, query.dateTo);
+
     const rows = await prisma.$queryRaw<ChunkRow[]>`
       SELECT
         id,
@@ -84,6 +87,8 @@ export class VectorRepository {
         AND embedding IS NOT NULL
         ${meetingFilter}
         ${sourceTypeFilter}
+        ${fromFilter}
+        ${toFilter}
       ORDER BY embedding <=> ${vectorLiteral}::vector
       LIMIT ${topK}
     `;
@@ -109,6 +114,8 @@ export class VectorRepository {
       ? Prisma.sql`AND meeting_id = ${query.meetingId}::uuid`
       : Prisma.empty;
 
+    const { fromFilter, toFilter } = buildMeetingDateFilter(query.dateFrom, query.dateTo);
+
     const rows = await prisma.$queryRaw<ChunkRow[]>`
       SELECT
         id,
@@ -126,6 +133,8 @@ export class VectorRepository {
         AND search_vector @@ plainto_tsquery('english', ${searchQuery})
         ${meetingFilter}
         ${sourceTypeFilter}
+        ${fromFilter}
+        ${toFilter}
       ORDER BY rank_score DESC
       LIMIT ${topK}
     `;

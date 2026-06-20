@@ -1,7 +1,7 @@
 import { estimateTokens } from '../../../lib/token-estimate';
-import type { ContextBlock, RAGContext } from '../types/rag.types';
+import type { ContextBlock, RAGContext, RAGContextUseCase } from '../types/rag.types';
 import type { RetrievedChunk } from '../../retrievers/types/retriever.types';
-import { tokenBudgetService, RAG_TOKEN_BUDGETS } from '../services/token-budget.service';
+import { tokenBudgetService, resolveContextTokenBudget } from '../services/token-budget.service';
 
 function formatContextBlock(block: ContextBlock): string {
   const meetingLine = block.meetingTitle
@@ -25,13 +25,47 @@ function formatContextBlock(block: ContextBlock): string {
     .join('\n');
 }
 
+function parseChronologyKey(chunk: RetrievedChunk): number {
+  const meetingDate =
+    typeof chunk.metadata.meetingDate === 'string' ? Date.parse(chunk.metadata.meetingDate) : NaN;
+  if (!Number.isNaN(meetingDate)) {
+    return meetingDate;
+  }
+
+  const timestamp =
+    typeof chunk.metadata.timestamp_start === 'string'
+      ? parseTimestamp(chunk.metadata.timestamp_start)
+      : 0;
+
+  return timestamp;
+}
+
+function parseTimestamp(value: string): number {
+  const parts = value.split(':').map((part) => Number.parseInt(part, 10));
+  if (parts.some((part) => Number.isNaN(part))) {
+    return 0;
+  }
+
+  if (parts.length === 3) {
+    return parts[0] * 3_600_000 + parts[1] * 60_000 + parts[2] * 1_000;
+  }
+
+  if (parts.length === 2) {
+    return parts[0] * 60_000 + parts[1] * 1_000;
+  }
+
+  return 0;
+}
+
 export class ContextBuilderService {
   build(
     chunks: RetrievedChunk[],
-    tokenBudget = RAG_TOKEN_BUDGETS.retrievedContext,
+    options?: { tokenBudget?: number; useCase?: RAGContextUseCase },
   ): RAGContext {
+    const tokenBudget =
+      options?.tokenBudget ?? resolveContextTokenBudget(options?.useCase);
     const deduped = this.deduplicateChunks(chunks);
-    const sorted = [...deduped].sort((a, b) => b.similarity - a.similarity);
+    const sorted = this.sortChunks(deduped);
     const trimmed = tokenBudgetService.trimChunks(sorted, tokenBudget);
 
     const blocks: ContextBlock[] = trimmed.map((chunk, index) => ({
@@ -58,12 +92,36 @@ export class ContextBuilderService {
     return blocks.map(formatContextBlock).join('\n\n');
   }
 
+  private sortChunks(chunks: RetrievedChunk[]): RetrievedChunk[] {
+    return [...chunks].sort((a, b) => {
+      const similarityDelta = b.similarity - a.similarity;
+      if (Math.abs(similarityDelta) > 0.05) {
+        return similarityDelta;
+      }
+
+      const chronologyDelta = parseChronologyKey(a) - parseChronologyKey(b);
+      if (chronologyDelta !== 0) {
+        return chronologyDelta;
+      }
+
+      const chunkIndexDelta = (a.chunkIndex ?? 0) - (b.chunkIndex ?? 0);
+      if (chunkIndexDelta !== 0) {
+        return chunkIndexDelta;
+      }
+
+      return a.id.localeCompare(b.id);
+    });
+  }
+
   private deduplicateChunks(chunks: RetrievedChunk[]): RetrievedChunk[] {
     const seen = new Set<string>();
     const result: RetrievedChunk[] = [];
 
     for (const chunk of chunks) {
-      const key = `${chunk.meetingId ?? 'none'}:${chunk.sourceType}:${chunk.content.slice(0, 120)}`;
+      const key =
+        chunk.sourceId !== undefined
+          ? `${chunk.meetingId ?? 'none'}:${chunk.sourceType}:${chunk.sourceId}:${chunk.chunkIndex ?? 0}`
+          : `${chunk.meetingId ?? 'none'}:${chunk.sourceType}:${chunk.content.slice(0, 120)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(chunk);

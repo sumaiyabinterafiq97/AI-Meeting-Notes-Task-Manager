@@ -1,3 +1,4 @@
+import { ragCacheService } from '../../rag/services/rag-cache.service';
 import { buildMeetingChunkInputs } from '../../chunking/builders/meeting-chunk.builder';
 import { chunkingService } from '../../chunking/services/chunking.service';
 import type { TextChunk } from '../../chunking/types/chunk.types';
@@ -34,6 +35,7 @@ export class MeetingEmbeddingService {
     try {
       const stored = await this.embedAndStoreChunks(meetingId, workspaceId, textChunks, job.id);
       await embeddingRepository.markCompleted(job.id, stored);
+      await ragCacheService.invalidateWorkspace(workspaceId);
       return {
         jobId: job.id,
         meetingId,

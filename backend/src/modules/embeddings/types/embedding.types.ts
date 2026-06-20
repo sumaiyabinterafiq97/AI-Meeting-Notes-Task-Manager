@@ -11,6 +11,8 @@ export interface EmbeddingResult {
   model: string;
   dimensions: number;
   totalTokens: number;
+  cacheHits?: number;
+  cacheMisses?: number;
 }
 
 export interface BatchEmbeddingJob {

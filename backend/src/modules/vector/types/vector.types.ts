@@ -27,6 +27,8 @@ export interface VectorSearchQuery {
   sourceTypes?: DocumentSourceType[];
   topK?: number;
   minSimilarity?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface HybridSearchQuery {
@@ -36,4 +38,6 @@ export interface HybridSearchQuery {
   meetingId?: string;
   sourceTypes?: DocumentSourceType[];
   topK?: number;
+  dateFrom?: string;
+  dateTo?: string;
 }

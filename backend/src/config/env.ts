@@ -51,10 +51,34 @@ const envSchema = z.object({
   RAG_RETRIEVAL_CACHE_TTL_SECONDS: z.coerce.number().default(900),
   RAG_EMBEDDING_CACHE_TTL_SECONDS: z.coerce.number().default(3600),
   AI_PIPELINE_MODE: z.enum(['monolithic', 'multi-agent']).default('monolithic'),
+  PROMPT_SCHEMA_V2_1: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   KNOWLEDGE_EXTRACTION_ENABLED: z
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  CHAT_MEMORY_MAX_MESSAGES: z.coerce.number().default(20),
+  CHAT_MEMORY_MAX_TOKENS: z.coerce.number().default(4000),
+  CHAT_MEMORY_SUMMARIZE_THRESHOLD: z.coerce.number().default(3200),
+  CHAT_MEMORY_KEEP_RECENT: z.coerce.number().default(6),
+  CHAT_MEMORY_ROLLING_INTERVAL: z.coerce.number().default(10),
+  CHAT_MEMORY_SUMMARY_MAX_CHARS: z.coerce.number().default(2000),
+  CHAT_MEMORY_SESSION_TTL_SECONDS: z.coerce.number().default(86_400),
+  CHAT_MEMORY_LLM_SUMMARY: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  CHAT_QUERY_CLASSIFIER_LLM: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  CHAT_TOOLS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  CHAT_TOOL_MAX_ITERATIONS: z.coerce.number().default(5),
   TRANSCRIPTION_PROVIDER: z.enum(['mock', 'openai']).default('openai'),
   OPENAI_WHISPER_MODEL: z.string().default('whisper-1'),
   AUDIO_STORAGE_PATH: z.string().default('./storage/audio'),

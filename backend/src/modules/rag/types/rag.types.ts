@@ -7,7 +7,13 @@ export interface RAGQuery {
   mode?: RAGSearchMode;
   topK?: number;
   sourceTypes?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  /** Classified intent from chat query classifier (FR-CHAT-CLS-001). */
+  queryIntent?: string;
 }
+
+export type RAGContextUseCase = 'chat' | 'meeting' | 'weekly';
 
 export interface ContextBlock {
   citationIndex: number;

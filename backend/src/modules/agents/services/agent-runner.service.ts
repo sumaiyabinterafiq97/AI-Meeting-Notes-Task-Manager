@@ -1,20 +1,28 @@
 import { randomUUID } from 'crypto';
+import type { z } from 'zod';
 import { llmService } from '../../llm';
 import type { LLMWorkflow } from '../../llm/types/llm.types';
+import { validateWithZod } from '../../llm/services/zod-validator.service';
 import { promptRegistry } from '../../prompts/services/prompt-registry.service';
 import type { AgentMessage, AgentType } from '../types/agent.types';
+import { agentTypeToSchemaKey, resolveJsonSchema, resolveZodSchema } from '../schemas/schema-resolver';
+import { completeStructured } from '../schemas/structured-output.service';
+import { inputSanitizerService } from '../security/input-sanitizer.service';
 import { agentExecutionService } from './agent-execution.service';
 
 export interface StructuredAgentRunParams<TInput, TOutput> {
   agentType: AgentType;
   promptId: string;
   workflow: LLMWorkflow;
-  jsonSchema: Record<string, unknown>;
+  jsonSchema?: Record<string, unknown>;
+  zodSchema?: z.ZodType<TOutput>;
   message: AgentMessage<TInput, TOutput>;
   variables: Record<string, string>;
   userContent: string;
   fallbackOutput: TOutput;
   jobId?: string;
+  sanitizeTranscript?: boolean;
+  normalizeOutput?: (output: TOutput) => TOutput;
 }
 
 function buildFallbackMessage<TInput, TOutput>(
@@ -57,31 +65,87 @@ export async function runStructuredAgent<TInput, TOutput>(
     agentType: params.agentType,
   });
 
-  const rendered = promptRegistry.render(params.promptId, { variables: params.variables });
+  const sanitizedVariables = Object.fromEntries(
+    Object.entries(params.variables).map(([key, value]) => [
+      key,
+      key === 'transcript' || params.sanitizeTranscript !== false
+        ? inputSanitizerService.sanitizeText(value, {
+            field: key === 'transcript' ? 'transcript' : 'promptVar',
+          })
+        : value,
+    ]),
+  );
+
+  const rendered = promptRegistry.render(params.promptId, { variables: sanitizedVariables });
   const systemContent =
     rendered?.messages[0]?.content ??
     'You are a meeting analysis agent. Return valid JSON only matching the required schema.';
 
-  try {
-    const response = await llmService.complete(
-      {
-        workflow: params.workflow,
-        messages: [
-          { role: 'system', content: systemContent },
-          { role: 'user', content: params.userContent },
-        ],
-        responseFormat: 'json_schema',
-        jsonSchema: params.jsonSchema,
-        workspaceId: params.message.workspaceId,
-        correlationId: params.message.correlationId,
-      },
-      {
-        promptId: params.promptId,
-        promptVersion: rendered?.version ?? '0.0.0',
-      },
-    );
+  const schemaKey = agentTypeToSchemaKey(params.agentType);
+  const jsonSchema =
+    params.jsonSchema ??
+    (schemaKey ? resolveJsonSchema(schemaKey) : undefined) ??
+    ({} as Record<string, unknown>);
+  const zodSchema =
+    params.zodSchema ?? (schemaKey ? (resolveZodSchema(schemaKey) as z.ZodType<TOutput>) : undefined);
 
-    const output = JSON.parse(response.content) as TOutput;
+  const userContent = params.sanitizeTranscript !== false
+    ? inputSanitizerService.wrapUntrustedContent('USER_INPUT', params.userContent)
+    : params.userContent;
+
+  try {
+    const messages = [
+      { role: 'system' as const, content: systemContent },
+      { role: 'user' as const, content: userContent },
+    ];
+
+    let output: TOutput;
+    let response;
+
+    if (schemaKey && zodSchema && Object.keys(jsonSchema).length > 0) {
+      const structured = await completeStructured<TOutput>(
+        schemaKey,
+        {
+          workflow: params.workflow,
+          messages,
+          workspaceId: params.message.workspaceId,
+          correlationId: params.message.correlationId,
+        },
+        {
+          promptId: params.promptId,
+          promptVersion: rendered?.version ?? '0.0.0',
+          zodSchema,
+        },
+      );
+      response = structured.response;
+      output = structured.parsed;
+    } else {
+      response = await llmService.complete(
+        {
+          workflow: params.workflow,
+          messages,
+          responseFormat: 'json_schema',
+          jsonSchema,
+          workspaceId: params.message.workspaceId,
+          correlationId: params.message.correlationId,
+        },
+        {
+          promptId: params.promptId,
+          promptVersion: rendered?.version ?? '0.0.0',
+        },
+      );
+
+      if (zodSchema) {
+        output = validateWithZod(zodSchema, response.content);
+      } else {
+        output = JSON.parse(response.content) as TOutput;
+      }
+    }
+
+    if (params.normalizeOutput) {
+      output = params.normalizeOutput(output);
+    }
+
     const latencyMs = Date.now() - startedAt;
 
     await agentExecutionService.complete(execution.id, {

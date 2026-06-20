@@ -11,6 +11,8 @@ function toRetrievedChunk(chunk: {
   content: string;
   meetingId?: string;
   sourceType: string;
+  sourceId?: string;
+  chunkIndex?: number;
   similarity?: number;
   metadata: Record<string, unknown>;
 }): RetrievedChunk {
@@ -19,6 +21,8 @@ function toRetrievedChunk(chunk: {
     content: chunk.content,
     meetingId: chunk.meetingId,
     sourceType: chunk.sourceType,
+    sourceId: chunk.sourceId,
+    chunkIndex: chunk.chunkIndex,
     similarity: chunk.similarity ?? 0,
     metadata: chunk.metadata,
   };
@@ -34,6 +38,8 @@ export class HybridRetriever {
       mode,
       topK,
       sourceTypes: query.sourceTypes,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
     };
 
     const cacheKey = ragCacheService.buildQueryHash(query.query, filters);
@@ -55,6 +61,8 @@ export class HybridRetriever {
       meetingId: query.meetingId,
       sourceTypes,
       topK: env.RERANKER_ENABLED ? Math.max(topK, 50) : topK,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
     });
 
     let chunks = results.map(toRetrievedChunk);

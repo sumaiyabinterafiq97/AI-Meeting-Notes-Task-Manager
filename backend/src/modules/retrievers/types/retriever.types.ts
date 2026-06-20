@@ -11,6 +11,8 @@ export interface RetrievedChunk {
   content: string;
   meetingId?: string;
   sourceType: string;
+  sourceId?: string;
+  chunkIndex?: number;
   similarity: number;
   metadata: Record<string, unknown>;
 }

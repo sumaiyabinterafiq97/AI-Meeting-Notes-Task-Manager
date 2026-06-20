@@ -14,6 +14,8 @@ export class RetrieverService {
       meetingId: filters.meetingId,
       mode: 'hybrid',
       sourceTypes: filters.sourceTypes,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
     });
 
     return {

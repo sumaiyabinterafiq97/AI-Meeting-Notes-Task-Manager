@@ -1,14 +1,28 @@
 import { estimateTokens } from '../../../lib/token-estimate';
 import type { RetrievedChunk } from '../../retrievers/types/retriever.types';
+import type { RAGContextUseCase } from '../types/rag.types';
 
 export const RAG_TOKEN_BUDGETS = {
   systemPrompt: 500,
   userQuery: 500,
   chatHistory: 4_000,
   retrievedContext: 24_000,
+  retrievedContextMeeting: 16_000,
+  retrievedContextWeekly: 64_000,
   completionReserve: 4_000,
   totalChat: 32_000,
 } as const;
+
+export function resolveContextTokenBudget(useCase?: RAGContextUseCase): number {
+  switch (useCase) {
+    case 'meeting':
+      return RAG_TOKEN_BUDGETS.retrievedContextMeeting;
+    case 'weekly':
+      return RAG_TOKEN_BUDGETS.retrievedContextWeekly;
+    default:
+      return RAG_TOKEN_BUDGETS.retrievedContext;
+  }
+}
 
 export class TokenBudgetService {
   trimText(text: string, maxTokens: number): string {

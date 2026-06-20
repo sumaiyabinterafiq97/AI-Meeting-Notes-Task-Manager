@@ -47,6 +47,7 @@ export class PipelineOrchestratorService {
         meetingTitle: input.meetingTitle,
         memberNames: input.memberNames,
         meetingDate: input.meetingDate,
+        durationMinutes: input.durationMinutes,
       },
       input.workspaceId,
       agentOptions,
@@ -56,14 +57,22 @@ export class PipelineOrchestratorService {
       summarizerAgent.execute(summarizerMessage),
       taskExtractorAgent.execute(
         buildTaskExtractorMessage(
-          { transcript: input.transcript, memberNames: input.memberNames },
+          {
+            transcript: input.transcript,
+            memberNames: input.memberNames,
+            meetingDate: input.meetingDate,
+          },
           input.workspaceId,
           agentOptions,
         ),
       ),
       decisionAgent.execute(
         buildDecisionMessage(
-          { transcript: input.transcript, memberNames: input.memberNames },
+          {
+            transcript: input.transcript,
+            memberNames: input.memberNames,
+            meetingDate: input.meetingDate,
+          },
           input.workspaceId,
           agentOptions,
         ),
@@ -79,6 +88,8 @@ export class PipelineOrchestratorService {
           transcript: input.transcript,
           summary: summaryContext,
           decisions: decisionContext,
+          meetingDate: input.meetingDate,
+          tags: input.tags,
         },
         input.workspaceId,
         agentOptions,

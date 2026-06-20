@@ -35,3 +35,7 @@ export interface StreamEvent {
   type: 'token' | 'citation' | 'done' | 'error';
   data: Record<string, unknown>;
 }
+
+export interface ChatStreamOptions {
+  signal?: AbortSignal;
+}

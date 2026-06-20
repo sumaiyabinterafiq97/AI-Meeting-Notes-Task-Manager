@@ -151,6 +151,10 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `LLM_PRIMARY_PROVIDER` | Primary LLM provider (`openai`, `google`, `anthropic`, `mock`) |
 | `EMBEDDING_MODEL` | Embedding model for semantic search (default: `text-embedding-3-small`) |
 | `AI_USE_MOCK` | Run AI inline without Redis/OpenAI (`true` for local dev) |
+| `AI_PIPELINE_MODE` | `monolithic` or `multi-agent` extraction pipeline |
+| `PROMPT_SCHEMA_V2_1` | Enable extended agent output schemas with confidence scores |
+
+See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.
 
 ## Development Commands
 

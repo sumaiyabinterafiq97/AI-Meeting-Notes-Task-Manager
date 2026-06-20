@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { chatService } from '../services/chat.service';
 import type { SendChatMessageDto } from '../dto/chat.dto';
 import { routeParam } from '../../../utils/route-param';
-import { formatSseEvent, initSseResponse } from '../utils/sse';
+import { attachStreamAbort, writeSseStream } from '../utils/stream-lifecycle';
 
 function wantsStream(req: Request): boolean {
   if (req.query.stream === 'false') {
@@ -21,7 +21,9 @@ export class ChatController {
       const dto = req.body as SendChatMessageDto;
 
       if (wantsStream(req)) {
-        await this.streamResponse(res, chatService.streamMessage(userId, workspaceId, dto));
+        await this.streamResponse(req, res, (signal) =>
+          chatService.streamMessage(userId, workspaceId, dto, undefined, { signal }),
+        );
         return;
       }
 
@@ -40,9 +42,8 @@ export class ChatController {
       const dto = req.body as SendChatMessageDto;
 
       if (wantsStream(req)) {
-        await this.streamResponse(
-          res,
-          chatService.streamMessage(userId, workspaceId, dto, meetingId),
+        await this.streamResponse(req, res, (signal) =>
+          chatService.streamMessage(userId, workspaceId, dto, meetingId, { signal }),
         );
         return;
       }
@@ -106,16 +107,19 @@ export class ChatController {
   }
 
   private async streamResponse(
+    req: Request,
     res: Response,
-    events: AsyncGenerator<{ type: string; data: Record<string, unknown> }>,
+    createEvents: (
+      signal: AbortSignal,
+    ) => AsyncGenerator<{ type: string; data: Record<string, unknown> }>,
   ): Promise<void> {
-    initSseResponse(res);
+    const { controller, cleanup } = attachStreamAbort(req, res);
 
-    for await (const event of events) {
-      res.write(formatSseEvent(event.type, event.data));
+    try {
+      await writeSseStream(res, createEvents(controller.signal) as never, controller.signal);
+    } finally {
+      cleanup();
     }
-
-    res.end();
   }
 }
 

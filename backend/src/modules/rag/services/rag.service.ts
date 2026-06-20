@@ -1,7 +1,14 @@
-import type { RAGContext, RAGPipelineResult, RAGQuery, RAGSearchResult } from '../types/rag.types';
+import type { RAGContext, RAGContextUseCase, RAGPipelineResult, RAGQuery, RAGSearchResult } from '../types/rag.types';
 import { hybridRetriever } from '../retrievers/hybrid.retriever';
 import { contextBuilderService } from '../context-builders/context-builder.service';
 import { promptBuilderService } from '../prompt-builders/prompt-builder.service';
+
+export interface RAGBuildOptions {
+  promptId?: string;
+  variables?: Record<string, string>;
+  useCase?: RAGContextUseCase;
+  tokenBudget?: number;
+}
 
 /**
  * RAG service — retrieval, context construction, prompt assembly.
@@ -18,9 +25,12 @@ export class RAGService {
     };
   }
 
-  async buildContext(query: RAGQuery): Promise<RAGContext> {
+  async buildContext(
+    query: RAGQuery,
+    options?: Pick<RAGBuildOptions, 'useCase' | 'tokenBudget'>,
+  ): Promise<RAGContext> {
     const { chunks } = await this.retrieve(query);
-    return contextBuilderService.build(chunks);
+    return contextBuilderService.build(chunks, options);
   }
 
   async search(query: RAGQuery): Promise<RAGSearchResult> {
@@ -44,8 +54,9 @@ export class RAGService {
   async prepareChatPrompt(
     query: RAGQuery,
     history: Array<{ role: string; content: string }> = [],
-    promptId = 'chat-agent',
+    options?: RAGBuildOptions,
   ): Promise<RAGPipelineResult> {
+    const promptId = options?.promptId ?? 'chat-agent';
     const retrieval = await this.search(query);
     const context = contextBuilderService.build(
       retrieval.chunks.map((chunk) => ({
@@ -56,9 +67,19 @@ export class RAGService {
         similarity: chunk.similarity,
         metadata: chunk.metadata,
       })),
+      {
+        useCase: options?.useCase ?? (query.meetingId ? 'meeting' : 'chat'),
+        tokenBudget: options?.tokenBudget,
+      },
     );
 
-    const prompt = promptBuilderService.build(promptId, context.blocks, history, query.query);
+    const prompt = promptBuilderService.build(
+      promptId,
+      context.blocks,
+      history,
+      query.query,
+      options?.variables,
+    );
 
     return {
       context,
