@@ -38,3 +38,6 @@ docker-data/
 # Misc
 .cache/
 .turbo/
+
+# Local uploads (transcription tests, dev artifacts)
+backend/storage/
