@@ -323,30 +323,71 @@ flowchart LR
 
 ---
 
-## 7. LangGraph Compatibility (Future)
+## 7. LangGraph Orchestration Layer (Implemented)
+
+Production orchestration lives in `backend/src/modules/orchestrator/` and uses **LangGraph `StateGraph`** with workflow definitions in `workflows/workflow.types.ts` (graph structure is data-driven — not hardcoded in nodes).
 
 ```mermaid
 flowchart TB
-  subgraph LangGraph["Future LangGraph Graph"]
-    Start((Start)) --> Summarizer
-    Start --> TaskAgent
-    Start --> Decision
-    Start --> Risk
-    Summarizer --> Merge
-    TaskAgent --> Merge
-    Decision --> Merge
-    Risk --> Merge
-    Merge --> Knowledge
-    Knowledge --> Embed
-    Embed --> End((End))
+  subgraph OrchestratorModule["modules/orchestrator"]
+    Registry[Agent Registry]
+    GraphExec[Graph Executor]
+    Nodes[Graph Nodes]
+    State[Graph State + Reducers]
+    Memory[Memory Adapters]
+    Events[Event Bus]
+    Checkpoints[Checkpoint Store]
+    Middleware[Security + Observability]
   end
+
+  BullMQ[BullMQ Worker] --> GraphExec
+  GraphExec --> Nodes
+  Nodes --> Agents[Existing Agent Services]
+  Registry --> Nodes
+  GraphExec --> State
+  GraphExec --> Events
+  GraphExec --> Checkpoints
 ```
 
-**Design for compatibility:**
-- Each agent implements `invoke(state) → partialState`
+### 7.1 Workflows
+
+| Workflow ID | Trigger | Graph path |
+|-------------|---------|------------|
+| `meeting-intelligence` | `process-meeting` job | Parallel extract → merge → persist → knowledge |
+| `weekly-report` | Cron / report job | Retriever → context → report → persist |
+| `chat` | Chat API | Retriever → context → chat |
+| `knowledge-update` | Post-embed pipeline | Chunk → embed → vector → knowledge → index |
+
+### 7.2 Graph State
+
+- `OrchestratorGraphState` — correlation ID, workspace scope, agent results map, errors, metrics, token budget
+- Reducers merge partial node updates (agent results, errors, metrics)
+- Checkpoints stored via `InMemoryCheckpointStore` (Redis-ready interface); transcripts redacted at rest
+
+### 7.3 Execution Engine
+
+| Capability | Implementation |
+|------------|----------------|
+| Sequential / parallel edges | LangGraph `StateGraph` from `WORKFLOW_REGISTRY` |
+| Retries | `withRetry` — 2 attempts, 2s/4s/8s backoff |
+| Timeouts | `withTimeout` per node (default 120s) |
+| Circuit breaker | Per `workspaceId:nodeId` key, 5 failures / 60s |
+| Checkpoint recovery | `checkpointService.recover(threadId)` |
+| Human-in-the-loop | State flags `humanApprovalRequired` / `humanApproved` (reserved) |
+
+### 7.4 Event System
+
+Typed events via `orchestratorEventBus`: `MeetingProcessed`, `TaskCreated`, `DecisionDetected`, `RiskDetected`, `KnowledgeUpdated`, `WeeklyReportGenerated`, `ChatCompleted`, `GraphFailed`, `GraphPartialSuccess`.
+
+### 7.5 Agent Registry
+
+Central registry (`agents/registry/agent-registry.ts`) supports dynamic registration, metadata (version, capabilities, dependencies, critical flag), and per-workflow enablement.
+
+**Design principles (unchanged):**
+- Each agent is invoked only from graph nodes — `async (state) → partialState`
 - Orchestrator state matches LangGraph `StateGraph` schema
-- `agent_executions` maps to LangGraph checkpoints
-- No tight coupling to BullMQ — agents are pure async functions
+- `agent_executions` remains the per-agent audit trail; checkpoints supplement resumability
+- BullMQ remains the job trigger; LangGraph runs inside the worker
 
 ---
 
@@ -374,3 +415,4 @@ flowchart TB
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-06-18 | Initial agent architecture — 10 agents defined |
+| 1.1 | 2026-06-20 | LangGraph orchestration layer implemented in `modules/orchestrator` |

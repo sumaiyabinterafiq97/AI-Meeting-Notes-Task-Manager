@@ -352,3 +352,24 @@ See [embedding-flow.md](./embedding-flow.md) for detailed flows.
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-06-18 | Initial vector DB design; pgvector selected |
+| 1.1 | 2026-06-20 | Added `RISK` source type; filter validation; reindex job |
+
+---
+
+## 12. Implementation Notes (v1.1)
+
+### Source Types (Prisma `DocumentSourceType`)
+
+`TRANSCRIPT`, `SUMMARY`, `DECISION`, `RISK`, `ACTION_ITEM`, `KNOWLEDGE`
+
+Risk chunks are indexed with `source_type = RISK` (previously misclassified as `SUMMARY`).
+
+### Security Controls (Implemented)
+
+- `FilterValidatorService` — validates workspaceId, source types, date ranges
+- Meeting-scope assertion prevents cross-meeting retrieval in scoped chat
+- All ANN queries include mandatory `workspace_id` WHERE clause
+
+### Reindex
+
+`POST` enqueue via `enqueueReindexWorkspace({ workspaceId })` — BullMQ `reindex-workspace` queue processes meetings in batches of 50.
