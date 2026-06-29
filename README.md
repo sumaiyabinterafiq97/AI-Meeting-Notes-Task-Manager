@@ -199,11 +199,12 @@ See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and 
 
 ## API Endpoints
 
-**MeetingMind AI v0.4.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`docs/rag-architecture.md`](./docs/rag-architecture.md) for AI architecture, and [`frontend/README.md`](./frontend/README.md) for UI routes.
+**MeetingMind AI v0.5.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
 | Domain | Base Path | Backend | Frontend |
 |--------|-----------|---------|----------|
 | Health | `GET /health` | ✅ | — |
+| Observability | `/observability/*` | ✅ | — |
 | Auth | `/api/v1/auth/*` | ✅ | ✅ |
 | Users | `/api/v1/users/*` | ✅ | ✅ |
 | Workspaces | `/api/v1/workspaces/*` | ✅ | ✅ |
@@ -224,7 +225,7 @@ See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and 
 
 **Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
-**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or external LLM keys locally. Semantic search requires pgvector migrations applied.
+**AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or external LLM keys locally. Use `AI_PIPELINE_MODE=multi-agent` for LangGraph orchestration. Set `OBSERVABILITY_API_KEY` for secured observability admin routes.
 
 ## Database Models
 
@@ -242,17 +243,18 @@ Full architecture and requirements live in [`docs/`](./docs/):
 - [rag-architecture.md](./docs/rag-architecture.md) — RAG and semantic search design
 - [llm-architecture.md](./docs/llm-architecture.md) — Multi-provider LLM layer
 - [agent-flow.md](./docs/agent-flow.md) — Multi-agent orchestration
+- [observability-design.md](./docs/observability-design.md) — Metrics, alerts, and cost tracking
 - [project-structure.md](./docs/project-structure.md) — Detailed folder conventions
 
 ## Next Steps
 
-MeetingMind AI v0.4.0 is feature-complete. Recommended next phase:
+MeetingMind AI v0.5.0 is feature-complete. Recommended next phase:
 
-1. **E2E tests** — Playwright flows for chat, semantic search, and meeting AI pipeline
+1. **E2E tests** — Playwright flows for chat, semantic search, and multi-agent pipeline
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
-3. **Production deploy** — Redis + pgvector in production, secrets management, CI/CD
+3. **Production deploy** — Redis + pgvector in production, observability dashboards, CI/CD
 4. **Calendar UI** — Frontend surfaces for calendar connect/sync and transcript reminders
-5. **Polish** — Prompt evaluation runner, reranker integration, API design doc v1.2
+5. **Polish** — Enable reranker in production, API design doc v1.2, prompt eval in CI
 
 ## License
 
