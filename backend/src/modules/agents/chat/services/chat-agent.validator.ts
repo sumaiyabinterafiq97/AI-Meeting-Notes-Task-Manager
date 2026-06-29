@@ -1,43 +1,37 @@
-import { citationParserService } from '../../../rag/services/citation-parser.service';
+import { sourceCitationService } from '../../../rag/citations/services/source-citation.service';
 import type { ContextBlock } from '../../../rag/types/rag.types';
 import type { ChatAgentCitation, ChatValidationResult } from '../types/chat-agent.types';
 import type { ChatResponse } from '../../schemas/zod-schemas';
 import {
   CITATION_EXCERPT_LENGTH,
   CLAIM_TEXT_MAX_LENGTH,
-  EMPTY_CONTEXT_RESPONSE,
   REFUSAL_PATTERNS,
 } from './chat-agent.constants';
 
-function extractClaimText(content: string, index: number): string | undefined {
-  const pattern = new RegExp(`[^.!?\\n]*\\[CITATION-${index}\\][^.!?\\n]*[.!?]?`, 'i');
-  const match = content.match(pattern);
-  return match?.[0]?.trim().slice(0, CLAIM_TEXT_MAX_LENGTH);
+function toChatAgentCitation(citation: ReturnType<typeof sourceCitationService.parseFromResponse>[number]): ChatAgentCitation {
+  return {
+    index: citation.index,
+    chunkId: citation.chunkId,
+    excerpt: citation.excerpt.slice(0, CITATION_EXCERPT_LENGTH),
+    meetingId: citation.meetingId,
+    meetingTitle: citation.meetingTitle,
+    claimText: citation.claimText?.slice(0, CLAIM_TEXT_MAX_LENGTH),
+  };
 }
 
 export function isRefusalResponse(content: string): boolean {
-  return REFUSAL_PATTERNS.some((pattern) => pattern.test(content));
+  return REFUSAL_PATTERNS.some((pattern) => pattern.test(content)) ||
+    sourceCitationService.isRefusalResponse(content);
 }
 
 export function resolveRefusalReason(content: string, emptyContext: boolean): string | null {
-  if (emptyContext) {
-    return 'empty_context';
-  }
-  if (isRefusalResponse(content)) {
-    return 'insufficient_context';
-  }
-  return null;
+  return sourceCitationService.resolveRefusalReason(content, emptyContext);
 }
 
 export function mapChatCitations(content: string, contextBlocks: ContextBlock[]): ChatAgentCitation[] {
-  return citationParserService.mapCitations(content, contextBlocks).map((citation) => ({
-    index: citation.index,
-    chunkId: citation.chunkId ?? '',
-    excerpt: (citation.excerpt ?? '').slice(0, CITATION_EXCERPT_LENGTH),
-    meetingId: citation.meetingId,
-    meetingTitle: citation.meetingTitle,
-    claimText: extractClaimText(content, citation.index),
-  }));
+  return sourceCitationService
+    .parseFromResponse(content, contextBlocks)
+    .map(toChatAgentCitation);
 }
 
 export function validateChatCitations(
@@ -45,25 +39,24 @@ export function validateChatCitations(
   citations: ChatAgentCitation[],
   contextBlocks: ContextBlock[],
 ): ChatValidationResult {
-  const validIndices = new Set(contextBlocks.map((block) => block.citationIndex));
-  const orphanCitationIndices = citations
-    .map((citation) => citation.index)
-    .filter((index) => contextBlocks.length > 0 && !validIndices.has(index));
-
-  const warnings: string[] = [];
-  if (orphanCitationIndices.length > 0) {
-    warnings.push('Some citation indices did not match retrieved context blocks.');
-  }
-
-  const referenced = citationParserService.extractCitationReferences(content);
-  if (referenced.length === 0 && citations.length > 0 && !isRefusalResponse(content)) {
-    warnings.push('Answer may be insufficiently cited for the retrieved context.');
-  }
+  const result = sourceCitationService.validate(
+    content,
+    citations.map((citation) => ({
+      index: citation.index,
+      chunkId: citation.chunkId,
+      excerpt: citation.excerpt,
+      meetingId: citation.meetingId,
+      meetingTitle: citation.meetingTitle,
+      claimText: citation.claimText,
+    })),
+    contextBlocks,
+    contextBlocks.length === 0,
+  );
 
   return {
-    valid: orphanCitationIndices.length === 0,
-    warnings,
-    orphanCitationIndices,
+    valid: result.valid,
+    warnings: result.warnings,
+    orphanCitationIndices: result.orphanCitationIndices,
   };
 }
 
@@ -73,10 +66,19 @@ export function computeChatGrounded(
   emptyContext: boolean,
   content: string,
 ): boolean {
-  if (emptyContext || isRefusalResponse(content) || content === EMPTY_CONTEXT_RESPONSE) {
-    return false;
-  }
-  return citations.length > 0 || contextBlocks.length > 0;
+  return sourceCitationService.computeGrounded(
+    citations.map((citation) => ({
+      index: citation.index,
+      chunkId: citation.chunkId,
+      excerpt: citation.excerpt,
+      meetingId: citation.meetingId,
+      meetingTitle: citation.meetingTitle,
+      claimText: citation.claimText,
+    })),
+    contextBlocks,
+    emptyContext,
+    content,
+  );
 }
 
 export interface EnrichChatOutputParams {
@@ -90,23 +92,19 @@ export function mergeStructuredChatCitations(
   parsed: ChatResponse,
   contextBlocks: ContextBlock[],
 ): ChatAgentCitation[] {
-  const blockByIndex = new Map(contextBlocks.map((block) => [block.citationIndex, block]));
-
-  if (parsed.citations?.length) {
-    return parsed.citations.map((citation) => {
-      const block = blockByIndex.get(citation.index);
-      return {
+  return sourceCitationService
+    .mergeStructured(
+      (parsed.citations ?? []).map((citation) => ({
         index: citation.index,
-        chunkId: citation.chunkId || block?.chunkId || '',
-        excerpt: (citation.excerpt ?? block?.content ?? '').slice(0, CITATION_EXCERPT_LENGTH),
-        meetingId: citation.meetingId ?? block?.meetingId,
-        meetingTitle: block?.meetingTitle,
+        chunkId: citation.chunkId,
+        excerpt: citation.excerpt,
+        meetingId: citation.meetingId,
         claimText: citation.claimText,
-      };
-    });
-  }
-
-  return mapChatCitations(parsed.content, contextBlocks);
+      })),
+      contextBlocks,
+      parsed.content,
+    )
+    .map(toChatAgentCitation);
 }
 
 export interface EnrichStructuredChatOutputParams {

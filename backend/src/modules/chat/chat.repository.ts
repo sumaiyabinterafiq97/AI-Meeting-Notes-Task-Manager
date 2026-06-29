@@ -122,6 +122,14 @@ export class ChatRepository {
       select: { id: true, title: true },
     });
   }
+
+  async getWorkspaceName(workspaceId: string): Promise<string | undefined> {
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: workspaceId, deletedAt: null },
+      select: { name: true },
+    });
+    return workspace?.name;
+  }
 }
 
 export const chatRepository = new ChatRepository();

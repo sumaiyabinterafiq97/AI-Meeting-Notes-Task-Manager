@@ -1,9 +1,7 @@
 import { randomUUID } from 'crypto';
-import { llmService } from '../../../llm';
-import { validateWithZod } from '../../../llm/services/zod-validator.service';
 import { ragService, contextBuilderService } from '../../../rag';
 import { promptRegistry } from '../../../prompts/services/prompt-registry.service';
-import { resolveJsonSchema, resolveZodSchema } from '../../schemas/schema-resolver';
+import { completeStructured } from '../../schemas/structured-output.service';
 import { inputSanitizerService } from '../../security/input-sanitizer.service';
 import { agentExecutionService } from '../../services/agent-execution.service';
 import { createAgentMessage } from '../../services/agent-runner.service';
@@ -17,6 +15,7 @@ import {
   buildLowActivityWeeklyReportOutput,
   enrichWeeklyReportOutput,
 } from './weekly-report.validator';
+import { FALLBACK_WEEKLY_REPORT_OUTPUT } from './weekly-report.constants';
 
 function toPeriodEnd(date: string): string {
   return date.includes('T') ? date : `${date}T23:59:59.999Z`;
@@ -150,15 +149,14 @@ export class WeeklyReportAgentService implements IAgent<WeeklyReportInput, Weekl
         this.buildUserContent(context, sanitizedInput.dateFrom, sanitizedInput.dateTo, retrievedContext),
       );
 
-      const response = await llmService.complete(
+      const { response, parsed } = await completeStructured<WeeklyReportOutput>(
+        'weekly-report',
         {
           workflow: 'weekly-report',
           messages: [
             { role: 'system', content: systemContent },
             { role: 'user', content: userContent },
           ],
-          responseFormat: 'json_schema',
-          jsonSchema: resolveJsonSchema('weekly-report'),
           workspaceId: sanitizedInput.workspaceId,
           correlationId,
         },
@@ -167,11 +165,6 @@ export class WeeklyReportAgentService implements IAgent<WeeklyReportInput, Weekl
           promptVersion: rendered?.version ?? '1.0.0',
         },
       );
-
-      const parsed = validateWithZod(
-        resolveZodSchema('weekly-report'),
-        response.content,
-      ) as WeeklyReportOutput;
 
       const output = enrichWeeklyReportOutput(parsed, {
         ...enrichmentContext,
@@ -200,7 +193,23 @@ export class WeeklyReportAgentService implements IAgent<WeeklyReportInput, Weekl
       const message = error instanceof Error ? error.message : 'Weekly report generation failed';
 
       await agentExecutionService.fail(execution.id, message, latencyMs);
-      throw error;
+
+      const fallbackOutput = enrichWeeklyReportOutput(
+        {
+          ...FALLBACK_WEEKLY_REPORT_OUTPUT,
+          taskStats: context.taskStats,
+          meetingCount: context.meetingCount,
+        },
+        enrichmentContext,
+      );
+
+      return {
+        output: fallbackOutput,
+        model: 'fallback',
+        provider: 'none',
+        promptTokens: 0,
+        completionTokens: 0,
+      };
     }
   }
 

@@ -14,7 +14,6 @@ import {
 } from './summarizer.validator';
 import { FALLBACK_SUMMARIZER_OUTPUT } from './summarizer.constants';
 import {
-  AGENT_MAX_TRANSCRIPT_CHARS,
   prepareAgentTranscript,
   truncateTranscriptForAgent,
 } from '../../shared/transcript.utils';

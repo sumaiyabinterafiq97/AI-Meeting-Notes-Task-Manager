@@ -70,7 +70,8 @@ export class ReportsRepository {
   }
 
   async getPeriodStats(workspaceId: string, periodStart: Date, periodEnd: Date) {
-    const [meetings, tasksCreated, tasksCompleted, openRisks] = await Promise.all([
+    const [meetings, tasksCreated, tasksCompleted, tasksOpen, tasksOverdue, openRisks] =
+      await Promise.all([
       prisma.meeting.findMany({
         where: {
           workspaceId,
@@ -93,6 +94,22 @@ export class ReportsRepository {
           deletedAt: null,
           status: TaskStatus.DONE,
           completedAt: { gte: periodStart, lte: periodEnd },
+        },
+      }),
+      prisma.task.count({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          status: { not: TaskStatus.DONE },
+          createdAt: { lte: periodEnd },
+        },
+      }),
+      prisma.task.count({
+        where: {
+          workspaceId,
+          deletedAt: null,
+          status: { not: TaskStatus.DONE },
+          dueDate: { lt: periodEnd },
         },
       }),
       prisma.meetingAiOutput.findMany({
@@ -118,6 +135,8 @@ export class ReportsRepository {
       meetings,
       tasksCreated,
       tasksCompleted,
+      tasksOpen,
+      tasksOverdue,
       risks,
     };
   }

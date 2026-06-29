@@ -50,6 +50,13 @@ export const memberParamsValidation = [
   param('userId').isUUID().withMessage('Invalid user ID'),
 ];
 
+export const reindexWorkspaceValidation = [
+  body('reason')
+    .optional()
+    .isIn(['model_upgrade', 'admin', 'corruption'])
+    .withMessage('reason must be model_upgrade, admin, or corruption'),
+];
+
 export const invitationTokenParamValidation = [
   param('token').notEmpty().withMessage('Invitation token is required'),
 ];

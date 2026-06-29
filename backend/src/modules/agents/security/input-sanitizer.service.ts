@@ -1,12 +1,18 @@
 const INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
   /disregard\s+(the\s+)?(system|developer)\s+prompt/i,
+  /disregard\s+context/i,
+  /forget\s+everything\s+above/i,
   /you\s+are\s+now\s+/i,
   /jailbreak/i,
   /<\s*script[\s>]/i,
   /```\s*system/i,
   /\[INST\]/i,
   /<<SYS>>/i,
+  /<\|im_start\|>/i,
+  /new\s+instructions\s*:/i,
+  /(openai|anthropic|google)[_-]?api[_-]?key/i,
+  /reveal\s+(the\s+)?(system\s+)?prompt/i,
 ];
 
 const MAX_TRANSCRIPT_CHARS = 500_000;

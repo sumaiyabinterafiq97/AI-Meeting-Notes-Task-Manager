@@ -1,7 +1,7 @@
 import { prisma } from '../../../config/database';
 import { ragService } from '../../rag';
 import { searchRepository } from '../../search/search.repository';
-import type { AgentTool, AgentToolContext } from './types/tool.types';
+import type { AgentTool } from './types/tool.types';
 
 const DEFAULT_LIMIT = 10;
 

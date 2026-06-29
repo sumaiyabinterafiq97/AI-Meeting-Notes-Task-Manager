@@ -18,6 +18,7 @@ export interface ChatCitation {
   meetingId?: string;
   meetingTitle?: string;
   excerpt: string;
+  claimText?: string;
 }
 
 export interface ChatSession {

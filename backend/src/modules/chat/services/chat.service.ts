@@ -50,6 +50,24 @@ function mapSession(session: {
   };
 }
 
+function mapCitation(citation: {
+  index: number;
+  chunkId: string;
+  meetingId?: string;
+  meetingTitle?: string;
+  excerpt: string;
+  claimText?: string;
+}): ChatCitation {
+  return {
+    index: citation.index,
+    chunkId: citation.chunkId,
+    meetingId: citation.meetingId,
+    meetingTitle: citation.meetingTitle,
+    excerpt: citation.excerpt,
+    claimText: citation.claimText,
+  };
+}
+
 export class ChatService {
   async getOrCreateSession(
     userId: string,
@@ -178,11 +196,14 @@ export class ChatService {
       content: dto.message,
     });
 
+    const workspaceName = await chatRepository.getWorkspaceName(workspaceId);
+
     const correlationId = buildChatCorrelationId();
     const result = await chatAgent.runTurn(
       {
         userMessage: dto.message,
         workspaceId,
+        workspaceName,
         meetingId: session.meetingId ?? undefined,
         sessionId: session.id,
         messageCount: history.length + 1,
@@ -191,13 +212,7 @@ export class ChatService {
       correlationId,
     );
 
-    const citations: ChatCitation[] = result.citations.map((citation) => ({
-      index: citation.index,
-      chunkId: citation.chunkId,
-      meetingId: citation.meetingId,
-      meetingTitle: citation.meetingTitle,
-      excerpt: citation.excerpt,
-    }));
+    const citations: ChatCitation[] = result.citations.map(mapCitation);
 
     const assistantMessage = await chatRepository.createMessage({
       sessionId: session.id,
@@ -235,6 +250,9 @@ export class ChatService {
         prompt: result.promptTokens,
         completion: result.completionTokens,
       },
+      grounded: result.grounded,
+      refusalReason: result.refusalReason,
+      injectionDetected: result.injectionDetected,
     };
   }
 
@@ -261,10 +279,13 @@ export class ChatService {
         content: dto.message,
       });
 
+      const workspaceName = await chatRepository.getWorkspaceName(workspaceId);
+
       const correlationId = buildChatCorrelationId();
       const input = {
         userMessage: dto.message,
         workspaceId,
+        workspaceName,
         meetingId: session.meetingId ?? undefined,
         sessionId: session.id,
         messageCount: history.length + 1,
@@ -275,6 +296,9 @@ export class ChatService {
       let promptTokens = 0;
       let completionTokens = 0;
       let citations: ChatCitation[] = [];
+      let grounded = true;
+      let refusalReason: string | null = null;
+      let injectionDetected = false;
 
       for await (const event of chatAgent.streamTurn(input, correlationId, options)) {
         if (options.signal?.aborted) {
@@ -296,13 +320,10 @@ export class ChatService {
           finalContent = event.content;
           promptTokens = event.promptTokens;
           completionTokens = event.completionTokens;
-          citations = event.citations.map((citation) => ({
-            index: citation.index,
-            chunkId: citation.chunkId,
-            meetingId: citation.meetingId,
-            meetingTitle: citation.meetingTitle,
-            excerpt: citation.excerpt,
-          }));
+          citations = event.citations.map(mapCitation);
+          grounded = event.grounded;
+          refusalReason = event.refusalReason;
+          injectionDetected = event.injectionDetected;
         }
       }
 
@@ -340,6 +361,9 @@ export class ChatService {
           sessionId: session.id,
           messageId: assistantMessage.id,
           tokenUsage: { prompt: promptTokens, completion: completionTokens },
+          grounded,
+          refusalReason,
+          injectionDetected,
         },
       };
     } catch (error) {
