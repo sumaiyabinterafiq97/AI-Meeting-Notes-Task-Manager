@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../../config/database';
 import type { DocumentChunk, HybridSearchQuery, VectorSearchQuery } from '../types/vector.types';
 import { fromPrismaSourceType, toPgVectorLiteral, toPrismaSourceType } from '../utils/source-type';
+import { buildMeetingDateFilter } from './date-filter';
 
 interface ChunkRow {
   id: string;
@@ -67,6 +68,8 @@ export class VectorRepository {
       ? Prisma.sql`AND meeting_id = ${query.meetingId}::uuid`
       : Prisma.empty;
 
+    const { fromFilter, toFilter } = buildMeetingDateFilter(query.dateFrom, query.dateTo);
+
     const rows = await prisma.$queryRaw<ChunkRow[]>`
       SELECT
         id,
@@ -84,6 +87,8 @@ export class VectorRepository {
         AND embedding IS NOT NULL
         ${meetingFilter}
         ${sourceTypeFilter}
+        ${fromFilter}
+        ${toFilter}
       ORDER BY embedding <=> ${vectorLiteral}::vector
       LIMIT ${topK}
     `;
@@ -109,6 +114,8 @@ export class VectorRepository {
       ? Prisma.sql`AND meeting_id = ${query.meetingId}::uuid`
       : Prisma.empty;
 
+    const { fromFilter, toFilter } = buildMeetingDateFilter(query.dateFrom, query.dateTo);
+
     const rows = await prisma.$queryRaw<ChunkRow[]>`
       SELECT
         id,
@@ -126,6 +133,8 @@ export class VectorRepository {
         AND search_vector @@ plainto_tsquery('english', ${searchQuery})
         ${meetingFilter}
         ${sourceTypeFilter}
+        ${fromFilter}
+        ${toFilter}
       ORDER BY rank_score DESC
       LIMIT ${topK}
     `;
@@ -247,6 +256,53 @@ export class VectorRepository {
   async countByMeeting(meetingId: string): Promise<number> {
     return prisma.documentChunk.count({ where: { meetingId } });
   }
+
+  async findMeetingChunkEmbeddings(
+    meetingId: string,
+  ): Promise<Map<string, { contentHash?: string; embedding: number[]; embeddingModel: string }>> {
+    const rows = await prisma.$queryRaw<
+      Array<{
+        source_type: string;
+        source_id: string;
+        chunk_index: number;
+        metadata: unknown;
+        embedding_text: string | null;
+        embedding_model: string;
+      }>
+    >`
+      SELECT
+        source_type::text AS source_type,
+        source_id,
+        chunk_index,
+        metadata,
+        embedding::text AS embedding_text,
+        embedding_model
+      FROM document_chunks
+      WHERE meeting_id = ${meetingId}::uuid
+        AND embedding IS NOT NULL
+    `;
+
+    const map = new Map<string, { contentHash?: string; embedding: number[]; embeddingModel: string }>();
+
+    for (const row of rows) {
+      if (!row.embedding_text) continue;
+      const key = `${fromPrismaSourceType(row.source_type as never)}:${row.source_id}:${row.chunk_index}`;
+      const metadata = (row.metadata as Record<string, unknown>) ?? {};
+      map.set(key, {
+        contentHash: typeof metadata.contentHash === 'string' ? metadata.contentHash : undefined,
+        embedding: parsePgVector(row.embedding_text),
+        embeddingModel: row.embedding_model,
+      });
+    }
+
+    return map;
+  }
+}
+
+function parsePgVector(value: string): number[] {
+  const trimmed = value.replace(/^\[/, '').replace(/\]$/, '');
+  if (!trimmed) return [];
+  return trimmed.split(',').map((part) => Number.parseFloat(part.trim()));
 }
 
 export const vectorRepository = new VectorRepository();

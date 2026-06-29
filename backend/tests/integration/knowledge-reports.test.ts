@@ -8,6 +8,7 @@ import {
   setupWorkspaceWithAuth,
   createMeeting,
   sampleTranscript,
+  meetingPayload,
 } from '../helpers/meeting-helper';
 import { meetingEmbeddingService } from '../../src/modules/embeddings/services/meeting-embedding.service';
 import { knowledgeExtractionService } from '../../src/modules/knowledge/knowledge.service';
@@ -29,7 +30,10 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
   });
 
   async function seedMeeting(accessToken: string, workspaceId: string) {
-    const created = await createMeeting(accessToken, workspaceId);
+    const created = await createMeeting(accessToken, workspaceId, {
+      ...meetingPayload,
+      meetingDate: new Date().toISOString(),
+    });
     const meetingId = created.body.id as string;
 
     await api

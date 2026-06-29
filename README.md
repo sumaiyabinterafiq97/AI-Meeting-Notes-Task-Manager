@@ -1,29 +1,32 @@
-# AI Meeting Notes & Task Manager
+# MeetingMind AI — LLM-Powered Multi-Agent Meeting Intelligence Platform
 
-A production-grade SaaS application that converts meeting transcripts into AI-generated summaries, decisions, and action items — with collaborative task management in workspace-scoped teams.
+MeetingMind AI is a production-grade SaaS platform that transforms meeting transcripts into structured intelligence — summaries, decisions, action items, risks, and knowledge — through **multi-agent orchestration**, **RAG-powered chat**, and **semantic search**. Teams collaborate in workspace-scoped environments with task management, insights, reports, and real-time AI assistance.
 
 ## Tech Stack
 
 | Layer | Technologies |
 |-------|--------------|
-| **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod |
-| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt, BullMQ |
-| **AI** | OpenAI, Anthropic, Gemini (multi-provider), pgvector RAG, multi-agent orchestration |
+| **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod, React Markdown |
+| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt |
+| **LLM** | OpenAI SDK, Anthropic SDK, Google Gemini, LangChain, LangGraph, multi-provider fallback chain |
+| **RAG & Search** | pgvector, document chunking, hybrid retrieval (vector + FTS), reciprocal rank fusion |
+| **Agents** | Summarizer, task extractor, decision, risk analyzer, chat, knowledge, weekly report |
+| **Jobs & Cache** | BullMQ, Redis (ioredis), background workers, SSE streaming |
 | **Database** | PostgreSQL 16 + pgvector |
-| **Cache / Jobs** | Redis (BullMQ workers) |
+| **Observability** | Pino logging, token/cost tracking, LLM invocation metrics |
 | **DevOps** | Docker, Docker Compose |
 | **Code Quality** | ESLint, Prettier, Husky, lint-staged |
-| **Testing** | Vitest (frontend), Jest + Supertest (backend) |
+| **Testing** | Vitest (frontend), Jest + Supertest (backend), prompt eval fixtures |
 
 ## Project Structure
 
 ```
-ai-meeting-notes-manager/
+meetingmind-ai/
 ├── frontend/                 # React SPA
 │   ├── src/
 │   │   ├── app/              # App shell, providers
 │   │   ├── components/       # Shared UI (Shadcn) + common
-│   │   ├── features/         # Feature modules (auth, workspaces, meetings, tasks…)
+│   │   ├── features/         # auth, workspaces, meetings, tasks, chat, search, insights…
 │   │   ├── hooks/            # Shared React hooks
 │   │   ├── layouts/          # AppLayout, AuthLayout, mobile nav
 │   │   ├── lib/              # API client, utils, constants
@@ -36,23 +39,29 @@ ai-meeting-notes-manager/
 ├── backend/                  # Express API
 │   ├── prisma/
 │   │   ├── schema.prisma     # Database schema
-│   │   └── migrations/       # Prisma migrations
+│   │   └── migrations/       # Prisma migrations (incl. pgvector)
+│   ├── prompts/              # Versioned agent prompt templates
 │   ├── src/
-│   │   ├── config/           # Env, database, CORS
-│   │   ├── controllers/      # Shared controllers
+│   │   ├── config/           # Env, database, CORS, Redis
 │   │   ├── middlewares/      # Auth, validation, error handling
-│   │   ├── modules/          # Feature modules (auth, workspaces…)
+│   │   ├── modules/
+│   │   │   ├── llm/          # Multi-provider LLM abstraction
+│   │   │   ├── chat/         # SSE chat, session memory
+│   │   │   ├── rag/          # Retrieval, context, prompt builders
+│   │   │   ├── embeddings/   # Embedding generation & reindex
+│   │   │   ├── vector/       # pgvector search & hybrid retrieval
+│   │   │   ├── agents/       # Summarizer, task, decision, risk, chat…
+│   │   │   ├── orchestrator/ # LangGraph multi-agent pipeline
+│   │   │   ├── jobs/         # BullMQ queues & processors
+│   │   │   ├── observability/# Metrics, cost, token monitoring
+│   │   │   └── …             # auth, workspaces, meetings, tasks, etc.
 │   │   ├── routes/           # Route aggregation
-│   │   ├── services/         # Shared services
-│   │   ├── repositories/     # Data access layer
-│   │   ├── validators/       # Shared validators
-│   │   ├── types/            # TypeScript types
-│   │   └── utils/            # Error classes, helpers
+│   │   └── jobs/             # Worker entrypoint
 │   ├── tests/                # Jest tests
 │   ├── Dockerfile
 │   └── package.json
 ├── docs/                     # Architecture & requirements
-├── docker-compose.yml        # Local dev orchestration
+├── docker-compose.yml        # Postgres (pgvector), Redis, backend, frontend
 ├── .env.example              # Environment template
 └── package.json              # Root scripts + Husky
 ```
@@ -151,6 +160,10 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `LLM_PRIMARY_PROVIDER` | Primary LLM provider (`openai`, `google`, `anthropic`, `mock`) |
 | `EMBEDDING_MODEL` | Embedding model for semantic search (default: `text-embedding-3-small`) |
 | `AI_USE_MOCK` | Run AI inline without Redis/OpenAI (`true` for local dev) |
+| `AI_PIPELINE_MODE` | `monolithic` or `multi-agent` extraction pipeline |
+| `PROMPT_SCHEMA_V2_1` | Enable extended agent output schemas with confidence scores |
+
+See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.
 
 ## Development Commands
 
@@ -160,6 +173,8 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `npm run build` | Build both apps for production |
 | `npm run lint` | Lint frontend and backend |
 | `npm run test` | Run all tests |
+| `npm run eval:prompts` | Run prompt fixture eval (`--mock` default) |
+| `npm run load:test:meetings` | Concurrent meeting AI job load test |
 | `npm run format` | Format code with Prettier |
 | `npm run format:check` | Check formatting |
 
@@ -231,7 +246,7 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-MeetingMind AI platform is complete (v0.4.0). Recommended next phase:
+MeetingMind AI v0.4.0 is feature-complete. Recommended next phase:
 
 1. **E2E tests** — Playwright flows for chat, semantic search, and meeting AI pipeline
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)

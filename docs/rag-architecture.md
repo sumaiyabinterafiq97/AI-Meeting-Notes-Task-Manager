@@ -377,3 +377,61 @@ flowchart TB
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-06-18 | Initial RAG architecture |
+| 1.1 | 2026-06-20 | Implementation status — provider registry, chunking strategies, score reranker, observability |
+
+---
+
+## 16. Implementation Status (v1.1)
+
+### Module Layout
+
+```
+backend/src/modules/
+├── embeddings/     # Provider registry, batch embed, reindex, observability
+├── chunking/       # Strategy registry (fixed, recursive, sliding, semantic)
+├── vector/         # pgvector + FTS, filter validation
+├── retrievers/     # Ranking, threshold filtering, RAG facade
+└── rag/            # Hybrid retriever, context builder, citations, cache
+```
+
+### Chunking Strategies
+
+| Strategy | Source Types | Module |
+|----------|--------------|--------|
+| `recursive` | transcript (default) | `chunking/strategies/chunking-strategies.ts` |
+| `fixed` | configurable | same |
+| `sliding` | long documents | same |
+| `semantic` | knowledge (default) | same |
+| `single` | decision, risk, action_item, summary | `transcript.strategy.ts` |
+| LangChain bridge | transcript alternative | `chunking/langchain/recursive-splitter.ts` |
+
+### Embedding Providers
+
+| Provider ID | Status | Config |
+|-------------|--------|--------|
+| `openai` | ✅ Default | `EMBEDDING_PROVIDER=openai` |
+| `local` | ✅ | `LOCAL_LLM_BASE_URL` |
+| `voyage` | Stub | `VOYAGE_API_KEY` (future) |
+
+### Re-ranking (MVP)
+
+Rule-based `ScoreBoostReranker` applies:
+- +10% for decision/risk chunks on intent-matching queries
+- +5% recency boost for meetings within 14 days
+
+Enable full rerank pipeline: `RERANKER_ENABLED=true`
+
+### Observability Events
+
+| Event | Fields |
+|-------|--------|
+| `embedding.generated` | provider, tokens, cacheHitRatio, latencyMs, cost |
+| `rag.retrieval` | queryHash, chunkCount, avgSimilarity, retrievalMode |
+| `rag.context_built` | chunkCount, contextTokens, useCase |
+
+### Background Jobs
+
+| Queue | Processor | Trigger |
+|-------|-----------|---------|
+| `embed-meeting` | `MeetingEmbeddingService` | After `process-meeting` |
+| `reindex-workspace` | `ReindexService` | Admin / model upgrade |

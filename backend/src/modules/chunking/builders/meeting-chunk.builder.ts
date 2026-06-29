@@ -1,5 +1,6 @@
 import { prisma } from '../../../config/database';
 import type { ChunkInput } from '../types/chunk.types';
+import { buildTaskChunkInputs } from './task-chunk.builder';
 
 interface MeetingDecision {
   text?: string;
@@ -80,10 +81,10 @@ export async function buildMeetingChunkInputs(meetingId: string): Promise<ChunkI
       content: [`Severity: ${risk.severity ?? 'unknown'}`, text, risk.context]
         .filter(Boolean)
         .join('\n'),
-      sourceType: 'summary',
+      sourceType: 'risk',
       sourceId: meeting.aiOutput!.id,
       meetingId: meeting.id,
-      metadata: { ...baseMetadata, riskIndex: index, kind: 'risk', chunkOffset: index + 1 },
+      metadata: { ...baseMetadata, riskIndex: index, severity: risk.severity ?? 'unknown' },
     });
   });
 
@@ -102,6 +103,9 @@ export async function buildMeetingChunkInputs(meetingId: string): Promise<ChunkI
       },
     });
   }
+
+  const taskInputs = await buildTaskChunkInputs(meetingId);
+  inputs.push(...taskInputs);
 
   return inputs;
 }

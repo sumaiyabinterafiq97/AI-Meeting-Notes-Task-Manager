@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { corsOptions } from './config/cors';
 import { apiV1Routes } from './routes';
 import { healthRoutes } from './routes/health.routes';
+import { observabilityRoutes } from './routes/observability.routes';
 import { errorHandler, notFoundHandler, requestIdMiddleware } from './middlewares';
 
 export function createApp() {
@@ -19,6 +20,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use('/health', healthRoutes);
+  app.use('/observability', observabilityRoutes);
   app.use('/api/v1', apiV1Routes);
 
   app.use(notFoundHandler);

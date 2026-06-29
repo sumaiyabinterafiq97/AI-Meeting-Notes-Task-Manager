@@ -12,12 +12,17 @@ export class PromptBuilderService {
     contextBlocks: ContextBlock[],
     history: Array<{ role: string; content: string }>,
     userQuery: string,
+    extraVariables: Record<string, string> = {},
   ): RAGPromptPackage {
     const contextText = contextBuilderService.formatBlocks(contextBlocks);
     const rendered = promptRegistry.render(systemPromptId, {
       variables: {
         contextBlocks: contextText,
         userMessage: userQuery,
+        workspaceName: extraVariables.workspaceName ?? 'Workspace',
+        scope: extraVariables.scope ?? 'workspace',
+        chatHistory: extraVariables.chatHistory ?? '',
+        ...extraVariables,
       },
     });
 

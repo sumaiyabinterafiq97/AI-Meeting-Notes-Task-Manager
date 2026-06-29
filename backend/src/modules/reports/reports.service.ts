@@ -44,7 +44,7 @@ export class ReportsService {
     workspaceId: string,
     options?: { dateFrom?: string; dateTo?: string },
   ) {
-    await reportsRepository.assertWorkspace(workspaceId);
+    const workspace = await reportsRepository.assertWorkspace(workspaceId);
 
     const defaults = defaultPeriod();
     const periodStart = options?.dateFrom ? new Date(options.dateFrom) : defaults.periodStart;
@@ -52,18 +52,11 @@ export class ReportsService {
 
     const stats = await reportsRepository.getPeriodStats(workspaceId, periodStart, periodEnd);
 
-    if (stats.meetings.length < 1) {
-      throw new AppError(
-        400,
-        ErrorCodes.VALIDATION_ERROR,
-        'At least one meeting is required in the reporting period',
-      );
-    }
-
     const taskStats = {
       created: stats.tasksCreated,
       completed: stats.tasksCompleted,
-      open: stats.tasksCreated - stats.tasksCompleted,
+      open: stats.tasksOpen,
+      overdue: stats.tasksOverdue,
     };
 
     const meetingSummaries = stats.meetings
@@ -88,6 +81,7 @@ export class ReportsService {
       const generated = await weeklyReportAgent.generate(
         {
           workspaceId,
+          workspaceName: workspace.name,
           dateFrom: toDateOnly(periodStart),
           dateTo: toDateOnly(periodEnd),
           correlationId: pending.id,
@@ -97,6 +91,7 @@ export class ReportsService {
           taskStats,
           openRisks,
           meetingCount: stats.meetings.length,
+          workspaceName: workspace.name,
         },
       );
 

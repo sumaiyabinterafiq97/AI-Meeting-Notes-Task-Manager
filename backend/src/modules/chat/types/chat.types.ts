@@ -18,6 +18,7 @@ export interface ChatCitation {
   meetingId?: string;
   meetingTitle?: string;
   excerpt: string;
+  claimText?: string;
 }
 
 export interface ChatSession {
@@ -34,4 +35,8 @@ export interface ChatSession {
 export interface StreamEvent {
   type: 'token' | 'citation' | 'done' | 'error';
   data: Record<string, unknown>;
+}
+
+export interface ChatStreamOptions {
+  signal?: AbortSignal;
 }

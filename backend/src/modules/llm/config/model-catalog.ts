@@ -35,6 +35,34 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     supportsStreaming: false,
     supportsEmbeddings: true,
   },
+  'gemini-2.5-flash-lite': {
+    id: 'gemini-2.5-flash-lite',
+    provider: 'google',
+    maxContextTokens: 1_000_000,
+    supportsStreaming: true,
+    supportsEmbeddings: false,
+  },
+  'gemini-2.5-flash': {
+    id: 'gemini-2.5-flash',
+    provider: 'google',
+    maxContextTokens: 1_000_000,
+    supportsStreaming: true,
+    supportsEmbeddings: false,
+  },
+  'gemini-2.0-flash': {
+    id: 'gemini-2.0-flash',
+    provider: 'google',
+    maxContextTokens: 1_000_000,
+    supportsStreaming: true,
+    supportsEmbeddings: false,
+  },
+  'gemini-2.0-flash-lite': {
+    id: 'gemini-2.0-flash-lite',
+    provider: 'google',
+    maxContextTokens: 1_000_000,
+    supportsStreaming: true,
+    supportsEmbeddings: false,
+  },
   'gemini-1.5-flash': {
     id: 'gemini-1.5-flash',
     provider: 'google',
@@ -88,7 +116,7 @@ export function getDefaultModelForProvider(
   if (providerId === 'mock') return 'mock';
   if (providerId === 'openai') return workflowDefault;
   if (providerId === 'google') {
-    return workflow === 'embed' ? 'text-embedding-004' : 'gemini-1.5-flash';
+    return workflow === 'embed' ? 'text-embedding-004' : 'gemini-2.5-flash-lite';
   }
   if (providerId === 'anthropic') {
     return workflow === 'process-meeting' ||

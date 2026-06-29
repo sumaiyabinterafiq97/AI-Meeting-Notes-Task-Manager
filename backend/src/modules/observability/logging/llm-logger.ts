@@ -1,24 +1,32 @@
-import pino from 'pino';
-import { env } from '../../../config/env';
+import { structuredLogger, logStructured } from './structured-logger';
 
-export const llmLogger = pino({
-  name: 'meetingmind-llm',
-  level: env.LOG_LEVEL ?? 'info',
-  redact: ['apiKey', 'password', 'token', 'authorization'],
-});
+/** @deprecated Prefer structuredLogger */
+export const llmLogger = structuredLogger.child({ component: 'llm' });
+
+export type { StructuredLogFields } from './structured-logger';
 
 export interface LLMLogContext {
   correlationId?: string;
   workspaceId?: string;
+  userId?: string;
   workflow?: string;
   provider?: string;
   model?: string;
+  requestId?: string;
+  tokens?: number;
+  latencyMs?: number;
+  cost?: number;
+  retries?: number;
 }
 
 export function logLLMInvocation(context: LLMLogContext, message: string): void {
-  llmLogger.info(context, message);
+  logStructured('info', { ...context, component: 'llm', action: 'invocation.completed' }, message);
 }
 
 export function logLLMError(context: LLMLogContext, error: Error): void {
-  llmLogger.error({ ...context, err: error.message }, 'LLM invocation failed');
+  logStructured(
+    'error',
+    { ...context, component: 'llm', action: 'invocation.failed', err: error.message },
+    'LLM invocation failed',
+  );
 }

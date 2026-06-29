@@ -152,3 +152,32 @@ export const WEEKLY_REPORT_OUTPUT_SCHEMA = {
     additionalProperties: false,
   },
 } as const;
+
+export const CHAT_RESPONSE_OUTPUT_SCHEMA = {
+  name: 'chat_response_output',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      content: { type: 'string' },
+      citations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            index: { type: 'integer' },
+            chunkId: { type: 'string' },
+            meetingId: { type: 'string' },
+            excerpt: { type: 'string' },
+          },
+          required: ['index', 'chunkId'],
+          additionalProperties: false,
+        },
+      },
+      grounded: { type: 'boolean' },
+      refusalReason: { type: ['string', 'null'] },
+    },
+    required: ['content'],
+    additionalProperties: false,
+  },
+} as const;

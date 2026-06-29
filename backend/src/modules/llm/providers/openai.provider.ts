@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { env } from '../../../config/env';
 import type { ILLMProvider } from '../interfaces/llm-provider.interface';
 import { LLMProviderError } from '../errors/llm.errors';
@@ -11,6 +10,8 @@ import type {
   LLMEmbedResponse,
   LLMStreamChunk,
 } from '../types/llm.types';
+import { throwIfAborted } from '../services/streaming.service';
+import { toOpenAIMessages } from './openai-message.mapper';
 
 let client: OpenAI | null = null;
 
@@ -22,13 +23,6 @@ function getClient(): OpenAI {
     client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   }
   return client;
-}
-
-function toOpenAIMessages(messages: LLMCompletionRequest['messages']): ChatCompletionMessageParam[] {
-  return messages.map((message) => ({
-    role: message.role,
-    content: message.content,
-  }));
 }
 
 function mapOpenAIError(error: unknown): LLMProviderError {
@@ -51,6 +45,15 @@ export class OpenAIProvider implements ILLMProvider {
         messages: toOpenAIMessages(request.messages),
         temperature: request.temperature,
         max_tokens: request.maxTokens,
+        ...(request.tools?.length
+          ? {
+              tools: request.tools.map((tool) => ({
+                type: 'function' as const,
+                function: tool.function,
+              })),
+              tool_choice: request.toolChoice ?? 'auto',
+            }
+          : {}),
         ...(request.responseFormat === 'json_schema' && request.jsonSchema
           ? {
               response_format: {
@@ -67,8 +70,15 @@ export class OpenAIProvider implements ILLMProvider {
 
       const choice = completion.choices[0];
       const content = choice?.message?.content ?? '';
+      const toolCalls = choice?.message?.tool_calls
+        ?.filter((toolCall): toolCall is Extract<typeof toolCall, { type: 'function' }> => toolCall.type === 'function')
+        .map((toolCall) => ({
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+        }));
 
-      if (!content) {
+      if (!content && !toolCalls?.length) {
         throw new LLMProviderError('OpenAI returned empty response', 'openai', undefined, true);
       }
 
@@ -79,6 +89,7 @@ export class OpenAIProvider implements ILLMProvider {
         promptTokens: completion.usage?.prompt_tokens ?? 0,
         completionTokens: completion.usage?.completion_tokens ?? 0,
         finishReason: choice?.finish_reason ?? 'stop',
+        toolCalls,
       };
     } catch (error) {
       if (error instanceof LLMProviderError) throw error;
@@ -91,15 +102,19 @@ export class OpenAIProvider implements ILLMProvider {
       const openai = getClient();
       const model = request.model ?? getDefaultModelForProvider('openai', request.workflow ?? 'chat');
 
-      const stream = await openai.chat.completions.create({
-        model,
-        messages: toOpenAIMessages(request.messages),
-        temperature: request.temperature,
-        max_tokens: request.maxTokens,
-        stream: true,
-      });
+      const stream = await openai.chat.completions.create(
+        {
+          model,
+          messages: toOpenAIMessages(request.messages),
+          temperature: request.temperature,
+          max_tokens: request.maxTokens,
+          stream: true,
+        },
+        { signal: request.signal },
+      );
 
       for await (const chunk of stream) {
+        throwIfAborted(request.signal);
         const delta = chunk.choices[0]?.delta?.content ?? '';
         if (delta) {
           yield { content: delta, done: false };

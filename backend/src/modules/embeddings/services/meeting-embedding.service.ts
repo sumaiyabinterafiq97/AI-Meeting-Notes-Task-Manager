@@ -1,19 +1,13 @@
+import { ragCacheService } from '../../rag/services/rag-cache.service';
 import { buildMeetingChunkInputs } from '../../chunking/builders/meeting-chunk.builder';
 import { chunkingService } from '../../chunking/services/chunking.service';
-import type { TextChunk } from '../../chunking/types/chunk.types';
 import { vectorRepository } from '../../vector/repositories/vector.repository';
+import type { EmbedMeetingResultDto } from '../dto/embedding.dto';
 import { embeddingRepository } from '../repositories/embedding.repository';
-import { embeddingService } from './embedding.service';
-
-export interface EmbedMeetingResult {
-  jobId: string;
-  meetingId: string;
-  workspaceId: string;
-  chunksStored: number;
-}
+import { entityEmbeddingService } from './entity-embedding.service';
 
 export class MeetingEmbeddingService {
-  async embedMeeting(meetingId: string, workspaceId: string): Promise<EmbedMeetingResult> {
+  async embedMeeting(meetingId: string, workspaceId: string): Promise<EmbedMeetingResultDto> {
     const inputs = await buildMeetingChunkInputs(meetingId);
     const textChunks = chunkingService.chunk(inputs);
 
@@ -25,6 +19,7 @@ export class MeetingEmbeddingService {
         meetingId,
         workspaceId,
         chunksStored: 0,
+        chunksSkipped: 0,
       };
     }
 
@@ -32,13 +27,25 @@ export class MeetingEmbeddingService {
     await embeddingRepository.markRunning(job.id);
 
     try {
-      const stored = await this.embedAndStoreChunks(meetingId, workspaceId, textChunks, job.id);
-      await embeddingRepository.markCompleted(job.id, stored);
+      const existingEmbeddings = await vectorRepository.findMeetingChunkEmbeddings(meetingId);
+      const { stored, skipped } = await entityEmbeddingService.buildStoredChunks({
+        workspaceId,
+        meetingId,
+        chunks: textChunks,
+        existingEmbeddings,
+        jobId: job.id,
+      });
+
+      await vectorRepository.replaceMeetingChunks(meetingId, workspaceId, stored);
+      await embeddingRepository.markCompleted(job.id, stored.length);
+      await ragCacheService.invalidateWorkspace(workspaceId);
+
       return {
         jobId: job.id,
         meetingId,
         workspaceId,
-        chunksStored: stored,
+        chunksStored: stored.length,
+        chunksSkipped: skipped,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Embedding failed';
@@ -47,37 +54,9 @@ export class MeetingEmbeddingService {
     }
   }
 
-  async refreshMeeting(meetingId: string, workspaceId: string): Promise<EmbedMeetingResult> {
+  async refreshMeeting(meetingId: string, workspaceId: string): Promise<EmbedMeetingResultDto> {
     await vectorRepository.deleteByMeeting(meetingId);
     return this.embedMeeting(meetingId, workspaceId);
-  }
-
-  private async embedAndStoreChunks(
-    meetingId: string,
-    workspaceId: string,
-    textChunks: TextChunk[],
-    jobId: string,
-  ): Promise<number> {
-    const texts = textChunks.map((chunk) => chunk.content);
-    const { embeddings, model } = await embeddingService.generateBatch(texts, workspaceId);
-
-    const storedChunks = textChunks.map((chunk, index) => ({
-      workspaceId,
-      meetingId,
-      sourceType: chunk.sourceType,
-      sourceId: chunk.sourceId,
-      chunkIndex: chunk.chunkIndex,
-      content: chunk.content,
-      tokenCount: chunk.tokenCount,
-      embedding: embeddings[index] ?? [],
-      embeddingModel: model,
-      metadata: chunk.metadata,
-    }));
-
-    await vectorRepository.replaceMeetingChunks(meetingId, workspaceId, storedChunks);
-    await embeddingRepository.updateProgress(jobId, storedChunks.length);
-
-    return storedChunks.length;
   }
 }
 

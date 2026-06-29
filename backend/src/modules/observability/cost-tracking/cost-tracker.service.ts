@@ -1,19 +1,53 @@
-const MODEL_PRICING_USD_PER_1M: Record<string, { input: number; output: number }> = {
-  'gpt-4o': { input: 2.5, output: 10 },
-  'gpt-4o-mini': { input: 0.15, output: 0.6 },
-  'text-embedding-3-small': { input: 0.02, output: 0 },
-};
+import {
+  PROVIDER_MODEL_PRICING,
+  resolveProviderFromModel,
+  type ProviderId,
+} from './provider-pricing';
+
+export interface CostEstimateInput {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  embeddingTokens?: number;
+}
+
+export interface CostEstimateResult {
+  estimatedCostUsd: number;
+  provider: ProviderId;
+  breakdown: {
+    inputCostUsd: number;
+    outputCostUsd: number;
+    embeddingCostUsd: number;
+  };
+}
 
 /**
- * Cost tracker — estimates USD cost per LLM invocation.
+ * Provider-agnostic cost estimation using configurable per-model pricing.
  */
 export class CostTrackerService {
   estimate(model: string, promptTokens: number, completionTokens: number): number {
-    const pricing = MODEL_PRICING_USD_PER_1M[model] ?? { input: 0, output: 0 };
-    return (
-      (promptTokens / 1_000_000) * pricing.input +
-      (completionTokens / 1_000_000) * pricing.output
-    );
+    return this.estimateDetailed({ model, promptTokens, completionTokens }).estimatedCostUsd;
+  }
+
+  estimateDetailed(input: CostEstimateInput): CostEstimateResult {
+    const pricing = PROVIDER_MODEL_PRICING[input.model] ?? { inputPer1M: 0, outputPer1M: 0 };
+    const provider = resolveProviderFromModel(input.model);
+
+    const inputCostUsd = (input.promptTokens / 1_000_000) * pricing.inputPer1M;
+    const outputCostUsd = (input.completionTokens / 1_000_000) * pricing.outputPer1M;
+    const embeddingRate = pricing.embeddingPer1M ?? pricing.inputPer1M;
+    const embeddingCostUsd =
+      ((input.embeddingTokens ?? 0) / 1_000_000) * embeddingRate;
+
+    return {
+      estimatedCostUsd: inputCostUsd + outputCostUsd + embeddingCostUsd,
+      provider,
+      breakdown: { inputCostUsd, outputCostUsd, embeddingCostUsd },
+    };
+  }
+
+  registerModelPricing(model: string, inputPer1M: number, outputPer1M: number): void {
+    PROVIDER_MODEL_PRICING[model] = { inputPer1M, outputPer1M };
   }
 }
 

@@ -2,6 +2,9 @@ import { prisma } from '../../src/config/database';
 
 export async function connectTestDatabase(): Promise<void> {
   await prisma.$connect();
+  await prisma.$executeRawUnsafe(
+    `ALTER TYPE "DocumentSourceType" ADD VALUE IF NOT EXISTS 'RISK'`,
+  );
 }
 
 export async function disconnectTestDatabase(): Promise<void> {

@@ -499,8 +499,20 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 | | |
 |--|--|
 | **Auth** | Workspace member |
-| **Query** | `q` (required), `type` (meetings|tasks|all), `page`, `limit` |
-| **Response 200** | `{ "meetings": [...], "tasks": [...], "snippets": [...] }` |
+| **Query** | `q` (required), `type` (meetings\|tasks\|all), `mode` (keyword\|semantic\|hybrid), `sourceTypes`, `similarityMin`, `from`, `to`, `page`, `limit` |
+| **Response 200** | `{ "meetings": [...], "tasks": [...], "snippets": [...], "retrievalMode"?: "hybrid" \| "keyword_only" }` |
+
+**Semantic/hybrid modes** use the RAG pipeline (`HybridRetriever` → pgvector ANN + PostgreSQL FTS → RRF fusion). Degrades to `keyword_only` when vector search fails.
+
+### POST `/workspaces/:workspaceId/reindex` (internal / admin)
+
+| | |
+|--|--|
+| **Auth** | Workspace admin |
+| **Body** | `{ "reason"?: "model_upgrade" \| "admin" }` |
+| **Response 202** | `{ "queued": true }` or `{ "queued": false, "result": { "meetingsProcessed", "totalChunksStored" } }` |
+
+Enqueues BullMQ `reindex-workspace` job — re-embeds all READY meetings in batches of 50.
 
 ---
 
@@ -570,7 +582,69 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ---
 
-## 11. Webhooks (Future)
+## 12. LLM Agents & AI Chat
+
+> **Status:** Implemented — multi-agent extraction pipeline, RAG-grounded chat (SSE), weekly reports, tool calling infrastructure.
+
+### Agent pipeline
+
+| Agent | Trigger | Output schema |
+|-------|---------|---------------|
+| Summarizer | `process-meeting` job | `SummarizerOutputSchema` |
+| Task Extractor | `process-meeting` job | `TaskExtractorOutputSchema` |
+| Decision | `process-meeting` job | `DecisionOutputSchema` |
+| Risk Analyzer | `process-meeting` job | `RiskAnalyzerOutputSchema` |
+| Knowledge | Post-merge (optional) | `KnowledgeOutputSchema` |
+| Weekly Report | Cron / manual | `WeeklyReportOutputSchema` |
+| Chat | `POST .../chat` (SSE) | Markdown + `Citation[]` |
+
+Set `AI_PIPELINE_MODE=multi-agent` to run parallel extraction agents. Default: `monolithic`.
+
+Set `PROMPT_SCHEMA_V2_1=true` to enable extended v2.1 schemas (confidence scores, stakeholders, evidence). Merge layer strips v2.1-only fields for DB compatibility.
+
+### POST `/workspaces/:workspaceId/chat` (SSE)
+
+| | |
+|--|--|
+| **Auth** | Workspace member |
+| **Body** | `{ "message": "string", "sessionId?": "uuid" }` |
+| **Response** | `text/event-stream` |
+
+| Event | Payload |
+|-------|---------|
+| `token` | `{ "content": "..." }` |
+| `citation` | `{ "index", "chunkId", "meetingId", "meetingTitle", "excerpt" }` |
+| `done` | `{ "sessionId", "messageId", "tokenUsage" }` |
+| `error` | `{ "code", "message" }` |
+
+**Behavior:** Hybrid RAG retrieval → context builder → prompt builder → streaming LLM. Empty retrieval returns a grounded refusal without LLM call. Conversation memory compresses long histories.
+
+### Agent tools (internal)
+
+Available to chat/tool-use loops via `ToolExecutorService`:
+
+- `SearchMeetingsTool` — keyword search meetings
+- `SearchTasksTool` — keyword search tasks
+- `SearchDecisionsTool` — search extracted decisions
+- `SearchRisksTool` — search extracted risks
+- `SearchKnowledgeTool` — hybrid semantic search
+
+### Error handling
+
+| Condition | HTTP / SSE | User message |
+|-----------|------------|--------------|
+| Provider unavailable | 503 / `error` event | AI temporarily unavailable |
+| Token budget exceeded | 429 | Workspace AI limit reached |
+| Validation failure | 500 / job FAILED | Processing failed — retry |
+| Empty RAG context | 200 | Not found in your meetings |
+
+### Observability
+
+All LLM calls log to `llm_invocations` with `workflow`, `provider`, `model`, token counts, and latency. Agent runs log to `agent_executions`.
+
+---
+
+## 13. Webhooks (Future)
 
 Planned events for v2:
 - `meeting.processed`

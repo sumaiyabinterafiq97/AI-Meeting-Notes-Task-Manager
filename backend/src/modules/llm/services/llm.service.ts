@@ -19,6 +19,9 @@ import { circuitBreakerService } from './circuit-breaker.service';
 import { getConfiguredProvider, resolveProviderChain } from './fallback-manager.service';
 import { completeWithJsonRepair } from './output-validator.service';
 import { withRetry } from './retry-handler.service';
+import { validateWithZod } from './zod-validator.service';
+import { isStreamCancelled, throwIfAborted } from './streaming.service';
+import type { z } from 'zod';
 
 export interface LLMServiceOptions {
   providerOverride?: LLMProviderId;
@@ -105,6 +108,84 @@ export class LLMService {
     throw new AppError(503, ErrorCodes.INTERNAL_ERROR, 'AI temporarily unavailable');
   }
 
+  async completeStructured<T>(
+    request: LLMCompletionRequest,
+    options: LLMServiceOptions & { zodSchema: z.ZodType<T> },
+  ): Promise<LLMCompletionResponse & { parsed: T }> {
+    if (request.responseFormat !== 'json_schema' || !request.jsonSchema) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Structured completion requires json_schema');
+    }
+
+    const workflow = request.workflow ?? 'process-meeting';
+    const providerChain = resolveProviderChain(workflow, options.providerOverride);
+
+    if (providerChain.length === 0) {
+      throw new AppError(503, ErrorCodes.INTERNAL_ERROR, 'AI temporarily unavailable');
+    }
+
+    if (request.workspaceId) {
+      await tokenMonitorService.assertWorkspaceBudget(request.workspaceId);
+    }
+
+    const startedAt = Date.now();
+    let lastError: unknown;
+
+    for (const providerId of providerChain) {
+      if (circuitBreakerService.isOpen(providerId)) {
+        continue;
+      }
+
+      const provider = getConfiguredProvider(providerId);
+      const model = request.model ?? getDefaultModelForProvider(providerId, workflow);
+
+      try {
+        const response = await withRetry(
+          () =>
+            completeWithJsonRepair(
+              provider,
+              {
+                ...request,
+                model,
+                workflow,
+              },
+              options.zodSchema,
+            ),
+          { maxAttempts: env.LLM_MAX_RETRIES },
+        );
+
+        const parsed = validateWithZod(options.zodSchema, response.content);
+
+        circuitBreakerService.recordSuccess(providerId);
+        await this.logSuccess(request, response, Date.now() - startedAt, options);
+
+        return { ...response, parsed };
+      } catch (error) {
+        lastError = error;
+        circuitBreakerService.recordFailure(providerId);
+        logLLMError(
+          {
+            correlationId: request.correlationId,
+            workspaceId: request.workspaceId,
+            workflow,
+            provider: providerId,
+            model,
+          },
+          error instanceof Error ? error : new Error('Structured LLM completion failed'),
+        );
+      }
+    }
+
+    if (request.workspaceId) {
+      await this.logFailure(request, lastError, Date.now() - startedAt, options);
+    }
+
+    if (lastError instanceof LLMTokenBudgetError) {
+      throw new AppError(429, ErrorCodes.RATE_LIMITED, lastError.message);
+    }
+
+    throw new AppError(503, ErrorCodes.INTERNAL_ERROR, 'AI temporarily unavailable');
+  }
+
   async *completeStream(
     request: LLMCompletionRequest,
     options: LLMServiceOptions = {},
@@ -133,6 +214,8 @@ export class LLMService {
         model: request.model ?? getDefaultModelForProvider(providerId, workflow),
         workflow,
       })) {
+        throwIfAborted(request.signal);
+
         if (chunk.content) {
           totalContent += chunk.content;
         }
@@ -160,6 +243,9 @@ export class LLMService {
         options,
       );
     } catch (error) {
+      if (isStreamCancelled(error)) {
+        throw error;
+      }
       await this.logFailure(request, error, Date.now() - startedAt, options);
       throw error;
     }
@@ -220,7 +306,21 @@ export class LLMService {
       } catch (error) {
         lastError = error;
         circuitBreakerService.recordFailure(providerId);
+        logLLMError(
+          {
+            correlationId: options.requestId,
+            workspaceId: request.workspaceId,
+            workflow,
+            provider: providerId,
+            model: request.model ?? getDefaultModelForProvider(providerId, workflow),
+          },
+          error instanceof Error ? error : new Error('LLM embed failed'),
+        );
       }
+    }
+
+    if (request.workspaceId) {
+      await this.logEmbedFailure(request, lastError, Date.now() - startedAt, options);
     }
 
     if (lastError instanceof LLMTokenBudgetError) {
@@ -295,6 +395,36 @@ export class LLMService {
       requestId: options.requestId,
       promptId: options.promptId,
       promptVersion: options.promptVersion,
+      status: LlmInvocationStatus.FAILED,
+      errorMessage: message,
+    });
+  }
+
+  private async logEmbedFailure(
+    request: LLMEmbedRequest,
+    error: unknown,
+    latencyMs: number,
+    options: LLMServiceOptions,
+  ): Promise<void> {
+    if (!request.workspaceId) return;
+
+    const message = error instanceof Error ? error.message : 'LLM embed failed';
+    const providerId =
+      error instanceof LLMProviderError
+        ? error.provider
+        : this.resolveProvider('embed', options.providerOverride);
+
+    await tokenMonitorService.record({
+      workspaceId: request.workspaceId,
+      workflow: 'embed',
+      provider: providerId,
+      model: request.model ?? 'unknown',
+      promptTokens: 0,
+      completionTokens: 0,
+      estimatedCostUsd: 0,
+      latencyMs,
+      correlationId: options.requestId,
+      requestId: options.requestId,
       status: LlmInvocationStatus.FAILED,
       errorMessage: message,
     });

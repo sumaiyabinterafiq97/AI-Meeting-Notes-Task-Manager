@@ -1,4 +1,5 @@
 import { isRetryableLLMError } from '../errors/llm.errors';
+import { retryObservabilityService } from '../../observability/retry/retry-observability.service';
 
 export interface RetryOptions {
   maxAttempts: number;
@@ -25,6 +26,12 @@ export async function withRetry<T>(
       if (!shouldRetry) {
         throw error;
       }
+      retryObservabilityService.recordRetry({
+        component: 'llm',
+        attempt,
+        maxAttempts: options.maxAttempts,
+        reason: error instanceof Error ? error.message : 'unknown',
+      });
       const delay = baseDelayMs * 2 ** (attempt - 1);
       await sleep(delay);
     }

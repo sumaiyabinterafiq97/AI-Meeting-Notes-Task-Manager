@@ -47,6 +47,7 @@ function minimalWavBuffer(): Buffer {
   it('uploads audio and completes mock transcription + AI pipeline', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
+    expect(created.status).toBe(201);
     const meetingId = created.body.id as string;
 
     const upload = await api
@@ -72,6 +73,7 @@ function minimalWavBuffer(): Buffer {
   it('rejects unsupported audio format', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
+    expect(created.status).toBe(201);
     const meetingId = created.body.id as string;
 
     const response = await api

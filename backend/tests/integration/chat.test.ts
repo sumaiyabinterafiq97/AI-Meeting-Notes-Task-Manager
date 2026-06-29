@@ -122,4 +122,54 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
     expect(history.status).toBe(200);
     expect(history.body.data.length).toBe(2);
   });
+
+  it('returns grounded metadata on non-streaming reply', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+    await seedEmbeddedMeeting(accessToken, workspaceId);
+
+    const response = await api
+      .post(`/api/v1/workspaces/${workspaceId}/chat?stream=false`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ message: 'What did we discuss about the vendor?' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.grounded).toBe(true);
+    expect(response.body.refusalReason).toBeNull();
+    expect(response.body.injectionDetected).toBe(false);
+  });
+
+  it('returns empty-context refusal when no embeddings exist', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+
+    const response = await api
+      .post(`/api/v1/workspaces/${workspaceId}/chat?stream=false`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ message: 'What decisions were made last week?' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.grounded).toBe(false);
+    expect(response.body.refusalReason).toBe('empty_context');
+    expect(response.body.reply).toContain("couldn't find relevant information");
+  });
+
+  it('clears a workspace chat session', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+
+    const chat = await api
+      .post(`/api/v1/workspaces/${workspaceId}/chat?stream=false`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ message: 'Hello' });
+
+    const cleared = await api
+      .delete(`/api/v1/workspaces/${workspaceId}/chat/sessions/${chat.body.sessionId}`)
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    expect(cleared.status).toBe(204);
+
+    const history = await api
+      .get(`/api/v1/workspaces/${workspaceId}/chat/sessions/${chat.body.sessionId}`)
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    expect(history.status).toBe(404);
+  });
 });

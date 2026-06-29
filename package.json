@@ -8,6 +8,8 @@
     "build": "npm run build --prefix frontend && npm run build --prefix backend",
     "lint": "npm run lint --prefix frontend && npm run lint --prefix backend",
     "test": "npm run test --prefix frontend && npm run test --prefix backend",
+    "eval:prompts": "npm --prefix backend run eval:prompts --",
+    "load:test:meetings": "npm --prefix backend run load:test:meetings --",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
     "prepare": "husky"

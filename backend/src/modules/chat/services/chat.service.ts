@@ -1,11 +1,11 @@
 import { ChatRole } from '@prisma/client';
 import { AppError, ErrorCodes } from '../../../utils/errors';
 import { chatAgent, buildChatCorrelationId } from '../../agents/chat/services/chat-agent.service';
-import { citationParserService } from '../../rag/services/citation-parser.service';
-import type { ContextBlock } from '../../rag/types/rag.types';
+import { conversationMemoryService } from '../../agents/memory';
 import { chatRepository } from '../chat.repository';
 import type { SendChatMessageDto } from '../dto/chat.dto';
-import type { ChatCitation, ChatMessage, ChatSession, StreamEvent } from '../types/chat.types';
+import type { ChatCitation, ChatMessage, ChatSession, StreamEvent, ChatStreamOptions } from '../types/chat.types';
+import { isStreamCancelled } from '../../llm/services/streaming.service';
 
 const HISTORY_LIMIT = 20;
 
@@ -47,6 +47,24 @@ function mapSession(session: {
     scope: session.meetingId ? 'meeting' : 'workspace',
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
+  };
+}
+
+function mapCitation(citation: {
+  index: number;
+  chunkId: string;
+  meetingId?: string;
+  meetingTitle?: string;
+  excerpt: string;
+  claimText?: string;
+}): ChatCitation {
+  return {
+    index: citation.index,
+    chunkId: citation.chunkId,
+    meetingId: citation.meetingId,
+    meetingTitle: citation.meetingTitle,
+    excerpt: citation.excerpt,
+    claimText: citation.claimText,
   };
 }
 
@@ -141,6 +159,7 @@ export class ChatService {
 
   async clearSession(userId: string, workspaceId: string, sessionId: string): Promise<void> {
     await chatRepository.softDeleteSession(sessionId, userId, workspaceId);
+    await conversationMemoryService.clearSession(workspaceId, sessionId);
   }
 
   private async loadHistory(sessionId: string): Promise<Array<{ role: string; content: string }>> {
@@ -177,24 +196,23 @@ export class ChatService {
       content: dto.message,
     });
 
+    const workspaceName = await chatRepository.getWorkspaceName(workspaceId);
+
     const correlationId = buildChatCorrelationId();
     const result = await chatAgent.runTurn(
       {
         userMessage: dto.message,
         workspaceId,
+        workspaceName,
         meetingId: session.meetingId ?? undefined,
+        sessionId: session.id,
+        messageCount: history.length + 1,
         chatHistory: history,
       },
       correlationId,
     );
 
-    const citations: ChatCitation[] = result.citations.map((citation) => ({
-      index: citation.index,
-      chunkId: citation.chunkId,
-      meetingId: citation.meetingId,
-      meetingTitle: citation.meetingTitle,
-      excerpt: citation.excerpt,
-    }));
+    const citations: ChatCitation[] = result.citations.map(mapCitation);
 
     const assistantMessage = await chatRepository.createMessage({
       sessionId: session.id,
@@ -209,6 +227,20 @@ export class ChatService {
 
     await chatRepository.touchSession(session.id);
 
+    await conversationMemoryService.recordTurn({
+      workspaceId,
+      sessionId: session.id,
+      messageCount: history.length + 2,
+      history: [
+        ...history.map((message) => ({
+          role: message.role as 'user' | 'assistant',
+          content: message.content,
+        })),
+        { role: 'user' as const, content: dto.message },
+        { role: 'assistant' as const, content: result.content },
+      ],
+    });
+
     return {
       sessionId: session.id,
       messageId: assistantMessage.id,
@@ -218,6 +250,9 @@ export class ChatService {
         prompt: result.promptTokens,
         completion: result.completionTokens,
       },
+      grounded: result.grounded,
+      refusalReason: result.refusalReason,
+      injectionDetected: result.injectionDetected,
     };
   }
 
@@ -226,6 +261,7 @@ export class ChatService {
     workspaceId: string,
     dto: SendChatMessageDto,
     meetingId?: string,
+    options: ChatStreamOptions = {},
   ): AsyncGenerator<StreamEvent> {
     try {
       const session = await this.getOrCreateSession(userId, workspaceId, {
@@ -243,20 +279,39 @@ export class ChatService {
         content: dto.message,
       });
 
+      const workspaceName = await chatRepository.getWorkspaceName(workspaceId);
+
       const correlationId = buildChatCorrelationId();
       const input = {
         userMessage: dto.message,
         workspaceId,
+        workspaceName,
         meetingId: session.meetingId ?? undefined,
+        sessionId: session.id,
+        messageCount: history.length + 1,
         chatHistory: history,
       };
 
       let finalContent = '';
       let promptTokens = 0;
       let completionTokens = 0;
-      let contextBlocks: ContextBlock[] = [];
+      let citations: ChatCitation[] = [];
+      let grounded = true;
+      let refusalReason: string | null = null;
+      let injectionDetected = false;
 
-      for await (const event of chatAgent.streamTurn(input, correlationId)) {
+      for await (const event of chatAgent.streamTurn(input, correlationId, options)) {
+        if (options.signal?.aborted) {
+          yield {
+            type: 'error',
+            data: {
+              code: 'STREAM_CANCELLED',
+              message: 'Client disconnected',
+            },
+          };
+          return;
+        }
+
         if (event.type === 'token') {
           yield { type: 'token', data: { content: event.content } };
         }
@@ -265,19 +320,12 @@ export class ChatService {
           finalContent = event.content;
           promptTokens = event.promptTokens;
           completionTokens = event.completionTokens;
-          contextBlocks = event.contextBlocks;
+          citations = event.citations.map(mapCitation);
+          grounded = event.grounded;
+          refusalReason = event.refusalReason;
+          injectionDetected = event.injectionDetected;
         }
       }
-
-      const citations: ChatCitation[] = citationParserService
-        .mapCitations(finalContent, contextBlocks)
-        .map((citation) => ({
-          index: citation.index,
-          chunkId: citation.chunkId ?? '',
-          meetingId: citation.meetingId,
-          meetingTitle: citation.meetingTitle,
-          excerpt: citation.excerpt ?? '',
-        }));
 
       const assistantMessage = await chatRepository.createMessage({
         sessionId: session.id,
@@ -289,6 +337,20 @@ export class ChatService {
 
       await chatRepository.touchSession(session.id);
 
+      await conversationMemoryService.recordTurn({
+        workspaceId,
+        sessionId: session.id,
+        messageCount: history.length + 2,
+        history: [
+          ...history.map((message) => ({
+            role: message.role as 'user' | 'assistant',
+            content: message.content,
+          })),
+          { role: 'user' as const, content: dto.message },
+          { role: 'assistant' as const, content: finalContent },
+        ],
+      });
+
       for (const citation of citations) {
         yield { type: 'citation', data: citation as unknown as Record<string, unknown> };
       }
@@ -299,9 +361,23 @@ export class ChatService {
           sessionId: session.id,
           messageId: assistantMessage.id,
           tokenUsage: { prompt: promptTokens, completion: completionTokens },
+          grounded,
+          refusalReason,
+          injectionDetected,
         },
       };
     } catch (error) {
+      if (isStreamCancelled(error) || options.signal?.aborted) {
+        yield {
+          type: 'error',
+          data: {
+            code: 'STREAM_CANCELLED',
+            message: 'Client disconnected',
+          },
+        };
+        return;
+      }
+
       const message = error instanceof Error ? error.message : 'Chat streaming failed';
       yield {
         type: 'error',

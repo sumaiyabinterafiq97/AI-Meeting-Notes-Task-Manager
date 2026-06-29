@@ -1,3 +1,13 @@
 export * from './types/chunk.types';
-export type { ChunkingStrategy } from './strategies/transcript.strategy';
+export * from './dto/chunk.dto';
+export * from './schemas/chunk.schema';
+export type { ChunkingStrategy } from './strategies/chunking-strategies';
 export { chunkingService, ChunkingService } from './services/chunking.service';
+export { chunkStatsService, ChunkStatsService } from './services/chunk-stats.service';
+export { chunkingStrategyRegistry, ChunkingStrategyRegistry } from './strategies/strategy-registry';
+export { buildMeetingChunkInputs } from './builders/meeting-chunk.builder';
+export { buildTaskChunkInputs } from './builders/task-chunk.builder';
+export { CHUNK_DEFAULTS, resolveChunkDefaults } from './lib/chunk.constants';
+export { parseVttCues, stripVttToPlainText } from './lib/vtt-parser';
+export { splitTextIntoChunks } from './lib/text-splitter';
+export { langChainRecursiveSplitter, toLangChainDocuments } from './langchain/recursive-splitter';

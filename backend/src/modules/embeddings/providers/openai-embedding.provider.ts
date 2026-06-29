@@ -1,13 +1,27 @@
 import { llmService } from '../../llm';
-import { embeddingService } from '../services/embedding.service';
-import type { EmbeddingRequest, EmbeddingResult } from '../types/embedding.types';
-import type { IEmbeddingProvider } from './embedding-provider.interface';
+import { BaseBatchEmbeddingProvider } from './base-batch-embedding.provider';
+import type { ProviderEmbedResponse } from './base-batch-embedding.provider';
 
-export class OpenAIEmbeddingProvider implements IEmbeddingProvider {
+/** OpenAI embeddings via LLM service layer. */
+export class OpenAIEmbeddingProvider extends BaseBatchEmbeddingProvider {
   readonly id = 'openai';
 
-  async embed(request: EmbeddingRequest): Promise<EmbeddingResult> {
-    return embeddingService.generate(request);
+  protected async callProvider(
+    texts: string[],
+    model: string,
+    workspaceId?: string,
+  ): Promise<ProviderEmbedResponse> {
+    const response = await llmService.embed({
+      texts,
+      model,
+      workspaceId,
+    });
+
+    return {
+      embeddings: response.embeddings,
+      model: response.model,
+      totalTokens: response.totalTokens,
+    };
   }
 
   async healthCheck(): Promise<boolean> {

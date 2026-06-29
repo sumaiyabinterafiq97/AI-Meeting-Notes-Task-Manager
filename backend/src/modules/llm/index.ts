@@ -7,6 +7,14 @@ export { providerRegistry, ProviderRegistry } from './services/provider-registry
 export { circuitBreakerService } from './services/circuit-breaker.service';
 export { resolveProviderChain } from './services/fallback-manager.service';
 export { withRetry } from './services/retry-handler.service';
+export { validateWithZod, validateParsedWithZod } from './services/zod-validator.service';
+export {
+  StreamCancelledError,
+  throwIfAborted,
+  isStreamCancelled,
+  streamBufferedText,
+} from './services/streaming.service';
+export * from './langchain';
 export {
   OpenAIProvider,
   GeminiProvider,

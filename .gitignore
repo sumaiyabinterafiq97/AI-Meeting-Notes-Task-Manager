@@ -38,3 +38,9 @@ docker-data/
 # Misc
 .cache/
 .turbo/
+
+# Local uploads (transcription tests, dev artifacts)
+backend/storage/
+
+# Personal career notes (not part of the product repo)
+career/

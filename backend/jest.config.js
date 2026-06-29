@@ -8,6 +8,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  setupFiles: ['<rootDir>/tests/load-env.ts'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   clearMocks: true,
   maxWorkers: 1,
