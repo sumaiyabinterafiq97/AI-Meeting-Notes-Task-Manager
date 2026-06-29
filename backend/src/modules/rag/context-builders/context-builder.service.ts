@@ -2,6 +2,9 @@ import { estimateTokens } from '../../../lib/token-estimate';
 import type { ContextBlock, RAGContext, RAGContextUseCase } from '../types/rag.types';
 import type { RetrievedChunk } from '../../retrievers/types/retriever.types';
 import { tokenBudgetService, resolveContextTokenBudget } from '../services/token-budget.service';
+import { citationMapperService } from './services/citation-mapper.service';
+import { contextCompressionService } from './services/context-compression.service';
+import { CONTEXT_HEADER_TOKEN_RESERVE } from './lib/context.constants';
 
 function formatContextBlock(block: ContextBlock): string {
   const meetingLine = block.meetingTitle
@@ -57,16 +60,31 @@ function parseTimestamp(value: string): number {
   return 0;
 }
 
+export interface ContextBuildOptions {
+  tokenBudget?: number;
+  useCase?: RAGContextUseCase;
+  compress?: boolean;
+}
+
 export class ContextBuilderService {
-  build(
-    chunks: RetrievedChunk[],
-    options?: { tokenBudget?: number; useCase?: RAGContextUseCase },
-  ): RAGContext {
-    const tokenBudget =
-      options?.tokenBudget ?? resolveContextTokenBudget(options?.useCase);
+  build(chunks: RetrievedChunk[], options?: ContextBuildOptions): RAGContext {
+    const useCase = options?.useCase;
+    const tokenBudget = options?.tokenBudget ?? resolveContextTokenBudget(useCase);
     const deduped = this.deduplicateChunks(chunks);
     const sorted = this.sortChunks(deduped);
-    const trimmed = tokenBudgetService.trimChunks(sorted, tokenBudget);
+
+    let working = sorted;
+    if (options?.compress) {
+      const rawTokens = sorted.reduce((sum, chunk) => sum + estimateTokens(chunk.content), 0);
+      const headerReserve = sorted.length * CONTEXT_HEADER_TOKEN_RESERVE;
+      const overflow = rawTokens + headerReserve - tokenBudget;
+      if (overflow > 0) {
+        working = contextCompressionService.compressLowestPriority(sorted, overflow);
+      }
+    }
+
+    const trimmed = tokenBudgetService.trimChunks(working, tokenBudget);
+    const chunksDropped = Math.max(0, working.length - trimmed.length);
 
     const blocks: ContextBlock[] = trimmed.map((chunk, index) => ({
       citationIndex: index + 1,
@@ -80,12 +98,32 @@ export class ContextBuilderService {
       metadata: chunk.metadata,
     }));
 
-    const totalTokens = blocks.reduce(
-      (sum, block) => sum + estimateTokens(formatContextBlock(block)),
-      0,
-    );
+    const formattedContext = this.formatBlocks(blocks);
+    const citations = citationMapperService.mapBlocks(blocks, trimmed);
+    const totalTokens = estimateTokens(formattedContext);
 
-    return { blocks, totalTokens };
+    return {
+      blocks,
+      formattedContext,
+      citations,
+      totalTokens,
+      tokenBudget,
+      chunksIncluded: blocks.length,
+      chunksDropped,
+      useCase,
+    };
+  }
+
+  buildForChat(chunks: RetrievedChunk[], tokenBudget?: number): RAGContext {
+    return this.build(chunks, { useCase: 'chat', tokenBudget, compress: true });
+  }
+
+  buildForMeeting(chunks: RetrievedChunk[], tokenBudget?: number): RAGContext {
+    return this.build(chunks, { useCase: 'meeting', tokenBudget, compress: true });
+  }
+
+  buildForWeeklyReport(chunks: RetrievedChunk[], tokenBudget?: number): RAGContext {
+    return this.build(chunks, { useCase: 'weekly', tokenBudget, compress: false });
   }
 
   formatBlocks(blocks: ContextBlock[]): string {

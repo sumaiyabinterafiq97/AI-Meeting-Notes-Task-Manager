@@ -1,5 +1,6 @@
 import { EmbeddingJobStatus } from '@prisma/client';
 import { prisma } from '../../../config/database';
+import type { EmbeddingJobStatusDto } from '../dto/embedding.dto';
 
 export class EmbeddingRepository {
   async createJob(workspaceId: string, meetingId: string, chunksTotal: number) {
@@ -54,11 +55,38 @@ export class EmbeddingRepository {
     });
   }
 
+  async findById(jobId: string) {
+    return prisma.embeddingJob.findUnique({ where: { id: jobId } });
+  }
+
   async findLatestForMeeting(meetingId: string) {
     return prisma.embeddingJob.findFirst({
       where: { meetingId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async listForMeeting(meetingId: string, limit = 10) {
+    return prisma.embeddingJob.findMany({
+      where: { meetingId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  toStatusDto(job: NonNullable<Awaited<ReturnType<EmbeddingRepository['findById']>>>): EmbeddingJobStatusDto {
+    return {
+      id: job.id,
+      workspaceId: job.workspaceId,
+      meetingId: job.meetingId,
+      status: job.status,
+      chunksTotal: job.chunksTotal,
+      chunksProcessed: job.chunksProcessed,
+      errorMessage: job.errorMessage,
+      startedAt: job.startedAt?.toISOString() ?? null,
+      completedAt: job.completedAt?.toISOString() ?? null,
+      createdAt: job.createdAt.toISOString(),
+    };
   }
 }
 

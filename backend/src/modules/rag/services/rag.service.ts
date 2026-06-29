@@ -1,14 +1,17 @@
-import type { RAGContext, RAGContextUseCase, RAGPipelineResult, RAGQuery, RAGSearchResult } from '../types/rag.types';
+import type {
+  RAGBuildOptions,
+  RAGContext,
+  RAGPipelineExecutionResult,
+  RAGPipelineResult,
+  RAGQuery,
+  RAGSearchResult,
+} from '../types/rag.types';
 import { hybridRetriever } from '../retrievers/hybrid.retriever';
 import { contextBuilderService } from '../context-builders/context-builder.service';
-import { promptBuilderService } from '../prompt-builders/prompt-builder.service';
+import { ragObservabilityService } from './rag-observability.service';
+import { ragPipelineService } from './rag-pipeline.service';
 
-export interface RAGBuildOptions {
-  promptId?: string;
-  variables?: Record<string, string>;
-  useCase?: RAGContextUseCase;
-  tokenBudget?: number;
-}
+export type { RAGBuildOptions };
 
 /**
  * RAG service — retrieval, context construction, prompt assembly.
@@ -17,10 +20,11 @@ export interface RAGBuildOptions {
 export class RAGService {
   async retrieve(query: RAGQuery) {
     const startedAt = Date.now();
-    const { chunks, cacheHit } = await hybridRetriever.retrieve(query);
+    const { chunks, cacheHit, retrievalMode } = await hybridRetriever.retrieve(query);
     return {
       chunks,
       cacheHit,
+      retrievalMode,
       latencyMs: Date.now() - startedAt,
     };
   }
@@ -30,12 +34,27 @@ export class RAGService {
     options?: Pick<RAGBuildOptions, 'useCase' | 'tokenBudget'>,
   ): Promise<RAGContext> {
     const { chunks } = await this.retrieve(query);
-    return contextBuilderService.build(chunks, options);
+    const useCase = options?.useCase ?? (query.meetingId ? 'meeting' : 'chat');
+    const context =
+      useCase === 'weekly'
+        ? contextBuilderService.buildForWeeklyReport(chunks, options?.tokenBudget)
+        : useCase === 'meeting'
+          ? contextBuilderService.buildForMeeting(chunks, options?.tokenBudget)
+          : contextBuilderService.buildForChat(chunks, options?.tokenBudget);
+
+    ragObservabilityService.recordContextBuild({
+      workspaceId: query.workspaceId,
+      chunkCount: context.chunksIncluded,
+      contextTokens: context.totalTokens,
+      useCase,
+      chunksDropped: context.chunksDropped,
+    });
+    return context;
   }
 
   async search(query: RAGQuery): Promise<RAGSearchResult> {
     const startedAt = Date.now();
-    const { chunks, cacheHit } = await hybridRetriever.retrieve(query);
+    const { chunks, cacheHit, retrievalMode } = await hybridRetriever.retrieve(query);
 
     return {
       chunks: chunks.map((chunk) => ({
@@ -47,8 +66,17 @@ export class RAGService {
         metadata: chunk.metadata,
       })),
       cacheHit,
+      retrievalMode,
       latencyMs: Date.now() - startedAt,
     };
+  }
+
+  async executePipeline(
+    query: RAGQuery,
+    history: Array<{ role: string; content: string }> = [],
+    options?: RAGBuildOptions,
+  ): Promise<RAGPipelineExecutionResult> {
+    return ragPipelineService.execute(query, history, options);
   }
 
   async prepareChatPrompt(
@@ -56,35 +84,11 @@ export class RAGService {
     history: Array<{ role: string; content: string }> = [],
     options?: RAGBuildOptions,
   ): Promise<RAGPipelineResult> {
-    const promptId = options?.promptId ?? 'chat-agent';
-    const retrieval = await this.search(query);
-    const context = contextBuilderService.build(
-      retrieval.chunks.map((chunk) => ({
-        id: chunk.id,
-        content: chunk.content,
-        meetingId: chunk.meetingId,
-        sourceType: chunk.sourceType,
-        similarity: chunk.similarity,
-        metadata: chunk.metadata,
-      })),
-      {
-        useCase: options?.useCase ?? (query.meetingId ? 'meeting' : 'chat'),
-        tokenBudget: options?.tokenBudget,
-      },
-    );
-
-    const prompt = promptBuilderService.build(
-      promptId,
-      context.blocks,
-      history,
-      query.query,
-      options?.variables,
-    );
-
+    const result = await ragPipelineService.execute(query, history, options);
     return {
-      context,
-      prompt,
-      retrieval,
+      context: result.context,
+      prompt: result.prompt,
+      retrieval: result.retrieval,
     };
   }
 }

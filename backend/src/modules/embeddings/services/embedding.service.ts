@@ -1,13 +1,21 @@
 import { env } from '../../../config/env';
-import { llmService } from '../../llm';
+import { embeddingProviderRegistry } from '../providers/embedding-provider.registry';
+import { embeddingObservabilityService } from './embedding-observability.service';
+import { embeddingRequestSchema } from '../schemas/embedding.schema';
+import { estimateEmbeddingCostUsd, EMBEDDING_DIMENSIONS } from '../lib/embedding.constants';
 import type { EmbeddingRequest, EmbeddingResult } from '../types/embedding.types';
-import { embeddingCacheService } from './embedding-cache.service';
 
-const DEFAULT_BATCH_SIZE = 100;
-const DEFAULT_DIMENSIONS = 1536;
+function resolveProviderId(): string {
+  return env.EMBEDDING_PROVIDER ?? 'openai';
+}
 
 export class EmbeddingService {
   async generate(request: EmbeddingRequest): Promise<EmbeddingResult> {
+    embeddingRequestSchema.parse({
+      texts: request.texts,
+      model: request.model,
+      workspaceId: request.workspaceId,
+    });
     return this.generateBatch(request.texts, request.workspaceId ?? '', request.model);
   }
 
@@ -20,61 +28,60 @@ export class EmbeddingService {
       return {
         embeddings: [],
         model: model ?? env.EMBEDDING_MODEL,
-        dimensions: DEFAULT_DIMENSIONS,
+        dimensions: EMBEDDING_DIMENSIONS,
         totalTokens: 0,
+        cacheHits: 0,
+        cacheMisses: 0,
+        retries: 0,
       };
     }
 
-    const resolvedModel = model ?? env.EMBEDDING_MODEL;
-    const batchSize = DEFAULT_BATCH_SIZE;
-    const embeddings: number[][] = new Array(texts.length);
-    let totalTokens = 0;
-    let cacheHits = 0;
+    const providerId = resolveProviderId();
+    const provider = embeddingProviderRegistry.getOrThrow(providerId);
+    const startedAt = Date.now();
 
-    for (let offset = 0; offset < texts.length; offset += batchSize) {
-      const batch = texts.slice(offset, offset + batchSize);
-      const cached = await embeddingCacheService.getMany(batch, resolvedModel);
-
-      const uncachedIndices: number[] = [];
-      const uncachedTexts: string[] = [];
-
-      cached.forEach((vector, index) => {
-        const globalIndex = offset + index;
-        if (vector) {
-          embeddings[globalIndex] = vector;
-          cacheHits += 1;
-        } else {
-          uncachedIndices.push(globalIndex);
-          uncachedTexts.push(batch[index]!);
-        }
-      });
-
-      if (uncachedTexts.length === 0) {
-        continue;
-      }
-
-      const response = await llmService.embed({
-        texts: uncachedTexts,
-        model: resolvedModel,
+    try {
+      const result = await provider.embed({
+        texts,
+        model: model as EmbeddingRequest['model'],
         workspaceId: workspaceId || undefined,
       });
 
-      uncachedIndices.forEach((globalIndex, index) => {
-        embeddings[globalIndex] = response.embeddings[index] ?? [];
+      const latencyMs = Date.now() - startedAt;
+      const estimatedCostUsd = estimateEmbeddingCostUsd(result.totalTokens);
+
+      embeddingObservabilityService.record({
+        workspaceId: workspaceId || undefined,
+        provider: providerId,
+        model: result.model,
+        batchSize: texts.length,
+        totalTokens: result.totalTokens,
+        cacheHits: result.cacheHits ?? 0,
+        cacheMisses: result.cacheMisses ?? texts.length,
+        latencyMs,
+        estimatedCostUsd,
+        retries: result.retries ?? 0,
       });
 
-      await embeddingCacheService.setMany(uncachedTexts, response.model, response.embeddings);
-      totalTokens += response.totalTokens;
+      return {
+        ...result,
+        latencyMs,
+        estimatedCostUsd,
+      };
+    } catch (error) {
+      embeddingObservabilityService.recordFailure(error, {
+        workspaceId: workspaceId || undefined,
+        provider: providerId,
+      });
+      throw error;
     }
+  }
 
-    return {
-      embeddings,
-      model: resolvedModel,
-      dimensions: embeddings.find((vector) => vector.length > 0)?.length ?? DEFAULT_DIMENSIONS,
-      totalTokens,
-      cacheHits,
-      cacheMisses: texts.length - cacheHits,
-    };
+  listProviders(): Array<{ id: string; available: boolean }> {
+    return embeddingProviderRegistry.list().map((provider) => ({
+      id: provider.id,
+      available: true,
+    }));
   }
 }
 

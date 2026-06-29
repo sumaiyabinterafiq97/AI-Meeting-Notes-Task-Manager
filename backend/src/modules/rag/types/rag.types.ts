@@ -6,6 +6,7 @@ export interface RAGQuery {
   meetingId?: string;
   mode?: RAGSearchMode;
   topK?: number;
+  similarityMin?: number;
   sourceTypes?: string[];
   dateFrom?: string;
   dateTo?: string;
@@ -24,9 +25,55 @@ export interface ContextBlock {
   metadata: Record<string, unknown>;
 }
 
+export interface RAGContextCitation {
+  index: number;
+  chunkId?: string;
+  meetingId?: string;
+  meetingTitle?: string;
+  sourceType?: string;
+  excerpt: string;
+  similarityScore?: number;
+}
+
 export interface RAGContext {
   blocks: ContextBlock[];
+  formattedContext: string;
+  citations: RAGContextCitation[];
   totalTokens: number;
+  tokenBudget: number;
+  chunksIncluded: number;
+  chunksDropped: number;
+  useCase?: RAGContextUseCase;
+}
+
+export type RAGPipelineStage =
+  | 'query'
+  | 'embed'
+  | 'vector_search'
+  | 'filter'
+  | 'rank'
+  | 'context'
+  | 'prompt';
+
+export interface RAGPipelineStageMetric {
+  stage: RAGPipelineStage;
+  latencyMs: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface RAGPipelineExecutionResult extends RAGPipelineResult {
+  stages: RAGPipelineStageMetric[];
+  degraded: boolean;
+  retries: number;
+}
+
+export interface RAGBuildOptions {
+  promptId?: string;
+  variables?: Record<string, string>;
+  useCase?: RAGContextUseCase;
+  tokenBudget?: number;
+  maxRetries?: number;
 }
 
 export interface RAGPromptPackage {
@@ -47,6 +94,7 @@ export interface RAGSearchResult {
   }>;
   cacheHit: boolean;
   latencyMs: number;
+  retrievalMode?: 'hybrid' | 'semantic' | 'keyword' | 'keyword_only';
 }
 
 export interface RAGPipelineResult {

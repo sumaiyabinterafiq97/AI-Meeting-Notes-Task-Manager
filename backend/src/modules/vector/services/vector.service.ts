@@ -1,80 +1,62 @@
-import { embeddingService } from '../../embeddings/services/embedding.service';
-import type { DocumentChunk, HybridSearchQuery } from '../types/vector.types';
-import { vectorRepository } from '../repositories/vector.repository';
-import { reciprocalRankFusion } from './rrf.service';
+import type { HybridSearchQuery } from '../types/vector.types';
+import type { HybridFusionStrategy } from '../types/hybrid-search.types';
+import { hybridSearchService } from './hybrid-search.service';
+import { filterValidatorService } from './filter-validator.service';
 
-const DEFAULT_TOP_K = 20;
-const SEMANTIC_MIN_SIMILARITY = 0.65;
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../lib/vector.constants';
 
 export class VectorService {
-  async hybridSearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {
-    const topK = query.topK ?? DEFAULT_TOP_K;
+  async searchPaginated(query: HybridSearchQuery): Promise<import('../types/vector.types').PaginatedSearchResult> {
+    const parsed = {
+      page: query.page ?? 1,
+      pageSize: Math.min(query.pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE),
+    };
+    const fetchLimit = parsed.page * parsed.pageSize;
+    const results = await this.hybridSearch({
+      ...query,
+      topK: Math.max(fetchLimit, query.topK ?? 20),
+    });
 
-    if (query.mode === 'keyword') {
-      return vectorRepository.keywordSearch({ ...query, topK });
-    }
+    const start = (parsed.page - 1) * parsed.pageSize;
+    const items = results.slice(start, start + parsed.pageSize);
 
-    if (query.mode === 'semantic') {
-      const semantic = await this.semanticSearch(query);
-      if (semantic.length > 0) {
-        return semantic;
-      }
-      return vectorRepository.keywordSearch({ ...query, topK });
-    }
-
-    const [semantic, keyword] = await Promise.all([
-      this.semanticSearch({ ...query, topK: Math.max(topK, 50) }),
-      vectorRepository.keywordSearch({ ...query, topK: Math.max(topK, 50) }),
-    ]);
-
-    if (semantic.length === 0 && keyword.length > 0) {
-      return keyword.slice(0, topK);
-    }
-
-    if (semantic.length === 0 && keyword.length === 0) {
-      return [];
-    }
-
-    const fused = reciprocalRankFusion(
-      [semantic, keyword],
-      (chunk) => chunk.id,
-      60,
-    );
-
-    return fused.slice(0, topK).map((entry) => ({
-      ...entry.item,
-      similarity: entry.score,
-    }));
+    return {
+      items,
+      total: results.length,
+      page: parsed.page,
+      pageSize: parsed.pageSize,
+      hasMore: results.length > start + parsed.pageSize,
+    };
   }
 
-  async semanticSearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {
-    try {
-      const embedResult = await embeddingService.generateBatch(
-        [query.query],
-        query.workspaceId,
-      );
-
-      const queryVector = embedResult.embeddings[0] ?? [];
-      if (queryVector.length === 0) {
-        return [];
-      }
-
-      return vectorRepository.similaritySearch({
-        workspaceId: query.workspaceId,
-        queryVector,
-        meetingId: query.meetingId,
-        sourceTypes: query.sourceTypes,
-        topK: query.topK ?? DEFAULT_TOP_K,
-        minSimilarity: SEMANTIC_MIN_SIMILARITY,
-        dateFrom: query.dateFrom,
-        dateTo: query.dateTo,
-      });
-    } catch {
-      return [];
-    }
+  async hybridSearch(
+    query: HybridSearchQuery,
+    fusionStrategy: HybridFusionStrategy = 'rrf',
+  ): Promise<import('../types/vector.types').DocumentChunk[]> {
+    filterValidatorService.validate(query);
+    const result = await hybridSearchService.search(query, fusionStrategy);
+    return hybridSearchService.toDocumentChunks(result);
   }
 
-  async similaritySearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {
+  async hybridSearchDetailed(
+    query: HybridSearchQuery,
+    fusionStrategy: HybridFusionStrategy = 'rrf',
+  ) {
+    filterValidatorService.validate(query);
+    return hybridSearchService.search(query, fusionStrategy);
+  }
+
+  async keywordOnlySearch(query: HybridSearchQuery): Promise<import('../types/vector.types').DocumentChunk[]> {
+    filterValidatorService.validate(query);
+    const result = await hybridSearchService.search({ ...query, mode: 'keyword' });
+    return hybridSearchService.toDocumentChunks(result);
+  }
+
+  async semanticSearch(query: HybridSearchQuery): Promise<import('../types/vector.types').DocumentChunk[]> {
+    return hybridSearchService.semanticSearch(query);
+  }
+
+  async similaritySearch(query: HybridSearchQuery): Promise<import('../types/vector.types').DocumentChunk[]> {
     return this.semanticSearch(query);
   }
 }

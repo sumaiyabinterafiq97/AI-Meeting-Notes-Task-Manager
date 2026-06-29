@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { buildCacheKey, getRedisClient } from '../../../config/redis';
 import { env } from '../../../config/env';
+import { ragCacheObservabilityService } from '../../rag/services/rag-cache-observability.service';
 
 interface MemoryEntry {
   value: string;
@@ -22,8 +23,9 @@ export class EmbeddingCacheService {
     return buildCacheKey('emb', hashText(text, model));
   }
 
-  async get(text: string, model: string): Promise<number[] | null> {
+  async get(text: string, model: string, workspaceId?: string): Promise<number[] | null> {
     if (!env.RAG_CACHE_ENABLED) {
+      ragCacheObservabilityService.record({ namespace: 'emb', hit: false, workspaceId });
       return null;
     }
 
@@ -34,6 +36,7 @@ export class EmbeddingCacheService {
       try {
         const cached = await redis.get(key);
         if (cached) {
+          ragCacheObservabilityService.record({ namespace: 'emb', hit: true, workspaceId });
           return JSON.parse(cached) as number[];
         }
       } catch {
@@ -43,18 +46,21 @@ export class EmbeddingCacheService {
 
     const entry = memoryCache.get(key);
     if (!entry) {
+      ragCacheObservabilityService.record({ namespace: 'emb', hit: false, workspaceId });
       return null;
     }
     if (Date.now() > entry.expiresAt) {
       memoryCache.delete(key);
+      ragCacheObservabilityService.record({ namespace: 'emb', hit: false, workspaceId });
       return null;
     }
 
+    ragCacheObservabilityService.record({ namespace: 'emb', hit: true, workspaceId });
     return JSON.parse(entry.value) as number[];
   }
 
-  async getMany(texts: string[], model: string): Promise<(number[] | null)[]> {
-    return Promise.all(texts.map((text) => this.get(text, model)));
+  async getMany(texts: string[], model: string, workspaceId?: string): Promise<(number[] | null)[]> {
+    return Promise.all(texts.map((text) => this.get(text, model, workspaceId)));
   }
 
   async set(text: string, model: string, vector: number[]): Promise<void> {

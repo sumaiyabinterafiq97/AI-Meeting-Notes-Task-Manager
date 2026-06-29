@@ -2,6 +2,7 @@ export type DocumentSourceType =
   | 'transcript'
   | 'summary'
   | 'decision'
+  | 'risk'
   | 'action_item'
   | 'knowledge';
 
@@ -38,6 +39,17 @@ export interface HybridSearchQuery {
   meetingId?: string;
   sourceTypes?: DocumentSourceType[];
   topK?: number;
+  minSimilarity?: number;
   dateFrom?: string;
   dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedSearchResult {
+  items: DocumentChunk[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }

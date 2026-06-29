@@ -1,11 +1,17 @@
 import type { IEmbeddingProvider } from './embedding-provider.interface';
+import { geminiEmbeddingProvider } from './gemini-embedding.provider';
+import { localEmbeddingProvider } from './local-embedding.provider';
 import { openAIEmbeddingProvider } from './openai-embedding.provider';
+import { voyageEmbeddingProvider } from './voyage-embedding.provider';
 
 export class EmbeddingProviderRegistry {
   private readonly providers = new Map<string, IEmbeddingProvider>();
 
   constructor() {
     this.register(openAIEmbeddingProvider);
+    this.register(geminiEmbeddingProvider);
+    this.register(localEmbeddingProvider);
+    this.register(voyageEmbeddingProvider);
   }
 
   register(provider: IEmbeddingProvider): void {
