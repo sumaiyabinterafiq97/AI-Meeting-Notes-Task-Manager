@@ -300,7 +300,9 @@ flowchart LR
 
 ---
 
-## 10. Future LangGraph Support
+## 10. LangGraph Orchestration (Implemented)
+
+The legacy imperative orchestrator (`PipelineOrchestratorService`) now delegates to `orchestratorService` → LangGraph graphs in `modules/orchestrator/graphs/`.
 
 ```mermaid
 stateDiagram-v2
@@ -311,36 +313,58 @@ stateDiagram-v2
         [*] --> Summarizer
         [*] --> TaskExtraction
         [*] --> Decision
-        [*] --> RiskAnalyzer
-        Summarizer --> [*]
-        TaskExtraction --> [*]
-        Decision --> [*]
-        RiskAnalyzer --> [*]
+        Summarizer --> RiskAnalyzer
+        Decision --> RiskAnalyzer
+        TaskExtraction --> MergeOutputs
+        Summarizer --> MergeOutputs
+        Decision --> MergeOutputs
+        RiskAnalyzer --> MergeOutputs
     }
 
-    ParallelExtract --> MergeOutputs
-    MergeOutputs --> PersistOutputs
+    ParallelExtract --> PersistOutputs
     PersistOutputs --> KnowledgeExtract
-    KnowledgeExtract --> EmbedVectors
-    EmbedVectors --> [*]
+    KnowledgeExtract --> [*]
 ```
 
-### LangGraph Migration Path
+### Workflow registry (not hardcoded in nodes)
 
-| Current | LangGraph Equivalent |
-|---------|---------------------|
-| Agent Orchestrator | `StateGraph` |
-| Agent message envelope | Graph state schema |
-| `agent_executions` table | Checkpoint store |
-| BullMQ job | Graph invocation trigger |
-| Parallel fan-out | `add_edge` from START to multiple nodes |
-| Merge node | Reducer function on state |
-| Feature flag | Graph selector at runtime |
+Edges and node order are declared in `WORKFLOW_REGISTRY` (`workflows/workflow.types.ts`). Adding a new agent requires:
 
-**Design principles for compatibility:**
-1. Each agent is a pure `async function(state) → partialState`
-2. No agent calls another agent directly — only via orchestrator/graph edges
-3. State schema is versioned and JSON-serializable
+1. Register metadata in `agent-registry.ts`
+2. Implement a graph node wrapping the existing agent service
+3. Add node + edges to the relevant workflow definition
+
+### LangGraph mapping
+
+| Component | Location |
+|-----------|----------|
+| `StateGraph` | `executors/graph-executor.service.ts` |
+| Graph state schema | `state/graph-state.types.ts` + LangGraph `Annotation` |
+| Checkpoint store | `checkpoints/checkpoint-store.ts` |
+| BullMQ job trigger | Unchanged — graph runs inside worker |
+| Parallel fan-out | Multiple `__start__` edges in workflow definition |
+| Merge node | `nodes/merge.node.ts` + output merger service |
+
+### Memory model
+
+| Layer | Purpose |
+|-------|---------|
+| Conversation memory | `orchestratorMemoryAdapter` → `ConversationMemoryService` |
+| Session memory | Redis/in-memory via `SessionMemoryStore` |
+| Execution memory | In-process `executionMemoryStore` for active runs |
+| Checkpoint memory | Serializable graph state snapshots |
+
+### Retry & recovery
+
+- Per-node retries: configurable via agent registry (`maxRetries`, default 2)
+- Critical failure: summarizer failure → pipeline `failed`
+- Partial failure: non-critical agents empty → `partial` status, persist succeeds
+- Recovery: `orchestratorService.recoverMeetingIntelligence(correlationId, input)`
+
+**Design principles:**
+1. Each agent is a pure `async function(state) → partialState` (graph node)
+2. No agent calls another agent directly — only via graph edges
+3. State schema is JSON-serializable with reducers
 4. BullMQ remains the job trigger; LangGraph runs inside worker
 
 ---
@@ -418,3 +442,4 @@ Every agent execution records:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-06-18 | Initial agent flow |
+| 1.1 | 2026-06-20 | LangGraph orchestration layer documented |

@@ -5,6 +5,7 @@ const TO_PRISMA: Record<DocumentSourceType, PrismaDocumentSourceType> = {
   transcript: PrismaDocumentSourceType.TRANSCRIPT,
   summary: PrismaDocumentSourceType.SUMMARY,
   decision: PrismaDocumentSourceType.DECISION,
+  risk: PrismaDocumentSourceType.RISK,
   action_item: PrismaDocumentSourceType.ACTION_ITEM,
   knowledge: PrismaDocumentSourceType.KNOWLEDGE,
 };
@@ -13,12 +14,18 @@ const FROM_PRISMA: Record<PrismaDocumentSourceType, DocumentSourceType> = {
   [PrismaDocumentSourceType.TRANSCRIPT]: 'transcript',
   [PrismaDocumentSourceType.SUMMARY]: 'summary',
   [PrismaDocumentSourceType.DECISION]: 'decision',
+  [PrismaDocumentSourceType.RISK]: 'risk',
   [PrismaDocumentSourceType.ACTION_ITEM]: 'action_item',
   [PrismaDocumentSourceType.KNOWLEDGE]: 'knowledge',
 };
 
-export function toPrismaSourceType(sourceType: DocumentSourceType): PrismaDocumentSourceType {
-  return TO_PRISMA[sourceType];
+export function normalizeChunkSourceType(sourceType: string): DocumentSourceType {
+  if (sourceType === 'task') return 'action_item';
+  return sourceType as DocumentSourceType;
+}
+
+export function toPrismaSourceType(sourceType: DocumentSourceType | string): PrismaDocumentSourceType {
+  return TO_PRISMA[normalizeChunkSourceType(sourceType)];
 }
 
 export function fromPrismaSourceType(sourceType: PrismaDocumentSourceType): DocumentSourceType {

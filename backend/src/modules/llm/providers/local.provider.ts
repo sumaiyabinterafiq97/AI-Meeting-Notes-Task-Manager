@@ -10,6 +10,8 @@ import type {
   LLMEmbedResponse,
   LLMStreamChunk,
 } from '../types/llm.types';
+import { throwIfAborted } from '../services/streaming.service';
+import { toOpenAIMessages } from './openai-message.mapper';
 
 let client: OpenAI | null = null;
 
@@ -42,13 +44,29 @@ export class LocalModelProvider implements ILLMProvider {
 
       const completion = await openai.chat.completions.create({
         model,
-        messages: request.messages,
+        messages: toOpenAIMessages(request.messages),
         temperature: request.temperature,
         max_tokens: request.maxTokens,
+        ...(request.tools?.length
+          ? {
+              tools: request.tools.map((tool) => ({
+                type: 'function' as const,
+                function: tool.function,
+              })),
+              tool_choice: request.toolChoice ?? 'auto',
+            }
+          : {}),
       });
 
       const choice = completion.choices[0];
       const content = choice?.message?.content ?? '';
+      const toolCalls = choice?.message?.tool_calls
+        ?.filter((toolCall): toolCall is Extract<typeof toolCall, { type: 'function' }> => toolCall.type === 'function')
+        .map((toolCall) => ({
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+        }));
 
       return {
         content,
@@ -57,6 +75,7 @@ export class LocalModelProvider implements ILLMProvider {
         promptTokens: completion.usage?.prompt_tokens ?? 0,
         completionTokens: completion.usage?.completion_tokens ?? 0,
         finishReason: choice?.finish_reason ?? 'stop',
+        toolCalls,
       };
     } catch (error) {
       if (error instanceof LLMProviderError) throw error;
@@ -69,15 +88,19 @@ export class LocalModelProvider implements ILLMProvider {
       const openai = getClient();
       const model = request.model ?? env.LOCAL_LLM_MODEL;
 
-      const stream = await openai.chat.completions.create({
-        model,
-        messages: request.messages,
-        temperature: request.temperature,
-        max_tokens: request.maxTokens,
-        stream: true,
-      });
+      const stream = await openai.chat.completions.create(
+        {
+          model,
+          messages: toOpenAIMessages(request.messages),
+          temperature: request.temperature,
+          max_tokens: request.maxTokens,
+          stream: true,
+        },
+        { signal: request.signal },
+      );
 
       for await (const chunk of stream) {
+        throwIfAborted(request.signal);
         const delta = chunk.choices[0]?.delta?.content ?? '';
         if (delta) {
           yield { content: delta, done: false };

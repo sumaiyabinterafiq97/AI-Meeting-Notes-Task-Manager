@@ -51,6 +51,8 @@ export async function processMeetingJob(jobId: string): Promise<void> {
       transcript: meeting.transcript.content,
       meetingTitle: meeting.title,
       meetingDate: meeting.meetingDate.toISOString().slice(0, 10),
+      durationMinutes: meeting.durationMinutes,
+      tags: meeting.tags,
       attendees,
       memberNames,
       workspaceId: currentJob.workspaceId,

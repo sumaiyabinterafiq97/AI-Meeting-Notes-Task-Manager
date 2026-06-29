@@ -8,6 +8,7 @@ import {
   updateMemberRoleValidation,
   workspaceIdParamValidation,
   memberParamsValidation,
+  reindexWorkspaceValidation,
 } from './workspace.validator';
 import { authenticate, validate } from '../../middlewares';
 import { requireWorkspaceMember, requireRole } from '../../middlewares/require-workspace';
@@ -145,6 +146,14 @@ router.delete(
   requireWorkspaceMember,
   requireRole([WorkspaceRole.OWNER]),
   (req, res, next) => workspaceController.removeMember(req, res, next),
+);
+
+router.post(
+  '/:workspaceId/reindex',
+  validate([...workspaceIdParamValidation, ...reindexWorkspaceValidation]),
+  requireWorkspaceMember,
+  requireRole([WorkspaceRole.OWNER]),
+  (req, res, next) => workspaceController.reindex(req, res, next),
 );
 
 export { router as workspaceRoutes };

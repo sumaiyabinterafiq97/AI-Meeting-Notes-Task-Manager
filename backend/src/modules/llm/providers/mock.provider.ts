@@ -2,6 +2,7 @@ import type { ILLMProvider } from '../interfaces/llm-provider.interface';
 import { getDefaultModelForProvider, resolveModelInfo } from '../config/model-catalog';
 import {
   buildMockCompletionContent,
+  buildMockChatToolResponse,
   buildMockEmbedding,
 } from '../fixtures/mock-responses';
 import type {
@@ -11,21 +12,28 @@ import type {
   LLMEmbedResponse,
   LLMStreamChunk,
 } from '../types/llm.types';
+import { throwIfAborted } from '../services/streaming.service';
 
 export class MockLLMProvider implements ILLMProvider {
   readonly id = 'mock' as const;
 
   async complete(request: LLMCompletionRequest): Promise<LLMCompletionResponse> {
-    const content = buildMockCompletionContent(request);
     const promptTokens = request.messages.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
+    const toolResponse =
+      request.workflow === 'chat' && request.tools?.length
+        ? buildMockChatToolResponse(request)
+        : { content: buildMockCompletionContent(request), finishReason: 'stop' as const };
+    const content = toolResponse.content;
+    const completionTokens = Math.ceil(content.length / 4);
 
     return {
       content,
       model: 'mock',
       provider: 'mock',
       promptTokens,
-      completionTokens: Math.ceil(content.length / 4),
-      finishReason: 'stop',
+      completionTokens,
+      finishReason: toolResponse.finishReason,
+      toolCalls: toolResponse.toolCalls,
     };
   }
 
@@ -34,6 +42,7 @@ export class MockLLMProvider implements ILLMProvider {
     const words = content.split(' ');
 
     for (const word of words) {
+      throwIfAborted(request.signal);
       yield { content: `${word} `, done: false };
     }
 

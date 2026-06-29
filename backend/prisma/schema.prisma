@@ -96,6 +96,7 @@ enum DocumentSourceType {
   TRANSCRIPT
   SUMMARY
   DECISION
+  RISK
   ACTION_ITEM
   KNOWLEDGE
 }

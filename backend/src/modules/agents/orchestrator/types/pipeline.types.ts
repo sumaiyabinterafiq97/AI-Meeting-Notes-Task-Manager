@@ -9,6 +9,8 @@ export interface MeetingPipelineInput {
   transcript: string;
   meetingTitle: string;
   meetingDate: string;
+  durationMinutes?: number | null;
+  tags?: string[];
   attendees: string[];
   memberNames: string[];
   workspaceId: string;
@@ -26,6 +28,18 @@ export interface MeetingPipelineOutput {
   partialFailure: boolean;
 }
 
+export interface AgentDetailEntry {
+  status: string;
+  error?: string;
+  nextSteps?: string[];
+  participantsDiscussed?: string[];
+  confidenceScore?: number;
+  citationCount?: number;
+  itemCount?: number;
+  filteredCount?: number;
+  averageConfidence?: number;
+}
+
 export interface ExtractionAgentResults {
   summary: string;
   topics: string[];
@@ -35,5 +49,5 @@ export interface ExtractionAgentResults {
   promptTokens: number;
   completionTokens: number;
   partialFailure: boolean;
-  agentDetails: Record<string, { status: string; error?: string }>;
+  agentDetails: Record<string, AgentDetailEntry>;
 }

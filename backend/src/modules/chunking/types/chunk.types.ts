@@ -1,4 +1,19 @@
-export type ChunkSourceType = 'transcript' | 'summary' | 'decision' | 'action_item' | 'knowledge';
+export type ChunkSourceType =
+  | 'transcript'
+  | 'summary'
+  | 'decision'
+  | 'risk'
+  | 'action_item'
+  | 'task'
+  | 'knowledge';
+
+export type ChunkingStrategyName =
+  | 'fixed'
+  | 'recursive'
+  | 'sliding'
+  | 'semantic'
+  | 'single'
+  | 'transcript';
 
 export interface ChunkInput {
   content: string;
@@ -20,4 +35,5 @@ export interface TextChunk {
 export interface ChunkingOptions {
   targetTokens?: number;
   overlapTokens?: number;
+  strategy?: ChunkingStrategyName;
 }

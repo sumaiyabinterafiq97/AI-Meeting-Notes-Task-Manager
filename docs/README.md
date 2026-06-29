@@ -34,6 +34,11 @@
 | [ai-chat-requirements.md](./ai-chat-requirements.md) | Workspace + meeting chat |
 | [multi-agent-requirements.md](./multi-agent-requirements.md) | Agent specs + orchestration |
 | [observability-requirements.md](./observability-requirements.md) | Tokens, latency, cost, alerts |
+| [observability-design.md](./observability-design.md) | Observability module architecture |
+| [cost-analysis.md](./cost-analysis.md) | Cost tracking and optimization |
+| [cache-strategy.md](./cache-strategy.md) | Cache layers and invalidation |
+| [retry-strategy.md](./retry-strategy.md) | Retries, circuit breakers, fallbacks |
+| [performance-optimization.md](./performance-optimization.md) | Performance analysis and SLOs |
 
 ### AI Architecture (Engineering)
 
@@ -71,6 +76,7 @@
 4. [multi-agent-requirements.md](./multi-agent-requirements.md)
 5. [ai-chat-requirements.md](./ai-chat-requirements.md) + [semantic-search-requirements.md](./semantic-search-requirements.md)
 6. [observability-requirements.md](./observability-requirements.md)
+7. [observability-design.md](./observability-design.md) + [cost-analysis.md](./cost-analysis.md)
 
 ### Architecture (for engineering teams)
 

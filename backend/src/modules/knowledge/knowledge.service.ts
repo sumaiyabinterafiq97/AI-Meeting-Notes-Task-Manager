@@ -43,6 +43,7 @@ export class KnowledgeExtractionService {
           transcript: meeting.transcript.content,
           summary: meeting.aiOutput.summary ?? '',
           decisions,
+          meetingTitle: meeting.title,
           jobId,
         },
         { correlationId: jobId ?? meetingId },

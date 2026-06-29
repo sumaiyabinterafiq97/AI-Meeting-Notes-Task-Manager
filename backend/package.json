@@ -12,6 +12,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "eval:prompts": "tsx scripts/eval-prompts.ts",
+    "load:test:meetings": "tsx scripts/load-test-meeting-jobs.ts",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "prisma:generate": "node scripts/prisma.cjs generate",
     "prisma:migrate": "node scripts/prisma.cjs migrate dev",
@@ -23,6 +25,7 @@
     "@anthropic-ai/sdk": "^0.104.2",
     "@google/generative-ai": "^0.24.1",
     "@langchain/core": "^1.2.0",
+    "@langchain/langgraph": "^1.4.4",
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.78.1",
@@ -62,6 +65,7 @@
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.0"
   }
 }

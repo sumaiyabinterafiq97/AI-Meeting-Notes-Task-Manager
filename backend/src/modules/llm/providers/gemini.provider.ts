@@ -10,6 +10,7 @@ import type {
   LLMEmbedResponse,
   LLMStreamChunk,
 } from '../types/llm.types';
+import { throwIfAborted } from '../services/streaming.service';
 
 let client: GoogleGenerativeAI | null = null;
 
@@ -102,6 +103,7 @@ export class GeminiProvider implements ILLMProvider {
       const stream = await model.generateContentStream(userContent);
 
       for await (const chunk of stream.stream) {
+        throwIfAborted(request.signal);
         const text = chunk.text();
         if (text) {
           yield { content: text, done: false };

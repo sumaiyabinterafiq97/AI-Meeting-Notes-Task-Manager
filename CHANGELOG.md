@@ -3,6 +3,29 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.0] - 2026-06-29
+
+### Added
+
+- **LangGraph orchestrator** — meeting-intelligence, chat, weekly-report, and knowledge-update workflows (`AI_PIPELINE_MODE=multi-agent`)
+- Agent validators, v2.1 extended schemas (`PROMPT_SCHEMA_V2_1`), and output normalizer for backward-compatible DB merge
+- Chat memory with Redis-backed session store, rolling summarization, and query intent classifier
+- Optional agent tool calling (`CHAT_TOOLS_ENABLED`) with SearchMeetings, SearchTasks, and related tools
+- RAG pipeline upgrades: chunking strategy registry, hybrid search, score-boost reranker, citation parsing, embedding reindex
+- Production observability layer: dashboards, alerts, latency percentiles, cache/retry/rate-limit tracking
+- `/observability` API routes (Prometheus metrics, dashboard, alert evaluation) with optional API key auth
+- Prompt eval runner (`npm run eval:prompts`) and meeting job load test (`npm run load:test:meetings`)
+- RISK `DocumentSourceType` migration for risk vector chunks
+- `backend/README.md` and 14 QA/performance docs (observability design, security audit, load test reports)
+- Backend test suite expanded to 370 tests across orchestrator, observability, RAG, and security
+
+### Changed
+
+- Chat agent v2 with intent-based retrieval routing and conversation memory compression
+- Legacy pipeline orchestrator delegates to LangGraph when `AI_PIPELINE_MODE=multi-agent`
+- Root README rebranded to MeetingMind AI platform with LangGraph in tech stack
+- `.gitignore` excludes `backend/storage/` test artifacts and `career/` personal notes
+
 ## [0.4.0] - 2026-06-19
 
 ### Added

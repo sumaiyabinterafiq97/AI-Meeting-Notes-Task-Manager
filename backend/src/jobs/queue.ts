@@ -2,6 +2,7 @@ import { Queue, Worker } from 'bullmq';
 import { env } from '../config/env';
 import { processMeetingJob } from './process-meeting.job';
 import { processEmbedMeetingJob } from './embed-meeting.job';
+import { processReindexWorkspaceJob } from './reindex-workspace.job';
 import { processWeeklyReportJob } from './weekly-report.job';
 import { processTranscribeAudioJob } from './transcribe-audio.job';
 import { processCalendarSyncJob } from './calendar-sync.job';
@@ -11,6 +12,7 @@ import type { SyncConnectionResult } from '../modules/calendar/types/calendar.ty
 
 const MEETING_QUEUE_NAME = 'meeting-ai-processing';
 const EMBED_QUEUE_NAME = 'embed-meeting';
+const REINDEX_QUEUE_NAME = 'reindex-workspace';
 const WEEKLY_REPORT_QUEUE_NAME = 'weekly-report';
 const TRANSCRIBE_AUDIO_QUEUE_NAME = 'transcribe-audio';
 const CALENDAR_SYNC_QUEUE_NAME = 'calendar-sync';
@@ -28,6 +30,7 @@ function getConnectionOptions() {
 
 let meetingQueue: Queue | null = null;
 let embedQueue: Queue | null = null;
+let reindexQueue: Queue | null = null;
 let weeklyReportQueue: Queue | null = null;
 let transcribeAudioQueue: Queue | null = null;
 let calendarSyncQueue: Queue | null = null;
@@ -66,6 +69,21 @@ function getEmbedQueue(): Queue {
     });
   }
   return embedQueue;
+}
+
+function getReindexQueue(): Queue {
+  if (!reindexQueue) {
+    reindexQueue = new Queue(REINDEX_QUEUE_NAME, {
+      connection: getConnectionOptions(),
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnComplete: 20,
+        removeOnFail: 50,
+      },
+    });
+  }
+  return reindexQueue;
 }
 
 function getWeeklyReportQueue(): Queue {
@@ -205,6 +223,21 @@ export async function enqueueEmbedMeeting(payload: {
   });
 }
 
+export async function enqueueReindexWorkspace(payload: {
+  workspaceId: string;
+  reason?: import('../modules/embeddings/services/reindex-observability.service').ReindexReason;
+}): Promise<{ queued: true } | { queued: false; result: Awaited<ReturnType<typeof processReindexWorkspaceJob>> }> {
+  if (!shouldUseRedisQueue()) {
+    const result = await processReindexWorkspaceJob(payload);
+    return { queued: false, result };
+  }
+
+  await getReindexQueue().add('reindex-workspace', payload, {
+    jobId: `reindex-workspace-${payload.workspaceId}-${Date.now()}`,
+  });
+  return { queued: true };
+}
+
 export function startMeetingAiWorker(): Worker {
   const worker = new Worker(
     MEETING_QUEUE_NAME,
@@ -293,6 +326,26 @@ export function startEmbedMeetingWorker(): Worker {
   return worker;
 }
 
+export function startReindexWorkspaceWorker(): Worker {
+  const worker = new Worker(
+    REINDEX_QUEUE_NAME,
+    async (bullJob) => {
+      const payload = bullJob.data as { workspaceId: string };
+      await processReindexWorkspaceJob(payload);
+    },
+    {
+      connection: getConnectionOptions(),
+      concurrency: 1,
+    },
+  );
+
+  worker.on('failed', (job, error) => {
+    console.error(`[worker] Reindex workspace job ${job?.id} failed:`, error.message);
+  });
+
+  return worker;
+}
+
 export function startCalendarSyncWorker(): Worker {
   const worker = new Worker(
     CALENDAR_SYNC_QUEUE_NAME,
@@ -321,6 +374,10 @@ export async function closeQueueConnections(): Promise<void> {
   if (embedQueue) {
     await embedQueue.close();
     embedQueue = null;
+  }
+  if (reindexQueue) {
+    await reindexQueue.close();
+    reindexQueue = null;
   }
   if (weeklyReportQueue) {
     await weeklyReportQueue.close();

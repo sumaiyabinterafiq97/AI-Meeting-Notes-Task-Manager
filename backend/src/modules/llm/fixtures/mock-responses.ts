@@ -1,4 +1,4 @@
-import type { LLMCompletionRequest } from '../types/llm.types';
+import type { LLMCompletionRequest, LLMCompletionResponse } from '../types/llm.types';
 
 export interface MockMeetingAnalysis {
   summary: string;
@@ -55,24 +55,44 @@ export function buildMockSummarizerOutput(userContent: string) {
   return {
     summary: analysis.summary,
     keyTopics: analysis.topics,
+    nextSteps: ['Schedule follow-up to confirm vendor timeline'],
+    participantsDiscussed: ['Alex', 'Jordan'],
   };
 }
 
 export function buildMockTaskExtractorOutput() {
   return {
-    actionItems: buildMockMeetingAnalysis('').actionItems,
+    actionItems: buildMockMeetingAnalysis('').actionItems.map((item) => ({
+      ...item,
+      priority: 'medium' as const,
+      dependencies: [] as string[],
+      confidenceScore: 0.88,
+    })),
   };
 }
 
 export function buildMockDecisionOutput() {
   return {
-    decisions: buildMockMeetingAnalysis('').decisions,
+    decisions: buildMockMeetingAnalysis('').decisions.map((decision) => ({
+      ...decision,
+      stakeholders: ['Alex', 'Jordan'],
+      confidenceScore: 0.92,
+      supportingEvidence: 'we agreed to proceed with the proposed timeline',
+    })),
   };
 }
 
 export function buildMockRiskAnalyzerOutput() {
   return {
-    risks: buildMockMeetingAnalysis('').risks,
+    risks: buildMockMeetingAnalysis('').risks.map((risk) => ({
+      ...risk,
+      severity: risk.severity as 'medium',
+      impact: 'Launch timeline may slip if vendor delays persist',
+      likelihood: 'medium' as const,
+      recommendation: 'Escalate with vendor account manager',
+      evidence: 'Vendor response time uncertain',
+      confidenceScore: 0.82,
+    })),
   };
 }
 
@@ -106,6 +126,22 @@ export function buildMockCompletionContent(request: LLMCompletionRequest): strin
             },
           ],
         });
+      case 'chat':
+        return JSON.stringify({
+          content:
+            'The team selected OAuth 2.0 with PKCE for authentication [CITATION-1].',
+          citations: [
+            {
+              index: 1,
+              chunkId: '00000000-0000-0000-0000-000000000011',
+              meetingId: '00000000-0000-0000-0000-000000000001',
+              excerpt: 'OAuth 2.0 with PKCE was selected.',
+              claimText: 'The team selected OAuth 2.0 with PKCE for authentication',
+            },
+          ],
+          grounded: true,
+          refusalReason: null,
+        });
       case 'weekly-report':
         return JSON.stringify({
           title: 'Weekly Report (Mock)',
@@ -115,15 +151,28 @@ export function buildMockCompletionContent(request: LLMCompletionRequest): strin
               content: 'The team held planning meetings and advanced key deliverables.',
             },
             {
-              heading: 'Key decisions',
-              content: 'Proceed with the proposed timeline after reviewing blockers.',
+              heading: 'Achievements',
+              content: 'Proceed with the proposed timeline after reviewing blockers [CITATION-1].',
+              citations: [{ index: 1 }],
             },
             {
-              heading: 'Open risks',
+              heading: 'Pending Work',
+              content: 'Two open tasks remain on the sprint board.',
+            },
+            {
+              heading: 'Risks',
               content: 'Third-party API integration may slip due to vendor response time.',
             },
+            {
+              heading: 'Recommendations',
+              content: 'Escalate vendor follow-up and confirm API delivery dates.',
+            },
+            {
+              heading: 'Metrics',
+              content: 'Meetings: 2 | Tasks created: 5 | Tasks completed: 3',
+            },
           ],
-          taskStats: { created: 5, completed: 3, open: 2 },
+          taskStats: { created: 5, completed: 3, open: 2, overdue: 0 },
           meetingCount: 2,
         });
       default:
@@ -143,6 +192,60 @@ export function buildMockCompletionContent(request: LLMCompletionRequest): strin
   }
 
   return 'Mock LLM completion response.';
+}
+
+function extractToolQuery(userMessage: string): string | null {
+  const normalized = userMessage.toLowerCase();
+  if (/\btasks?\b/.test(normalized)) return 'pending tasks';
+  if (/\bdecisions?\b/.test(normalized)) return 'recent decisions';
+  if (/\brisks?\b/.test(normalized)) return 'open risks';
+  if (/\bmeetings?\b/.test(normalized)) return 'recent meetings';
+  if (/\bknowledge\b|\bsearch\b/.test(normalized)) return userMessage.slice(0, 120);
+  return null;
+}
+
+function resolveMockToolName(userMessage: string): string {
+  const normalized = userMessage.toLowerCase();
+  if (/\btasks?\b/.test(normalized)) return 'SearchTasksTool';
+  if (/\bdecisions?\b/.test(normalized)) return 'SearchDecisionsTool';
+  if (/\brisks?\b/.test(normalized)) return 'SearchRisksTool';
+  if (/\bmeetings?\b/.test(normalized)) return 'SearchMeetingsTool';
+  return 'SearchKnowledgeTool';
+}
+
+export function buildMockChatToolResponse(
+  request: LLMCompletionRequest,
+): Pick<LLMCompletionResponse, 'content' | 'toolCalls' | 'finishReason'> {
+  const hasToolResult = request.messages.some((message) => message.role === 'tool');
+  const userMessage = [...request.messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  const toolQuery = extractToolQuery(userMessage);
+
+  if (hasToolResult) {
+    return {
+      content:
+        'Based on workspace data, I found relevant matches for your question. Please review the cited sources in context [CITATION-1].',
+      finishReason: 'stop',
+    };
+  }
+
+  if (request.tools?.length && toolQuery) {
+    return {
+      content: '',
+      toolCalls: [
+        {
+          id: 'call_mock_tool_1',
+          name: resolveMockToolName(userMessage),
+          arguments: JSON.stringify({ query: toolQuery, limit: 5 }),
+        },
+      ],
+      finishReason: 'tool_calls',
+    };
+  }
+
+  return {
+    content: buildMockCompletionContent(request),
+    finishReason: 'stop',
+  };
 }
 
 /** Deterministic pseudo-embedding from text hash (1536 dims, L2-normalized). */

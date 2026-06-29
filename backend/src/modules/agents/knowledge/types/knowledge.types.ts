@@ -14,8 +14,15 @@ export interface KnowledgeInput {
   transcript: string;
   summary: string;
   decisions: Array<{ text: string; context: string }>;
+  meetingTitle?: string;
   correlationId?: string;
   jobId?: string;
+}
+
+export interface KnowledgeSourceRef {
+  meetingId: string;
+  excerpt: string;
+  timestamp?: string | null;
 }
 
 export interface KnowledgeEntryResult {
@@ -23,10 +30,20 @@ export interface KnowledgeEntryResult {
   title: string;
   content: string;
   confidence: number;
+  sourceRef?: KnowledgeSourceRef;
 }
 
+/** Canonical knowledge output — v2.0 fields plus optional v2.1 sourceRef. */
 export interface KnowledgeOutput {
   entries: KnowledgeEntryResult[];
+  filteredCount?: number;
+  averageConfidence?: number;
+}
+
+export interface KnowledgeValidationResult {
+  valid: boolean;
+  warnings: string[];
+  weakEntryTitles: string[];
 }
 
 export function toPrismaKnowledgeEntityType(kind: KnowledgeEntityKind): KnowledgeEntityType {

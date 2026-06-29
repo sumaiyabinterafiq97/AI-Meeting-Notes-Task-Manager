@@ -5,16 +5,22 @@ import {
   cleanDatabase,
 } from '../helpers/db';
 import { setupWorkspaceWithAuth, sampleTranscript } from '../helpers/meeting-helper';
+import { env } from '../../src/config/env';
 import { pipelineOrchestrator } from '../../src/modules/agents/orchestrator/pipeline-orchestrator.service';
 
 const dbAvailable = process.env.DATABASE_URL !== undefined;
 
 (dbAvailable ? describe : describe.skip)('Multi-agent pipeline', () => {
+  const previousPipelineMode = env.AI_PIPELINE_MODE;
+
   beforeAll(async () => {
     await connectTestDatabase();
+    (env as { AI_PIPELINE_MODE: 'monolithic' | 'multi-agent' }).AI_PIPELINE_MODE = 'multi-agent';
   });
 
   afterAll(async () => {
+    (env as { AI_PIPELINE_MODE: 'monolithic' | 'multi-agent' }).AI_PIPELINE_MODE =
+      previousPipelineMode;
     await disconnectTestDatabase();
   });
 
@@ -54,7 +60,7 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
       correlationId: job.id,
     });
 
-    expect(output.modelVersion).toBe('multi-agent');
+    expect(output.modelVersion).toBe('multi-agent-graph');
     expect(output.result.summary).toBeTruthy();
     expect(output.result.topics.length).toBeGreaterThan(0);
     expect(output.result.actionItems.length).toBeGreaterThan(0);
@@ -67,10 +73,10 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
       orderBy: { createdAt: 'asc' },
     });
 
-    expect(executions).toHaveLength(4);
+    expect(executions).toHaveLength(5);
     expect(executions.every((entry) => entry.status === 'COMPLETED')).toBe(true);
     expect(new Set(executions.map((entry) => entry.agentType))).toEqual(
-      new Set(['summarizer', 'task-extractor', 'decision', 'risk-analyzer']),
+      new Set(['summarizer', 'task-extractor', 'decision', 'risk-analyzer', 'knowledge']),
     );
   });
 });

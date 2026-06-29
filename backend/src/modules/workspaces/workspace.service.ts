@@ -1,4 +1,6 @@
 import { WorkspaceRole } from '@prisma/client';
+import { backgroundReindexService } from '../embeddings/services/background-reindex.service';
+import type { ReindexReason } from '../embeddings/services/reindex-observability.service';
 import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
@@ -350,6 +352,10 @@ export class WorkspaceService {
       entityType: 'user',
       entityId: targetUserId,
     });
+  }
+
+  async reindexWorkspace(workspaceId: string, reason?: ReindexReason) {
+    return backgroundReindexService.enqueueWorkspaceReindex(workspaceId, reason);
   }
 }
 

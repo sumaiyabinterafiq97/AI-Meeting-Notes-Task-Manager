@@ -122,6 +122,19 @@ export class WorkspaceController {
     }
   }
 
+  async reindex(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const reason = req.body?.reason as import('../embeddings/services/reindex-observability.service').ReindexReason | undefined;
+      const result = await workspaceService.reindexWorkspace(
+        routeParam(req.params.workspaceId),
+        reason,
+      );
+      res.status(result.queued ? 202 : 200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async acceptInvitation(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await workspaceService.acceptInvitation(
