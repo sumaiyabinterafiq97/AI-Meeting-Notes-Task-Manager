@@ -27,6 +27,7 @@ const envSchema = z.object({
   LOCAL_LLM_BASE_URL: z.string().optional(),
   LOCAL_LLM_MODEL: z.string().default('llama3'),
   EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  EMBEDDING_PROVIDER: z.enum(['openai', 'gemini', 'local', 'voyage']).default('openai'),
   LLM_PRIMARY_PROVIDER: z
     .enum(['openai', 'anthropic', 'google', 'local', 'mock'])
     .default('openai'),
@@ -49,6 +50,7 @@ const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   RAG_RETRIEVAL_CACHE_TTL_SECONDS: z.coerce.number().default(900),
+  RAG_CONTEXT_CACHE_TTL_SECONDS: z.coerce.number().default(300),
   RAG_EMBEDDING_CACHE_TTL_SECONDS: z.coerce.number().default(3600),
   AI_PIPELINE_MODE: z.enum(['monolithic', 'multi-agent']).default('monolithic'),
   PROMPT_SCHEMA_V2_1: z
@@ -101,6 +103,7 @@ const envSchema = z.object({
   CALENDAR_SYNC_LOOKBACK_DAYS: z.coerce.number().default(7),
   CALENDAR_SYNC_LOOKAHEAD_DAYS: z.coerce.number().default(30),
   CALENDAR_REMINDER_GRACE_MINUTES: z.coerce.number().default(60),
+  OBSERVABILITY_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
