@@ -1,11 +1,12 @@
 import { agentExecutionService } from '../../../../src/modules/agents/services/agent-execution.service';
-import { llmService } from '../../../../src/modules/llm';
+import * as structuredOutputService from '../../../../src/modules/agents/schemas/structured-output.service';
 import { ragService } from '../../../../src/modules/rag/services/rag.service';
 import { promptRegistry } from '../../../../src/modules/prompts/services/prompt-registry.service';
 import {
   weeklyReportAgent,
   buildWeeklyReportMessage,
 } from '../../../../src/modules/agents/weekly-report/services/weekly-report.service';
+import { mockRagContext } from '../../../helpers/rag-context';
 
 describe('weekly-report agent service', () => {
   const workspaceId = '00000000-0000-0000-0000-000000000001';
@@ -72,18 +73,21 @@ describe('weekly-report agent service', () => {
   });
 
   it('loads RAG context with weekly budget and period date filters', async () => {
-    const buildContext = jest.spyOn(ragService, 'buildContext').mockResolvedValue({
-      blocks: [
-        {
-          citationIndex: 1,
-          chunkId: 'chunk-1',
-          content: 'Closed three support tickets.',
-          meetingId: 'm1',
-          metadata: { meetingTitle: 'Weekly Sync' },
-        },
-      ],
-      totalTokens: 120,
-    });
+    const buildContext = jest.spyOn(ragService, 'buildContext').mockResolvedValue(
+      mockRagContext({
+        blocks: [
+          {
+            citationIndex: 1,
+            chunkId: 'chunk-1',
+            content: 'Closed three support tickets.',
+            meetingId: 'm1',
+            metadata: { meetingTitle: 'Weekly Sync' },
+          },
+        ],
+        totalTokens: 120,
+        useCase: 'weekly',
+      }),
+    );
 
     jest.spyOn(promptRegistry, 'render').mockReturnValue({
       id: 'weekly-report',
@@ -91,18 +95,26 @@ describe('weekly-report agent service', () => {
       version: '1.0.0',
     });
 
-    jest.spyOn(llmService, 'complete').mockResolvedValue({
-      content: JSON.stringify({
+    jest.spyOn(structuredOutputService, 'completeStructured').mockResolvedValue({
+      response: {
+        content: JSON.stringify({
+          title: 'Weekly Report',
+          sections: [{ heading: 'Summary', content: 'Good week.' }],
+          taskStats: { created: 1, completed: 1, open: 0, overdue: 0 },
+          meetingCount: 2,
+        }),
+        promptTokens: 500,
+        completionTokens: 200,
+        model: 'mock',
+        provider: 'mock',
+        finishReason: 'stop',
+      },
+      parsed: {
         title: 'Weekly Report',
         sections: [{ heading: 'Summary', content: 'Good week.' }],
         taskStats: { created: 1, completed: 1, open: 0, overdue: 0 },
         meetingCount: 2,
-      }),
-      promptTokens: 500,
-      completionTokens: 200,
-      model: 'mock',
-      provider: 'mock',
-      finishReason: 'stop',
+      },
     });
 
     await weeklyReportAgent.generate(

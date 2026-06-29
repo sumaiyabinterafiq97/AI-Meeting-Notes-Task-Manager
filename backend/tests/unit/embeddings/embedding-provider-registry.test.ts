@@ -1,9 +1,9 @@
 import { embeddingProviderRegistry } from '../../../src/modules/embeddings/providers/embedding-provider.registry';
 
 describe('EmbeddingProviderRegistry', () => {
-  it('registers the default OpenAI embedding provider', () => {
-    const providers = embeddingProviderRegistry.list();
-    expect(providers.map((provider) => provider.id)).toContain('openai');
+  it('registers embedding providers', () => {
+    const ids = embeddingProviderRegistry.list().map((provider) => provider.id);
+    expect(ids).toEqual(expect.arrayContaining(['openai', 'gemini', 'local', 'voyage']));
   });
 
   it('returns default provider', () => {

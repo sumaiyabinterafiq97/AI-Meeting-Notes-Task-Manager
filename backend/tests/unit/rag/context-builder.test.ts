@@ -39,6 +39,10 @@ describe('context-builder', () => {
     expect(context.blocks[0].citationIndex).toBe(1);
     expect(context.blocks[1].citationIndex).toBe(2);
     expect(context.totalTokens).toBeGreaterThan(0);
+    expect(context.formattedContext).toContain('[CITATION-1]');
+    expect(context.citations).toHaveLength(2);
+    expect(context.chunksIncluded).toBe(2);
+    expect(context.tokenBudget).toBeGreaterThan(0);
   });
 
   it('sorts similar chunks chronologically as a tie-breaker', () => {

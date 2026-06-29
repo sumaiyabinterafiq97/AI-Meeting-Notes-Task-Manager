@@ -7,6 +7,7 @@ import {
 import { EMPTY_CONTEXT_RESPONSE } from '../../../../src/modules/agents/chat/services/chat-agent.constants';
 import * as structuredOutput from '../../../../src/modules/agents/schemas/structured-output.service';
 import * as toolCalling from '../../../../src/modules/agents/tools/tool-calling-loop.service';
+import { mockRagContext } from '../../../helpers/rag-context';
 
 describe('chat-agent service', () => {
   beforeEach(() => {
@@ -21,7 +22,7 @@ describe('chat-agent service', () => {
 
   it('returns empty-context refusal without LLM call', async () => {
     jest.spyOn(ragService, 'prepareChatPrompt').mockResolvedValue({
-      context: { blocks: [], totalTokens: 0 },
+      context: mockRagContext(),
       prompt: {
         messages: [{ role: 'system', content: 'system' }],
         totalTokens: 10,
@@ -51,7 +52,7 @@ describe('chat-agent service', () => {
 
   it('enriches grounded LLM responses with citations', async () => {
     jest.spyOn(ragService, 'prepareChatPrompt').mockResolvedValue({
-      context: {
+      context: mockRagContext({
         blocks: [
           {
             citationIndex: 1,
@@ -63,7 +64,7 @@ describe('chat-agent service', () => {
           },
         ],
         totalTokens: 20,
-      },
+      }),
       prompt: {
         messages: [{ role: 'system', content: 'system' }],
         totalTokens: 30,
@@ -122,7 +123,7 @@ describe('chat-agent service', () => {
     });
 
     jest.spyOn(ragService, 'prepareChatPrompt').mockResolvedValue({
-      context: {
+      context: mockRagContext({
         blocks: [
           {
             citationIndex: 1,
@@ -134,7 +135,7 @@ describe('chat-agent service', () => {
           },
         ],
         totalTokens: 20,
-      },
+      }),
       prompt: {
         messages: [{ role: 'system', content: 'system' }],
         totalTokens: 30,
@@ -166,7 +167,7 @@ describe('chat-agent service', () => {
     jest.spyOn(structuredOutput, 'shouldUseStructuredChatOutput').mockReturnValue(true);
 
     jest.spyOn(ragService, 'prepareChatPrompt').mockResolvedValue({
-      context: {
+      context: mockRagContext({
         blocks: [
           {
             citationIndex: 1,
@@ -178,7 +179,7 @@ describe('chat-agent service', () => {
           },
         ],
         totalTokens: 20,
-      },
+      }),
       prompt: {
         messages: [{ role: 'system', content: 'system' }],
         totalTokens: 30,
