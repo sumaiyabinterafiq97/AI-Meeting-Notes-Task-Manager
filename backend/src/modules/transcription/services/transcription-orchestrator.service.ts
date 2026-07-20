@@ -1,15 +1,20 @@
 import { MeetingStatus } from '@prisma/client';
+import { env } from '../../../config/env';
 import { meetingRepository } from '../../meetings/meeting.repository';
 import { meetingAudioRepository } from '../repositories/meeting-audio.repository';
 import { audioStorageService } from './audio-storage.service';
+import { audioExtractionService } from './audio-extraction.service';
+import { transcriptionObservabilityService } from './transcription-observability.service';
+import { malwareScanService } from '../../capture/storage/malware-scan.service';
 import { enqueueTranscribeAudio } from '../../../jobs/queue';
 import { logActivity } from '../../../lib/activity-log';
 import { AppError, ErrorCodes } from '../../../utils/errors';
-import type {
-  MeetingAudioDto,
-  TranscriptionStatusDto,
-  UploadAudioResponseDto,
-  UploadedAudioFile,
+import {
+  isVideoUpload,
+  type MeetingAudioDto,
+  type TranscriptionStatusDto,
+  type UploadAudioResponseDto,
+  type UploadedAudioFile,
 } from '../types/transcription.types';
 
 function toMeetingAudioDto(audio: {
@@ -61,41 +66,92 @@ export class TranscriptionOrchestratorService {
 
     assertMeetingAllowsAudioUpload(meeting.status);
 
+    // Replace-on-upload: any existing recording is removed before saving the new file.
+    // Busy meetings (TRANSCRIBING / PROCESSING) are rejected above.
     const existingAudio = await meetingAudioRepository.findByMeetingId(meetingId);
-    if (existingAudio && existingAudio.status !== 'FAILED') {
-      throw new AppError(409, ErrorCodes.CONFLICT, 'Audio already uploaded for this meeting');
-    }
-
-    if (existingAudio?.status === 'FAILED') {
+    let replacedPreviousAudioId: string | undefined;
+    if (existingAudio) {
+      replacedPreviousAudioId = existingAudio.id;
       await audioStorageService.deleteFile(existingAudio.storageKey);
+      await audioStorageService.clearMeetingMedia?.(workspaceId, meetingId);
       await meetingAudioRepository.deleteByMeetingId(meetingId);
     }
 
-    const { storageKey } = await audioStorageService.saveUploadedFile(
+    const scan = await malwareScanService.scanUpload({
       workspaceId,
       meetingId,
-      file,
-    );
+      mimeType: file.mimetype,
+      fileSizeBytes: file.size,
+    });
+    if (!scan.clean) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recording failed malware scan');
+    }
+
+    const video = isVideoUpload(file);
+    const saved = await audioStorageService.saveUploadedFile(workspaceId, meetingId, file);
+
+    let transcriptionStorageKey = saved.storageKey;
+    let transcriptionMimeType = file.mimetype;
+    let transcriptionFileSize = file.size;
+    let extracted = false;
+
+    if (video) {
+      try {
+        const allocated = await audioStorageService.allocateExtractedAudioPath(
+          workspaceId,
+          meetingId,
+          '.wav',
+        );
+        const extraction = await audioExtractionService.extract(
+          {
+            inputPath: saved.absolutePath,
+            outputPath: allocated.absolutePath,
+            mimeType: file.mimetype,
+            originalName: file.originalname,
+          },
+          { workspaceId, meetingId },
+        );
+
+        transcriptionStorageKey = allocated.storageKey;
+        transcriptionMimeType = extraction.mimeType;
+        const fs = await import('fs/promises');
+        const stat = await fs.stat(allocated.absolutePath);
+        transcriptionFileSize = stat.size;
+        extracted = true;
+
+        if (env.VIDEO_DISCARD_AFTER_EXTRACT) {
+          await audioStorageService.deleteFile(saved.storageKey);
+        }
+      } catch (error) {
+        await audioStorageService.deleteFile(saved.storageKey);
+        throw error;
+      }
+    }
 
     const audio = await meetingAudioRepository.createPendingAudio({
       meetingId,
       workspaceId,
       originalName: file.originalname,
-      mimeType: file.mimetype,
-      fileSizeBytes: file.size,
-      storageKey,
+      mimeType: transcriptionMimeType,
+      fileSizeBytes: transcriptionFileSize,
+      storageKey: transcriptionStorageKey,
     });
 
     await logActivity({
       workspaceId,
       actorId: userId,
-      action: 'meeting.audio_uploaded',
+      action: video ? 'meeting.video_uploaded' : 'meeting.audio_uploaded',
       entityType: 'meeting',
       entityId: meetingId,
       metadata: {
         audioId: audio.id,
         fileName: file.originalname,
         fileSizeBytes: file.size,
+        mediaKind: video ? 'video' : 'audio',
+        audioExtracted: extracted,
+        extractProvider: video ? audioExtractionService.getActiveProviderId() : undefined,
+        replaced: Boolean(replacedPreviousAudioId),
+        previousAudioId: replacedPreviousAudioId,
       },
     });
 
@@ -111,6 +167,69 @@ export class TranscriptionOrchestratorService {
       meetingId,
       audioId: audio.id,
       status: audio.status,
+      meetingStatus: refreshed!.status,
+    };
+  }
+
+  async retryTranscription(
+    workspaceId: string,
+    meetingId: string,
+    userId: string,
+  ): Promise<UploadAudioResponseDto> {
+    const meeting = await meetingRepository.findMeetingInWorkspace(workspaceId, meetingId);
+    if (!meeting) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, 'Meeting not found');
+    }
+
+    if (
+      meeting.status === MeetingStatus.TRANSCRIBING ||
+      meeting.status === MeetingStatus.PROCESSING
+    ) {
+      throw new AppError(409, ErrorCodes.CONFLICT, 'Meeting is already busy');
+    }
+
+    const audio = await meetingAudioRepository.findByMeetingId(meetingId);
+    if (!audio) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, 'No recording found for this meeting');
+    }
+
+    if (audio.status !== 'FAILED') {
+      throw new AppError(
+        409,
+        ErrorCodes.CONFLICT,
+        'Only failed transcriptions can be retried. Re-upload to replace a completed file.',
+      );
+    }
+
+    const reset = await meetingAudioRepository.resetForRetry(audio.id);
+
+    transcriptionObservabilityService.recordRetry({
+      workspaceId,
+      meetingId,
+      audioId: audio.id,
+    });
+
+    await logActivity({
+      workspaceId,
+      actorId: userId,
+      action: 'meeting.transcription_retried',
+      entityType: 'meeting',
+      entityId: meetingId,
+      metadata: { audioId: audio.id },
+    });
+
+    await enqueueTranscribeAudio({
+      audioId: reset.id,
+      meetingId,
+      workspaceId,
+    });
+
+    const refreshed = await meetingRepository.findMeetingInWorkspace(workspaceId, meetingId);
+
+    return {
+      meetingId,
+      audioId: reset.id,
+      status: reset.status,
       meetingStatus: refreshed!.status,
     };
   }

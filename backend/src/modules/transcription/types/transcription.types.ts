@@ -3,7 +3,7 @@ import type { Request } from 'express';
 
 export type UploadedAudioFile = NonNullable<Request['file']>;
 
-export type TranscriptionProviderId = 'mock' | 'openai';
+export type TranscriptionProviderId = 'mock' | 'openai' | 'deepgram';
 
 export interface TranscriptionInput {
   filePath: string;
@@ -61,4 +61,27 @@ export const ALLOWED_AUDIO_MIME_TYPES = [
 
 export const ALLOWED_AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.wav'] as const;
 
+export const ALLOWED_VIDEO_MIME_TYPES = ['video/mp4', 'video/webm'] as const;
+
+export const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.webm'] as const;
+
 export const DEFAULT_AUDIO_MAX_BYTES = 100 * 1024 * 1024;
+export const DEFAULT_VIDEO_MAX_BYTES = 500 * 1024 * 1024;
+
+export function isVideoUpload(file: { mimetype: string; originalname: string }): boolean {
+  const mime = file.mimetype.toLowerCase();
+  const ext = file.originalname.toLowerCase();
+  return (
+    (ALLOWED_VIDEO_MIME_TYPES as readonly string[]).includes(mime) ||
+    (ALLOWED_VIDEO_EXTENSIONS as readonly string[]).some((e) => ext.endsWith(e))
+  );
+}
+
+export function isAudioUpload(file: { mimetype: string; originalname: string }): boolean {
+  const mime = file.mimetype.toLowerCase();
+  const ext = file.originalname.toLowerCase();
+  return (
+    (ALLOWED_AUDIO_MIME_TYPES as readonly string[]).includes(mime) ||
+    (ALLOWED_AUDIO_EXTENSIONS as readonly string[]).some((e) => ext.endsWith(e))
+  );
+}
