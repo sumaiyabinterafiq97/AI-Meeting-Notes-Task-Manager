@@ -10,6 +10,7 @@ import { WorkspaceSettingsForm } from '../components/WorkspaceSettingsForm';
 import { MemberList } from '../components/MemberList';
 import { InviteMemberForm } from '../components/InviteMemberForm';
 import { PendingInvitationsList } from '../components/PendingInvitationsList';
+import { CalendarConnectCard } from '../components/CalendarConnectCard';
 
 export function WorkspaceSettingsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -44,6 +45,8 @@ export function WorkspaceSettingsPage() {
       </div>
 
       <WorkspaceSettingsForm workspace={workspace} canEdit={isOwner} />
+
+      <CalendarConnectCard workspaceId={workspace.id} canManage={isOwner} />
 
       <Card>
         <CardHeader>

@@ -13,41 +13,52 @@ import {
 } from './meeting.dto';
 import { meetingRepository } from './meeting.repository';
 import { aiJobService } from '../ai';
+import { calendarMeetService } from '../calendar/services/calendar-meet.service';
 import { logActivity } from '../../lib/activity-log';
 import { AppError, ErrorCodes } from '../../utils/errors';
 import { parsePagination, buildPaginationMeta } from '../../lib/pagination';
 
-function toMeetingDto(meeting: {
-  id: string;
-  workspaceId: string;
-  title: string;
-  meetingDate: Date;
-  durationMinutes: number | null;
-  attendees: unknown;
-  tags: string[];
-  agenda: string | null;
-  status: MeetingStatus;
-  source?: MeetingSource;
-  createdById: string;
-  createdAt: Date;
-  updatedAt?: Date;
-}): MeetingDto {
+function toMeetingDto(
+  meeting: {
+    id: string;
+    workspaceId: string;
+    title: string;
+    meetingDate: Date;
+    durationMinutes: number | null;
+    attendees: unknown;
+    tags: string[];
+    agenda: string | null;
+    status: MeetingStatus;
+    source?: MeetingSource;
+    meetUrl?: string | null;
+    calendarHtmlLink?: string | null;
+    externalCalendarEventId?: string | null;
+    createdById: string;
+    createdAt: Date;
+    updatedAt?: Date;
+  },
+  extras?: { googleCalendarConnected?: boolean },
+): MeetingDto {
   return {
     id: meeting.id,
     workspaceId: meeting.workspaceId,
     title: meeting.title,
     meetingDate: meeting.meetingDate,
     durationMinutes: meeting.durationMinutes,
-    attendees: Array.isArray(meeting.attendees)
-      ? (meeting.attendees as string[])
-      : [],
+    attendees: Array.isArray(meeting.attendees) ? (meeting.attendees as string[]) : [],
     tags: meeting.tags,
     agenda: meeting.agenda,
     status: meeting.status,
     createdById: meeting.createdById,
     createdAt: meeting.createdAt,
+    meetUrl: meeting.meetUrl ?? null,
+    calendarHtmlLink: meeting.calendarHtmlLink ?? null,
+    externalCalendarEventId: meeting.externalCalendarEventId ?? null,
     ...(meeting.source && { source: meeting.source }),
     ...(meeting.updatedAt && { updatedAt: meeting.updatedAt }),
+    ...(extras?.googleCalendarConnected !== undefined && {
+      googleCalendarConnected: extras.googleCalendarConnected,
+    }),
   };
 }
 
@@ -85,7 +96,23 @@ export class MeetingService {
       metadata: { title: meeting.title },
     });
 
-    return toMeetingDto(meeting);
+    // Best-effort Google Calendar + Meet link (never roll back local meeting)
+    await calendarMeetService.createMeetForMeeting({
+      workspaceId,
+      userId,
+      meetingId: meeting.id,
+      title: meeting.title,
+      meetingDate: meeting.meetingDate,
+      durationMinutes: meeting.durationMinutes,
+      attendees: Array.isArray(meeting.attendees) ? (meeting.attendees as string[]) : [],
+      agenda: meeting.agenda,
+    });
+
+    const refreshed = await meetingRepository.findMeetingById(meeting.id);
+    const googleCalendarConnected =
+      await calendarMeetService.workspaceHasGoogleCalendar(workspaceId);
+
+    return toMeetingDto(refreshed ?? meeting, { googleCalendarConnected });
   }
 
   async listMeetings(workspaceId: string, query: MeetingListQuery) {
@@ -99,14 +126,10 @@ export class MeetingService {
       search: query.search?.trim(),
     };
 
-    const { items, total } = await meetingRepository.listMeetings(
-      workspaceId,
-      pagination,
-      filters,
-    );
+    const { items, total } = await meetingRepository.listMeetings(workspaceId, pagination, filters);
 
     return {
-      data: items.map(toMeetingDto),
+      data: items.map((item) => toMeetingDto(item)),
       meta: buildPaginationMeta(total, pagination.page, pagination.limit),
     };
   }
@@ -255,10 +278,7 @@ export class MeetingService {
     };
   }
 
-  async reprocessMeeting(
-    workspaceId: string,
-    meetingId: string,
-  ): Promise<ReprocessResponseDto> {
+  async reprocessMeeting(workspaceId: string, meetingId: string): Promise<ReprocessResponseDto> {
     const meeting = await meetingRepository.findMeetingInWorkspace(workspaceId, meetingId);
     if (!meeting) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'Meeting not found');

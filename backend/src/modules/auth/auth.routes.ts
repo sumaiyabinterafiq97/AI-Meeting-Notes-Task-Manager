@@ -15,26 +15,18 @@ import {
 
 const router = Router();
 
-router.post(
-  '/register',
-  authRateLimiter,
-  validate(registerValidation),
-  (req, res, next) => authController.register(req, res, next),
+router.post('/register', authRateLimiter, validate(registerValidation), (req, res, next) =>
+  authController.register(req, res, next),
 );
 
-router.post(
-  '/login',
-  authRateLimiter,
-  validate(loginValidation),
-  (req, res, next) => authController.login(req, res, next),
+router.post('/login', authRateLimiter, validate(loginValidation), (req, res, next) =>
+  authController.login(req, res, next),
 );
 
 router.post('/logout', authenticate, (req, res, next) => authController.logout(req, res, next));
 
-router.post(
-  '/refresh',
-  validateRefreshOrigin,
-  (req, res, next) => authController.refresh(req, res, next),
+router.post('/refresh', validateRefreshOrigin, (req, res, next) =>
+  authController.refresh(req, res, next),
 );
 
 router.post(
@@ -44,12 +36,20 @@ router.post(
   (req, res, next) => authController.forgotPassword(req, res, next),
 );
 
-router.post(
-  '/reset-password',
-  validate(resetPasswordValidation),
-  (req, res, next) => authController.resetPassword(req, res, next),
+router.post('/reset-password', validate(resetPasswordValidation), (req, res, next) =>
+  authController.resetPassword(req, res, next),
 );
 
 router.get('/me', authenticate, (req, res, next) => authController.me(req, res, next));
+
+router.get('/google', authRateLimiter, (req, res, next) =>
+  authController.googleStart(req, res, next),
+);
+
+router.get('/google/callback', (req, res, next) => authController.googleCallback(req, res, next));
+
+router.post('/google/mock', authRateLimiter, (req, res, next) =>
+  authController.googleMock(req, res, next),
+);
 
 export { router as authRoutes };

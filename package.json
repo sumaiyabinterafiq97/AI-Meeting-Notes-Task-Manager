@@ -10,6 +10,7 @@
     "test": "npm run test --prefix frontend && npm run test --prefix backend",
     "eval:prompts": "npm --prefix backend run eval:prompts --",
     "load:test:meetings": "npm --prefix backend run load:test:meetings --",
+    "seed:portfolio-demo": "npm --prefix backend run seed:portfolio-demo",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\" --ignore-path .gitignore",
     "prepare": "husky"
@@ -25,7 +26,11 @@
       "npm run lint --prefix frontend -- --fix",
       "prettier --write"
     ],
-    "backend/**/*.{ts}": [
+    "backend/src/**/*.ts": [
+      "npm run lint --prefix backend -- --fix",
+      "prettier --write"
+    ],
+    "backend/tests/**/*.ts": [
       "npm run lint --prefix backend -- --fix",
       "prettier --write"
     ],

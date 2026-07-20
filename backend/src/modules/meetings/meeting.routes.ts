@@ -13,6 +13,7 @@ import { aiProcessingRateLimiter } from '../../middlewares/rate-limit';
 import { aiRoutes } from '../ai/ai.routes';
 import { meetingChatRoutes } from '../chat/meeting-chat.routes';
 import { createTranscriptionRoutes } from '../transcription';
+import { createCaptureRoutes } from '../capture';
 
 const router = Router({ mergeParams: true });
 
@@ -25,6 +26,9 @@ router.post('/', validate(createMeetingValidation), (req, res, next) =>
 router.get('/', validate(listMeetingsQueryValidation), (req, res, next) =>
   meetingController.list(req, res, next),
 );
+
+// Capture layer: needing-transcript + platform imports (before /:meetingId)
+router.use(createCaptureRoutes());
 
 router.get('/:meetingId', validate(meetingParamsValidation), (req, res, next) =>
   meetingController.getById(req, res, next),
@@ -52,6 +56,10 @@ router.post(
   aiProcessingRateLimiter,
   validate(meetingParamsValidation),
   (req, res, next) => meetingController.reprocess(req, res, next),
+);
+
+router.post('/:meetingId/recorder-events', validate(meetingParamsValidation), (req, res, next) =>
+  meetingController.recorderEvent(req, res, next),
 );
 
 router.use('/:meetingId', createTranscriptionRoutes());

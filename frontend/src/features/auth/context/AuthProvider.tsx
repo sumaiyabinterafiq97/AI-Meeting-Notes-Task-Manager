@@ -19,6 +19,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(sessionUser);
   }, []);
 
+  const hydrateSession = useCallback(async () => {
+    const { data: refreshData } = await authApi.refresh();
+    setAccessToken(refreshData.accessToken);
+    const { data: me } = await authApi.getMe();
+    setUser(me);
+  }, []);
+
   const login = useCallback(
     async (data: LoginFormData) => {
       const { data: response } = await authApi.login(data);
@@ -56,14 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function restoreSession() {
       try {
-        const { data: refreshData } = await authApi.refresh();
-        if (cancelled) return;
-
-        setAccessToken(refreshData.accessToken);
-        const { data: me } = await authApi.getMe();
-        if (cancelled) return;
-
-        setUser(me);
+        await hydrateSession();
       } catch {
         if (!cancelled) {
           clearSession();
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [clearSession]);
+  }, [clearSession, hydrateSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -90,8 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       logout,
+      hydrateSession,
     }),
-    [user, isInitializing, login, register, logout],
+    [user, isInitializing, login, register, logout, hydrateSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

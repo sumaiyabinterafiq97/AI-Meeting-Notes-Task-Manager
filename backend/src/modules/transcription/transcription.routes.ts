@@ -21,10 +21,15 @@ export function createTranscriptionRoutes(): Router {
     (req, res, next) => transcriptionController.uploadAudio(req, res, next),
   );
 
-  router.get(
-    '/transcription',
+  router.get('/transcription', validate(meetingParamsValidation), (req, res, next) =>
+    transcriptionController.getStatus(req, res, next),
+  );
+
+  router.post(
+    '/transcription/retry',
+    aiProcessingRateLimiter,
     validate(meetingParamsValidation),
-    (req, res, next) => transcriptionController.getStatus(req, res, next),
+    (req, res, next) => transcriptionController.retry(req, res, next),
   );
 
   return router;

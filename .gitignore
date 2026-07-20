@@ -44,3 +44,7 @@ backend/storage/
 
 # Personal career notes (not part of the product repo)
 career/
+
+# Local demo media (not for the repo)
+screen-capture.webm
+Screenshot*.png

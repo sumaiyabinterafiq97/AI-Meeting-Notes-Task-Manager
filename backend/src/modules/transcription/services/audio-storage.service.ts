@@ -3,16 +3,15 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError, ErrorCodes } from '../../../utils/errors';
-import {
-  ALLOWED_AUDIO_EXTENSIONS,
-  ALLOWED_AUDIO_MIME_TYPES,
-  type UploadedAudioFile,
-} from '../types/transcription.types';
+import type { IAudioStorage } from '../storage/audio-storage.interface';
+import { isAudioUpload, isVideoUpload, type UploadedAudioFile } from '../types/transcription.types';
 
 function extensionFromMime(mimeType: string): string {
   const normalized = mimeType.toLowerCase();
+  if (normalized === 'video/mp4') return '.mp4';
+  if (normalized === 'video/webm') return '.webm';
   if (normalized.includes('mpeg') || normalized.includes('mp3')) return '.mp3';
-  if (normalized.includes('m4a') || normalized.includes('mp4')) return '.m4a';
+  if (normalized.includes('m4a') || normalized === 'audio/mp4') return '.m4a';
   if (normalized.includes('wav')) return '.wav';
   return '';
 }
@@ -21,11 +20,23 @@ function extensionFromFilename(filename: string): string {
   return path.extname(filename).toLowerCase();
 }
 
-export class AudioStorageService {
+/**
+ * Local filesystem media storage (dev / single-node).
+ * Replace with S3/R2 adapter implementing IAudioStorage for production object storage.
+ */
+export class LocalAudioStorageService implements IAudioStorage {
   private resolvedRoot: string | null = null;
 
-  get maxBytes(): number {
+  get maxAudioBytes(): number {
     return env.AUDIO_MAX_BYTES;
+  }
+
+  get maxVideoBytes(): number {
+    return env.VIDEO_MAX_BYTES;
+  }
+
+  get maxBytes(): number {
+    return this.maxAudioBytes;
   }
 
   async ensureRoot(): Promise<string> {
@@ -40,28 +51,27 @@ export class AudioStorageService {
 
   validateUpload(file: UploadedAudioFile): void {
     if (!file) {
-      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Audio file is required');
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recording file is required');
     }
 
-    if (file.size > this.maxBytes) {
+    const video = isVideoUpload(file);
+    const audio = isAudioUpload(file);
+
+    if (!video && !audio) {
       throw new AppError(
         400,
         ErrorCodes.VALIDATION_ERROR,
-        `Audio file exceeds ${Math.floor(this.maxBytes / (1024 * 1024))}MB limit`,
+        'Unsupported recording format. Allowed: .mp3, .m4a, .wav, .mp4, .webm',
       );
     }
 
-    const mime = file.mimetype.toLowerCase();
-    const ext = extensionFromFilename(file.originalname) || extensionFromMime(mime);
-
-    const mimeAllowed = (ALLOWED_AUDIO_MIME_TYPES as readonly string[]).includes(mime);
-    const extAllowed = (ALLOWED_AUDIO_EXTENSIONS as readonly string[]).includes(ext);
-
-    if (!mimeAllowed && !extAllowed) {
+    const limit = video ? this.maxVideoBytes : this.maxAudioBytes;
+    if (file.size > limit) {
+      const label = video ? 'Video' : 'Audio';
       throw new AppError(
         400,
         ErrorCodes.VALIDATION_ERROR,
-        'Unsupported audio format. Allowed: .mp3, .m4a, .wav',
+        `${label} file exceeds ${Math.floor(limit / (1024 * 1024))}MB limit`,
       );
     }
   }
@@ -78,15 +88,28 @@ export class AudioStorageService {
     await fs.mkdir(dir, { recursive: true });
 
     const ext =
-      extensionFromFilename(file.originalname) ||
-      extensionFromMime(file.mimetype) ||
-      '.bin';
+      extensionFromFilename(file.originalname) || extensionFromMime(file.mimetype) || '.bin';
     const filename = `${randomUUID()}${ext}`;
     const absolutePath = path.join(dir, filename);
     const storageKey = path.posix.join(workspaceId, meetingId, filename);
 
     await fs.writeFile(absolutePath, file.buffer);
 
+    return { storageKey, absolutePath };
+  }
+
+  async allocateExtractedAudioPath(
+    workspaceId: string,
+    meetingId: string,
+    extension: '.wav' | '.mp3',
+  ): Promise<{ storageKey: string; absolutePath: string }> {
+    const root = await this.ensureRoot();
+    const dir = path.join(root, workspaceId, meetingId);
+    await fs.mkdir(dir, { recursive: true });
+
+    const filename = `${randomUUID()}${extension}`;
+    const absolutePath = path.join(dir, filename);
+    const storageKey = path.posix.join(workspaceId, meetingId, filename);
     return { storageKey, absolutePath };
   }
 
@@ -108,6 +131,17 @@ export class AudioStorageService {
       // Best-effort cleanup
     }
   }
+
+  async clearMeetingMedia(workspaceId: string, meetingId: string): Promise<void> {
+    try {
+      const root = await this.ensureRoot();
+      const dir = path.join(root, workspaceId, meetingId);
+      await fs.rm(dir, { recursive: true, force: true });
+    } catch {
+      // Best-effort cleanup
+    }
+  }
 }
 
-export const audioStorageService = new AudioStorageService();
+/** Default storage adapter — swap for S3/R2 in production. */
+export const audioStorageService: IAudioStorage = new LocalAudioStorageService();

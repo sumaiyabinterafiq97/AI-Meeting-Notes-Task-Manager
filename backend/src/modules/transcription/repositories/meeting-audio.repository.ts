@@ -82,6 +82,27 @@ export class MeetingAudioRepository {
     });
   }
 
+  async resetForRetry(audioId: string): Promise<MeetingAudio> {
+    return prisma.$transaction(async (tx) => {
+      const audio = await tx.meetingAudio.update({
+        where: { id: audioId },
+        data: {
+          status: TranscriptionJobStatus.PENDING,
+          errorMessage: null,
+          transcribedAt: null,
+          bullJobId: null,
+        },
+      });
+
+      await tx.meeting.update({
+        where: { id: audio.meetingId },
+        data: { status: MeetingStatus.TRANSCRIBING },
+      });
+
+      return audio;
+    });
+  }
+
   async deleteByMeetingId(meetingId: string): Promise<void> {
     await prisma.meetingAudio.deleteMany({ where: { meetingId } });
   }

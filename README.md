@@ -162,8 +162,23 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `AI_USE_MOCK` | Run AI inline without Redis/OpenAI (`true` for local dev) |
 | `AI_PIPELINE_MODE` | `monolithic` or `multi-agent` extraction pipeline |
 | `PROMPT_SCHEMA_V2_1` | Enable extended agent output schemas with confidence scores |
+| `TRANSCRIPTION_PROVIDER` | `mock` \| `openai` \| `deepgram` (audio → text) |
+| `OPENAI_WHISPER_MODEL` | Whisper model (default `whisper-1`) |
+| `AUDIO_STORAGE_PATH` | Local recording storage root (default `./storage/audio`) |
+| `AUDIO_MAX_BYTES` | Max audio upload size (default 100MB) |
+| `VIDEO_MAX_BYTES` | Max video upload size (default 500MB) |
+| `VIDEO_DISCARD_AFTER_EXTRACT` | Delete original video after audio extract (default `true`) |
+| `AUDIO_EXTRACT_PROVIDER` | `mock` \| `ffmpeg` (video → wav) |
+| `GOOGLE_OAUTH_CLIENT_ID` / `SECRET` | Google Sign-In OAuth client (or reuse Calendar vars) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Sign-In callback (default `…/auth/google/callback`) |
+| `GOOGLE_CALENDAR_CLIENT_*` | Calendar/Meet OAuth (same client recommended) |
+| `CALENDAR_USE_MOCK` / `GOOGLE_AUTH_USE_MOCK` | Mock Google without real OAuth |
+| `MEETING_START_REMINDER_MINUTES` | In-app start reminder window (default 15) |
 
-See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.
+See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.  
+Audio upload flow: [`docs/transcription-flow.md`](./docs/transcription-flow.md).  
+Google Meet: [`docs/google-meet-integration.md`](./docs/google-meet-integration.md).  
+Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
 
 ## Development Commands
 
@@ -211,7 +226,8 @@ See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and 
 | Invitations | `/api/v1/invitations/*` | ✅ | ✅ |
 | Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ | ✅ |
 | AI processing | `.../meetings/:id/ai/*` | ✅ | ✅ |
-| Audio transcription | `.../meetings/:id/audio/*` | ✅ | ✅ |
+| Platform imports | `.../meetings/imports/{zoom,google-meet,teams}` | ✅ | API |
+| Needing transcript | `.../meetings/needing-transcript` | ✅ | ✅ |
 | Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ | ✅ |
 | Notifications | `/api/v1/notifications/*` | ✅ | ✅ |
 | Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ | ✅ |
@@ -223,7 +239,7 @@ See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and 
 | Calendar OAuth | `/api/v1/calendar/oauth/*` | ✅ | — |
 | Calendar sync | `/api/v1/workspaces/:id/calendar/*` | ✅ | — |
 
-**Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
+**Auth highlights:** register, login, Google Sign-In (`GET /auth/google`), logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
 **AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or external LLM keys locally. Use `AI_PIPELINE_MODE=multi-agent` for LangGraph orchestration. Set `OBSERVABILITY_API_KEY` for secured observability admin routes.
 
@@ -242,6 +258,8 @@ Full architecture and requirements live in [`docs/`](./docs/):
 - [api-design.md](./docs/api-design.md) — REST API reference
 - [rag-architecture.md](./docs/rag-architecture.md) — RAG and semantic search design
 - [llm-architecture.md](./docs/llm-architecture.md) — Multi-provider LLM layer
+- [transcription-flow.md](./docs/transcription-flow.md) — Audio upload → Whisper → AI pipeline
+- [capture-architecture.md](./docs/capture-architecture.md) — Capture layer (audio, import, bots)
 - [agent-flow.md](./docs/agent-flow.md) — Multi-agent orchestration
 - [observability-design.md](./docs/observability-design.md) — Metrics, alerts, and cost tracking
 - [project-structure.md](./docs/project-structure.md) — Detailed folder conventions

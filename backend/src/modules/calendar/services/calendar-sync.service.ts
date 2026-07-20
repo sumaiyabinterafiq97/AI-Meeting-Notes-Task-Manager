@@ -10,6 +10,7 @@ import {
 import { notificationRepository } from '../../notifications/notification.repository';
 import type { SyncConnectionResult } from '../types/calendar.types';
 import { logActivity } from '../../../lib/activity-log';
+import { metricsService, METRIC_NAMES } from '../../observability';
 
 function meetingSourceForProvider(provider: string): MeetingSource {
   return provider === 'GOOGLE' ? MeetingSource.GOOGLE_CALENDAR : MeetingSource.MICROSOFT_CALENDAR;
@@ -34,6 +35,7 @@ export class CalendarSyncService {
     }
 
     await this.sendTranscriptReminders(workspaceId);
+    await this.sendMeetingStartReminders(workspaceId);
     return results;
   }
 
@@ -49,6 +51,7 @@ export class CalendarSyncService {
 
     for (const workspaceId of workspaceIds) {
       await this.sendTranscriptReminders(workspaceId);
+      await this.sendMeetingStartReminders(workspaceId);
     }
 
     return results;
@@ -71,10 +74,7 @@ export class CalendarSyncService {
     let accessToken = calendarRepository.getAccessToken(connection);
 
     try {
-      if (
-        connection.tokenExpiresAt &&
-        connection.tokenExpiresAt.getTime() <= Date.now() + 60_000
-      ) {
+      if (connection.tokenExpiresAt && connection.tokenExpiresAt.getTime() <= Date.now() + 60_000) {
         const refreshToken = calendarRepository.getRefreshToken(connection);
         if (!refreshToken && !useMockCalendar()) {
           throw new Error('Access token expired and no refresh token available');
@@ -134,6 +134,8 @@ export class CalendarSyncService {
               durationMinutes,
               attendees,
               agenda,
+              meetUrl: event.meetUrl ?? null,
+              calendarHtmlLink: event.htmlLink ?? null,
             });
             meetingsUpdated += 1;
           }
@@ -154,6 +156,8 @@ export class CalendarSyncService {
           source: meetingSourceForProvider(connection.provider),
           externalCalendarEventId: event.externalEventId,
           calendarConnectionId: connection.id,
+          meetUrl: event.meetUrl ?? null,
+          calendarHtmlLink: event.htmlLink ?? null,
         });
 
         await calendarRepository.linkMeetingToSyncedEvent(syncedEvent.id, meeting.id);
@@ -192,9 +196,7 @@ export class CalendarSyncService {
   }
 
   async sendTranscriptReminders(workspaceId: string): Promise<number> {
-    const graceCutoff = new Date(
-      Date.now() - env.CALENDAR_REMINDER_GRACE_MINUTES * 60_000,
-    );
+    const graceCutoff = new Date(Date.now() - env.CALENDAR_REMINDER_GRACE_MINUTES * 60_000);
     const events = await calendarRepository.listEventsNeedingReminder(workspaceId, graceCutoff);
     const members = await calendarRepository.listWorkspaceMembers(workspaceId);
     let remindersSent = 0;
@@ -229,6 +231,64 @@ export class CalendarSyncService {
       await notificationRepository.createMany(notifications);
       await calendarRepository.markReminderSent(syncedEvent.id);
       remindersSent += notifications.length;
+      metricsService.incrementCounter(
+        METRIC_NAMES.REMINDER_SENT,
+        {
+          type: 'transcript',
+        },
+        notifications.length,
+      );
+    }
+
+    return remindersSent;
+  }
+
+  /** In-app reminders for meetings starting within MEETING_START_REMINDER_MINUTES */
+  async sendMeetingStartReminders(workspaceId: string): Promise<number> {
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + env.MEETING_START_REMINDER_MINUTES * 60_000);
+    const meetings = await calendarRepository.listMeetingsNeedingStartReminder(
+      workspaceId,
+      now,
+      windowEnd,
+    );
+    const members = await calendarRepository.listWorkspaceMembers(workspaceId);
+    let remindersSent = 0;
+
+    for (const meeting of meetings) {
+      const attendeeEmails = Array.isArray(meeting.attendees)
+        ? (meeting.attendees as string[]).map((e) => e.toLowerCase())
+        : [];
+
+      const recipientIds = new Set<string>([meeting.createdById]);
+      for (const member of members) {
+        if (attendeeEmails.includes(member.user.email.toLowerCase())) {
+          recipientIds.add(member.user.id);
+        }
+      }
+
+      const notifications = [...recipientIds].map((userId) => ({
+        userId,
+        workspaceId,
+        type: NotificationType.MEETING_STARTING_SOON,
+        payload: {
+          meetingId: meeting.id,
+          meetingTitle: meeting.title,
+          meetingDate: meeting.meetingDate,
+          meetUrl: meeting.meetUrl,
+        },
+      }));
+
+      await notificationRepository.createMany(notifications);
+      await calendarRepository.markStartReminderSent(meeting.id);
+      remindersSent += notifications.length;
+      metricsService.incrementCounter(
+        METRIC_NAMES.REMINDER_SENT,
+        {
+          type: 'meeting_start',
+        },
+        notifications.length,
+      );
     }
 
     return remindersSent;

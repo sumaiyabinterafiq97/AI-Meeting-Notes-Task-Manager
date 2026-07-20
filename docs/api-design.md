@@ -308,6 +308,18 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 | **Response 202** | `{ "status": "PROCESSING" }` |
 | **Errors** | 400 no transcript |
 
+### Capture endpoints (audio + imports)
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `POST` | `.../meetings/:meetingId/audio` | Multipart `audio`; `.mp3`/`.m4a`/`.wav` |
+| `GET` | `.../meetings/:meetingId/transcription` | Status only |
+| `POST` | `.../meetings/:meetingId/transcription/retry` | Failed transcription retry |
+| `GET` | `.../meetings/needing-transcript` | Calendar drafts without transcript |
+| `POST` | `.../meetings/imports/{zoom\|google-meet\|teams}` | Normalize → AI pipeline |
+
+See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](./capture-architecture.md).
+
 ---
 
 ## 5. AI Outputs

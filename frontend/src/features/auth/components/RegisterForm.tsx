@@ -11,6 +11,7 @@ import { ROUTES } from '@/lib/constants';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { registerSchema, type RegisterFormData } from '../schemas/auth.schemas';
 import { useRegister } from '../hooks/useRegister';
+import { GoogleContinueButton } from './GoogleContinueButton';
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -40,48 +41,64 @@ export function RegisterForm() {
         <CardDescription>Get started with AI-powered meeting notes and tasks.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          {registerMutation.isError && (
-            <ErrorAlert
-              message={getApiErrorMessage(registerMutation.error, 'Registration failed')}
-            />
-          )}
+        <div className="space-y-4">
+          <GoogleContinueButton
+            label="Continue with Google"
+            disabled={registerMutation.isPending}
+          />
 
-          <FormField id="displayName" label="Display name" error={errors.displayName?.message}>
-            <Input
-              id="displayName"
-              autoComplete="name"
-              placeholder="Alex Johnson"
-              {...register('displayName')}
-              {...getFieldAriaProps(errors.displayName?.message, 'displayName')}
-            />
-          </FormField>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
 
-          <FormField id="email" label="Email" error={errors.email?.message}>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              {...register('email')}
-              {...getFieldAriaProps(errors.email?.message, 'email')}
-            />
-          </FormField>
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            {registerMutation.isError && (
+              <ErrorAlert
+                message={getApiErrorMessage(registerMutation.error, 'Registration failed')}
+              />
+            )}
 
-          <FormField id="password" label="Password" error={errors.password?.message}>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              {...register('password')}
-              {...getFieldAriaProps(errors.password?.message, 'password')}
-            />
-          </FormField>
+            <FormField id="displayName" label="Display name" error={errors.displayName?.message}>
+              <Input
+                id="displayName"
+                autoComplete="name"
+                placeholder="Alex Johnson"
+                {...register('displayName')}
+                {...getFieldAriaProps(errors.displayName?.message, 'displayName')}
+              />
+            </FormField>
 
-          <Button type="submit" className="w-full min-h-11" disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? 'Creating account…' : 'Create account'}
-          </Button>
-        </form>
+            <FormField id="email" label="Email" error={errors.email?.message}>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                {...register('email')}
+                {...getFieldAriaProps(errors.email?.message, 'email')}
+              />
+            </FormField>
+
+            <FormField id="password" label="Password" error={errors.password?.message}>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                {...register('password')}
+                {...getFieldAriaProps(errors.password?.message, 'password')}
+              />
+            </FormField>
+
+            <Button type="submit" className="w-full min-h-11" disabled={registerMutation.isPending}>
+              {registerMutation.isPending ? 'Creating account…' : 'Create account'}
+            </Button>
+          </form>
+        </div>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{' '}

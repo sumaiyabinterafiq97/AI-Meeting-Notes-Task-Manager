@@ -1,6 +1,7 @@
 import { env } from '../../../config/env';
 import { mockTranscriptionProvider } from '../providers/mock-transcription.provider';
 import { openaiTranscriptionProvider } from '../providers/openai-transcription.provider';
+import { deepgramTranscriptionProvider } from '../providers/deepgram-transcription.provider';
 import type { ITranscriptionProvider } from '../providers/transcription-provider.interface';
 import type {
   TranscriptionInput,
@@ -16,10 +17,17 @@ function resolveProviderId(): TranscriptionProviderId {
 }
 
 export class TranscriptionService {
+  getActiveProviderId(): TranscriptionProviderId {
+    return resolveProviderId();
+  }
+
   private getProvider(): ITranscriptionProvider {
     const id = resolveProviderId();
     if (id === 'mock') {
       return mockTranscriptionProvider;
+    }
+    if (id === 'deepgram') {
+      return deepgramTranscriptionProvider;
     }
     return openaiTranscriptionProvider;
   }

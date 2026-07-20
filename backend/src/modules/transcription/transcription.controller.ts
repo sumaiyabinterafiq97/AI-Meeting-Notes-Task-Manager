@@ -39,6 +39,21 @@ export class TranscriptionController {
       next(error);
     }
   }
+
+  async retry(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const workspaceId = routeParam(req.params.workspaceId);
+      const meetingId = routeParam(req.params.meetingId);
+      const result = await transcriptionOrchestratorService.retryTranscription(
+        workspaceId,
+        meetingId,
+        req.user!.id,
+      );
+      res.status(202).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const transcriptionController = new TranscriptionController();

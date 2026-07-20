@@ -12,6 +12,13 @@ const STATUS_CONFIG: Record<
     variant: 'secondary',
     className: 'bg-muted text-muted-foreground',
   },
+  TRANSCRIBING: {
+    label: 'Transcribing',
+    variant: 'outline',
+    className:
+      'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200',
+    spin: true,
+  },
   PROCESSING: {
     label: 'Processing',
     variant: 'outline',
@@ -21,7 +28,8 @@ const STATUS_CONFIG: Record<
   READY: {
     label: 'Ready',
     variant: 'outline',
-    className: 'border-green-300 bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-200',
+    className:
+      'border-green-300 bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-200',
   },
   FAILED: {
     label: 'Failed',
@@ -36,7 +44,7 @@ interface ProcessingStatusBadgeProps {
 }
 
 export function ProcessingStatusBadge({ status, className }: ProcessingStatusBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.DRAFT;
 
   return (
     <Badge variant={config.variant} className={cn('gap-1.5', config.className, className)}>
