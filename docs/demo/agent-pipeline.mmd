@@ -1,0 +1,41 @@
+flowchart TB
+    MTG[Meeting Transcript] --> Orch[Agent Orchestrator]
+    Orch --> Mode{AI_PIPELINE_MODE}
+
+    Mode -->|monolithic| Mono[Single LLM Extract]
+    Mode -->|multi-agent| Parallel[Parallel Phase 1]
+
+    subgraph Phase1["Phase 1 — Parallel Extraction"]
+        Parallel --> SA[Summarizer Agent]
+        Parallel --> TA[Task Extraction Agent]
+        Parallel --> DA[Decision Agent]
+        Parallel --> RA[Risk Analyzer Agent]
+    end
+
+    SA & TA & DA & RA --> Merge[Output Merger]
+    Mono --> Persist
+
+    Merge --> Persist[Persist meeting_ai_outputs]
+    Persist --> KA[Knowledge Agent]
+    KA --> KB[(Knowledge Base)]
+    KA --> Embed[Enqueue embed-meeting]
+
+    Embed --> VDB[(Vector Index)]
+
+    subgraph Scheduled["Scheduled Agents"]
+        WRA[Weekly Report Agent]
+    end
+
+    WRA --> RetA[Retriever Agent]
+    RetA --> VDB
+    WRA --> Report[(workspace_reports)]
+
+    subgraph Interactive["Interactive Agents"]
+        ChatA[Chat Agent]
+    end
+
+    ChatA --> RetA2[Retriever Agent]
+    RetA2 --> VDB
+    ChatA --> CBA[Context Builder Agent]
+    CBA --> PBA[Prompt Builder Agent]
+    PBA --> LLM[LLM Service]

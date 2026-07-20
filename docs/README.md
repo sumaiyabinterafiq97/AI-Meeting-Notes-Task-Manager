@@ -27,6 +27,10 @@
 | Document | Description |
 |----------|-------------|
 | [future-roadmap.md](./future-roadmap.md) | **Start here** — 10-phase strategic roadmap |
+| [capture-architecture.md](./capture-architecture.md) | Meeting capture layer (audio → import → bots) |
+| [transcription-flow.md](./transcription-flow.md) | Phase A: audio upload → Whisper → AI pipeline |
+| [meeting-import-strategy.md](./meeting-import-strategy.md) | Phase C: Zoom/Meet/Teams import adapters |
+| [zoom-meet-teams-integration.md](./zoom-meet-teams-integration.md) | Import vs live-bot strategy |
 | [llm-requirements.md](./llm-requirements.md) | LLM integration + meeting intelligence features |
 | [rag-requirements.md](./rag-requirements.md) | RAG pipeline, chunking, retrieval |
 | [vector-db-requirements.md](./vector-db-requirements.md) | pgvector selection + schema |

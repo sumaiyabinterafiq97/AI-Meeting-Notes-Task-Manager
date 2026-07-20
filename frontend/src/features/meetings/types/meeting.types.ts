@@ -1,6 +1,11 @@
-export type MeetingStatus = 'DRAFT' | 'PROCESSING' | 'READY' | 'FAILED';
+export type MeetingStatus = 'DRAFT' | 'TRANSCRIBING' | 'PROCESSING' | 'READY' | 'FAILED';
 
-export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt';
+/** Formats for paste / text-file transcript upload (not audio). */
+export type PasteTranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt';
+
+export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt' | 'audio' | 'video';
+
+export type TranscriptionJobStatus = 'PENDING' | 'TRANSCRIBING' | 'COMPLETED' | 'FAILED';
 
 export type AiProcessingStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -14,6 +19,11 @@ export interface Meeting {
   tags: string[];
   agenda: string | null;
   status: MeetingStatus;
+  source?: string;
+  meetUrl?: string | null;
+  calendarHtmlLink?: string | null;
+  externalCalendarEventId?: string | null;
+  googleCalendarConnected?: boolean;
   createdById: string;
   createdAt: string;
   updatedAt?: string;
@@ -100,5 +110,40 @@ export interface UploadTranscriptResponse {
   charCount: number;
 }
 
+export interface MeetingAudioMeta {
+  id: string;
+  meetingId: string;
+  workspaceId: string;
+  originalName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  status: TranscriptionJobStatus;
+  errorMessage: string | null;
+  transcribedAt: string | null;
+  createdAt: string;
+}
+
+export interface UploadAudioResponse {
+  meetingId: string;
+  audioId: string;
+  status: TranscriptionJobStatus;
+  meetingStatus: MeetingStatus;
+}
+
+export interface TranscriptionStatusResponse {
+  meetingId: string;
+  meetingStatus: MeetingStatus;
+  audio: MeetingAudioMeta | null;
+  transcript: {
+    charCount: number;
+    sourceFormat: string;
+    uploadedAt: string;
+  } | null;
+}
+
 export const MIN_TRANSCRIPT_CHARS = 100;
 export const MAX_TRANSCRIPT_BYTES = 5 * 1024 * 1024;
+export const MAX_AUDIO_BYTES = 100 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+export const ALLOWED_AUDIO_ACCEPT =
+  'audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,video/mp4,video/webm,.mp3,.m4a,.wav,.mp4,.webm';

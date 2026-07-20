@@ -18,11 +18,7 @@ interface CreateMeetingDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateMeetingDialog({
-  workspaceId,
-  open,
-  onOpenChange,
-}: CreateMeetingDialogProps) {
+export function CreateMeetingDialog({ workspaceId, open, onOpenChange }: CreateMeetingDialogProps) {
   const navigate = useNavigate();
   const createMutation = useCreateMeeting(workspaceId);
   const [formKey, setFormKey] = useState(0);
@@ -69,10 +65,17 @@ export function CreateMeetingDialog({
     >
       <form key={formKey} onSubmit={onSubmit} className="space-y-4" noValidate>
         {createMutation.isError && (
-          <ErrorAlert message={getApiErrorMessage(createMutation.error, 'Failed to create meeting')} />
+          <ErrorAlert
+            message={getApiErrorMessage(createMutation.error, 'Failed to create meeting')}
+          />
         )}
 
         <MeetingFormFields register={register} errors={errors} idPrefix="create-meeting" />
+
+        <p className="text-xs text-muted-foreground">
+          If Google Calendar is connected for this workspace, a Google Meet link will be created
+          automatically.
+        </p>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => handleClose(false)}>

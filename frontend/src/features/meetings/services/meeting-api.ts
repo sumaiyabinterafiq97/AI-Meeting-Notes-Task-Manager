@@ -5,7 +5,11 @@ import type {
   MeetingDetail,
   MeetingListFilters,
   MeetingsListResponse,
+  MeetingStatus,
+  PasteTranscriptSourceFormat,
   TranscriptSourceFormat,
+  TranscriptionStatusResponse,
+  UploadAudioResponse,
   UploadTranscriptResponse,
 } from '../types/meeting.types';
 import type { CreateMeetingFormData, UpdateMeetingFormData } from '../schemas/meeting.schemas';
@@ -51,13 +55,67 @@ export const meetingApi = {
       { content, sourceFormat },
     ),
 
+  uploadAudio: (workspaceId: string, meetingId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('audio', file);
+    return apiClient.post<UploadAudioResponse>(
+      `/workspaces/${workspaceId}/meetings/${meetingId}/audio`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      },
+    );
+  },
+
+  getTranscriptionStatus: (workspaceId: string, meetingId: string) =>
+    apiClient.get<TranscriptionStatusResponse>(
+      `/workspaces/${workspaceId}/meetings/${meetingId}/transcription`,
+    ),
+
+  retryTranscription: (workspaceId: string, meetingId: string) =>
+    apiClient.post<UploadAudioResponse>(
+      `/workspaces/${workspaceId}/meetings/${meetingId}/transcription/retry`,
+    ),
+
+  listNeedingTranscript: (workspaceId: string) =>
+    apiClient.get<{
+      data: Array<{
+        id: string;
+        title: string;
+        meetingDate: string;
+        status: MeetingStatus;
+        source: string;
+        externalCalendarEventId: string | null;
+      }>;
+    }>(`/workspaces/${workspaceId}/meetings/needing-transcript`),
+
+  importFromZoom: (workspaceId: string, body: Record<string, unknown>) =>
+    apiClient.post(`/workspaces/${workspaceId}/meetings/imports/zoom`, body),
+
+  importFromGoogleMeet: (workspaceId: string, body: Record<string, unknown>) =>
+    apiClient.post(`/workspaces/${workspaceId}/meetings/imports/google-meet`, body),
+
+  importFromTeams: (workspaceId: string, body: Record<string, unknown>) =>
+    apiClient.post(`/workspaces/${workspaceId}/meetings/imports/teams`, body),
+
   reprocess: (workspaceId: string, meetingId: string) =>
     apiClient.post<{ status: string }>(
       `/workspaces/${workspaceId}/meetings/${meetingId}/reprocess`,
     ),
+
+  recorderEvent: (
+    workspaceId: string,
+    meetingId: string,
+    event: 'started' | 'stopped' | 'upload_success',
+  ) =>
+    apiClient.post(`/workspaces/${workspaceId}/meetings/${meetingId}/recorder-events`, {
+      event,
+    }),
 };
 
-export function detectSourceFormat(filename: string): TranscriptSourceFormat {
+export function detectSourceFormat(filename: string): PasteTranscriptSourceFormat {
   const extension = filename.split('.').pop()?.toLowerCase();
   if (extension === 'md') return 'md';
   if (extension === 'vtt') return 'vtt';

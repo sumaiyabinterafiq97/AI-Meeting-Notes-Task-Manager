@@ -33,4 +33,5 @@ export const ROUTES = {
   KNOWLEDGE_SEARCH: (workspaceId: string) =>
     `/workspaces/${workspaceId}/search?sourceTypes=knowledge`,
   ACCOUNT_NOTIFICATIONS: '/account/notifications',
+  GOOGLE_CALLBACK: '/auth/google/callback',
 } as const;

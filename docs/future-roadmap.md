@@ -301,7 +301,8 @@ gantt
 ## Phase 7: Voice Transcription
 
 **Duration:** 6–8 weeks  
-**Depends on:** Phase 6
+**Depends on:** Phase 6  
+**Implementation status (2026-07):** Phase A audio capture **shipped** (`modules/transcription` + UI). See [transcription-flow.md](./transcription-flow.md) and [capture-architecture.md](./capture-architecture.md).
 
 ### Objectives
 
@@ -334,7 +335,8 @@ gantt
 ## Phase 8: Calendar Integration
 
 **Duration:** 5–6 weeks  
-**Depends on:** Phase 7
+**Depends on:** Phase 7  
+**Implementation status (2026-07):** Backend OAuth + sync + auto-create + transcript reminders **shipped** (`modules/calendar`). Needing-transcript list API + UI added under capture. Full calendar settings UI still optional polish.
 
 ### Objectives
 

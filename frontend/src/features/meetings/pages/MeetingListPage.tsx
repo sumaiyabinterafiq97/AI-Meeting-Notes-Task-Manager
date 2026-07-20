@@ -10,6 +10,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { MeetingCard } from '../components/MeetingCard';
 import { MeetingFilters } from '../components/MeetingFilters';
 import { CreateMeetingDialog } from '../components/CreateMeetingDialog';
+import { MeetingsNeedingTranscript } from '../capture/MeetingsNeedingTranscript';
 import { useMeetings } from '../hooks/useMeetings';
 import type { MeetingStatus } from '../types/meeting.types';
 
@@ -42,13 +43,17 @@ export function MeetingListPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Meetings</h2>
-          <p className="text-muted-foreground">Manage meeting records and transcripts.</p>
+          <p className="text-muted-foreground">
+            Capture recordings, import from Zoom/Meet, or paste transcripts.
+          </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="min-h-10 shrink-0">
           <Plus className="h-4 w-4" aria-hidden="true" />
           New meeting
         </Button>
       </div>
+
+      <MeetingsNeedingTranscript workspaceId={workspaceId} />
 
       <MeetingFilters
         search={search}
@@ -69,14 +74,12 @@ export function MeetingListPage() {
         </div>
       )}
 
-      {isError && (
-        <ErrorAlert message={getApiErrorMessage(error, 'Failed to load meetings')} />
-      )}
+      {isError && <ErrorAlert message={getApiErrorMessage(error, 'Failed to load meetings')} />}
 
       {!isLoading && !isError && meetings.length === 0 && (
         <EmptyState
           title="No meetings yet"
-          description="Create your first meeting to upload a transcript and generate AI notes."
+          description="Create a meeting, then upload a recording or import from Zoom/Meet to generate AI notes."
           action={
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,12 @@ import { ROUTES } from '@/lib/constants';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { loginSchema, type LoginFormData } from '../schemas/auth.schemas';
 import { useLogin } from '../hooks/useLogin';
+import { GoogleContinueButton } from './GoogleContinueButton';
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const oauthError = searchParams.get('error');
   const loginMutation = useLogin();
 
   const {
@@ -40,45 +43,60 @@ export function LoginForm() {
         <CardDescription>Enter your credentials to access your workspaces.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          {loginMutation.isError && (
-            <ErrorAlert message={getApiErrorMessage(loginMutation.error, 'Sign in failed')} />
-          )}
+        <div className="space-y-4">
+          {oauthError && <ErrorAlert message={oauthError} />}
 
-          <FormField id="email" label="Email" error={errors.email?.message}>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              {...register('email')}
-              {...getFieldAriaProps(errors.email?.message, 'email')}
-            />
-          </FormField>
+          <GoogleContinueButton disabled={loginMutation.isPending} />
 
-          <FormField id="password" label="Password" error={errors.password?.message}>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              {...register('password')}
-              {...getFieldAriaProps(errors.password?.message, 'password')}
-            />
-          </FormField>
-
-          <div className="flex justify-end">
-            <Link
-              to={ROUTES.FORGOT_PASSWORD}
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or</span>
+            </div>
           </div>
 
-          <Button type="submit" className="w-full min-h-11" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            {loginMutation.isError && (
+              <ErrorAlert message={getApiErrorMessage(loginMutation.error, 'Sign in failed')} />
+            )}
+
+            <FormField id="email" label="Email" error={errors.email?.message}>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                {...register('email')}
+                {...getFieldAriaProps(errors.email?.message, 'email')}
+              />
+            </FormField>
+
+            <FormField id="password" label="Password" error={errors.password?.message}>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                {...register('password')}
+                {...getFieldAriaProps(errors.password?.message, 'password')}
+              />
+            </FormField>
+
+            <div className="flex justify-end">
+              <Link
+                to={ROUTES.FORGOT_PASSWORD}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button type="submit" className="w-full min-h-11" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        </div>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
