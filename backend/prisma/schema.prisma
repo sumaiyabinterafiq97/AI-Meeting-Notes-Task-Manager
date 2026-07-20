@@ -72,6 +72,13 @@ enum NotificationType {
   INVITATION
   MEETING_PROCESSED
   MEETING_TRANSCRIPT_REMINDER
+  MEETING_STARTING_SOON
+}
+
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+  BOTH
 }
 
 enum CalendarProvider {
@@ -89,6 +96,21 @@ enum MeetingSource {
   MANUAL
   GOOGLE_CALENDAR
   MICROSOFT_CALENDAR
+  ZOOM_IMPORT
+  GOOGLE_MEET_IMPORT
+  TEAMS_IMPORT
+}
+
+enum MeetingImportProvider {
+  ZOOM
+  GOOGLE_MEET
+  TEAMS
+}
+
+enum MeetingImportStatus {
+  PENDING
+  IMPORTED
+  FAILED
 }
 
 // MeetingMind AI — vector / RAG
@@ -136,15 +158,21 @@ enum KnowledgeEntityType {
 // =============================================================================
 
 model User {
-  id              String    @id @default(uuid()) @db.Uuid
-  email           String    @unique @db.VarChar(255)
-  passwordHash    String    @map("password_hash") @db.VarChar(255)
-  displayName     String    @map("display_name") @db.VarChar(100)
-  avatarUrl       String?   @map("avatar_url")
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  id              String       @id @default(uuid()) @db.Uuid
+  email           String       @unique @db.VarChar(255)
+  passwordHash    String?      @map("password_hash") @db.VarChar(255)
+  displayName     String       @map("display_name") @db.VarChar(100)
+  avatarUrl       String?      @map("avatar_url")
+  emailVerifiedAt DateTime?    @map("email_verified_at") @db.Timestamptz
+  authProvider            AuthProvider @default(PASSWORD) @map("auth_provider")
+  googleSub               String?      @unique @map("google_sub") @db.VarChar(255)
+  googleEmail             String?      @map("google_email") @db.VarChar(255)
+  googleRefreshTokenEnc   String?      @map("google_refresh_token_enc")
+  googleAccessTokenEnc    String?      @map("google_access_token_enc")
+  googleTokenExpiresAt    DateTime?    @map("google_token_expires_at") @db.Timestamptz
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt               DateTime?    @map("deleted_at") @db.Timestamptz
 
   workspaceMemberships WorkspaceMember[]
   createdWorkspaces    Workspace[]          @relation("WorkspaceCreator")
@@ -225,6 +253,7 @@ model Workspace {
   knowledgeEntries KnowledgeEntry[]
   workspaceReports WorkspaceReport[]
   meetingAudios      MeetingAudio[]
+  meetingImports     MeetingImport[]
   calendarConnections CalendarConnection[]
 
   @@map("workspaces")
@@ -277,6 +306,9 @@ model Meeting {
   source          MeetingSource @default(MANUAL)
   externalCalendarEventId String? @map("external_calendar_event_id") @db.VarChar(255)
   calendarConnectionId    String? @map("calendar_connection_id") @db.Uuid
+  meetUrl                 String? @map("meet_url") @db.VarChar(500)
+  calendarHtmlLink        String? @map("calendar_html_link") @db.VarChar(500)
+  startReminderSentAt     DateTime? @map("start_reminder_sent_at") @db.Timestamptz
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
@@ -295,6 +327,7 @@ model Meeting {
   chatSessions     ChatSession[]
   knowledgeEntries KnowledgeEntry[]
   audio            MeetingAudio?
+  meetingImport    MeetingImport?
   calendarConnection CalendarConnection? @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
   calendarSyncedEvent CalendarSyncedEvent?
 
@@ -726,6 +759,27 @@ model MeetingAudio {
 
   @@index([workspaceId], map: "idx_meeting_audio_workspace")
   @@map("meeting_audio")
+}
+
+model MeetingImport {
+  id                  String               @id @default(uuid()) @db.Uuid
+  workspaceId         String               @map("workspace_id") @db.Uuid
+  meetingId           String               @unique @map("meeting_id") @db.Uuid
+  provider            MeetingImportProvider
+  externalMeetingId   String?              @map("external_meeting_id") @db.VarChar(255)
+  externalRecordingId String?              @map("external_recording_id") @db.VarChar(255)
+  status              MeetingImportStatus  @default(IMPORTED)
+  errorMessage        String?              @map("error_message")
+  metadata            Json?
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  meeting   Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, provider], map: "idx_meeting_imports_workspace_provider")
+  @@index([externalMeetingId], map: "idx_meeting_imports_external_meeting")
+  @@map("meeting_imports")
 }
 
 model CalendarConnection {

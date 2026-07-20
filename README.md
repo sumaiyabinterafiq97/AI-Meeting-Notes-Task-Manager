@@ -4,19 +4,19 @@ MeetingMind AI is a production-grade SaaS platform that transforms meeting trans
 
 ## Tech Stack
 
-| Layer | Technologies |
-|-------|--------------|
-| **Frontend** | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod, React Markdown |
-| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt |
-| **LLM** | OpenAI SDK, Anthropic SDK, Google Gemini, LangChain, LangGraph, multi-provider fallback chain |
-| **RAG & Search** | pgvector, document chunking, hybrid retrieval (vector + FTS), reciprocal rank fusion |
-| **Agents** | Summarizer, task extractor, decision, risk analyzer, chat, knowledge, weekly report |
-| **Jobs & Cache** | BullMQ, Redis (ioredis), background workers, SSE streaming |
-| **Database** | PostgreSQL 16 + pgvector |
-| **Observability** | Pino logging, token/cost tracking, LLM invocation metrics |
-| **DevOps** | Docker, Docker Compose |
-| **Code Quality** | ESLint, Prettier, Husky, lint-staged |
-| **Testing** | Vitest (frontend), Jest + Supertest (backend), prompt eval fixtures |
+| Layer             | Technologies                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Frontend**      | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod, React Markdown |
+| **Backend**       | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt                                                                        |
+| **LLM**           | OpenAI SDK, Anthropic SDK, Google Gemini, LangChain, LangGraph, multi-provider fallback chain                                  |
+| **RAG & Search**  | pgvector, document chunking, hybrid retrieval (vector + FTS), reciprocal rank fusion                                           |
+| **Agents**        | Summarizer, task extractor, decision, risk analyzer, chat, knowledge, weekly report                                            |
+| **Jobs & Cache**  | BullMQ, Redis (ioredis), background workers, SSE streaming                                                                     |
+| **Database**      | PostgreSQL 16 + pgvector                                                                                                       |
+| **Observability** | Pino logging, token/cost tracking, LLM invocation metrics                                                                      |
+| **DevOps**        | Docker, Docker Compose                                                                                                         |
+| **Code Quality**  | ESLint, Prettier, Husky, lint-staged                                                                                           |
+| **Testing**       | Vitest (frontend), Jest + Supertest (backend), prompt eval fixtures                                                            |
 
 ## Project Structure
 
@@ -135,101 +135,117 @@ cp .env.example .env
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:3001 |
-| Health check | http://localhost:3001/health |
-| PostgreSQL (pgvector) | localhost:5432 |
-| Redis | localhost:6379 |
+| Service               | URL                          |
+| --------------------- | ---------------------------- |
+| Frontend              | http://localhost:5173        |
+| Backend API           | http://localhost:3001        |
+| Health check          | http://localhost:3001/health |
+| PostgreSQL (pgvector) | localhost:5432               |
+| Redis                 | localhost:6379               |
 
 ## Environment Variables
 
 See [`.env.example`](./.env.example) for the full list. Key variables:
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_ACCESS_SECRET` | Access token signing secret (≥ 32 chars) |
-| `JWT_REFRESH_SECRET` | Refresh token signing secret (≥ 32 chars) |
-| `VITE_API_URL` | Frontend API base URL |
-| `CORS_ORIGIN` | Allowed frontend origin |
-| `API_PORT` | Backend server port (default: 3001) |
-| `REDIS_URL` | Redis connection for BullMQ workers (optional with `AI_USE_MOCK=true`) |
-| `OPENAI_API_KEY` | OpenAI API key (optional with mock mode) |
-| `LLM_PRIMARY_PROVIDER` | Primary LLM provider (`openai`, `google`, `anthropic`, `mock`) |
-| `EMBEDDING_MODEL` | Embedding model for semantic search (default: `text-embedding-3-small`) |
-| `AI_USE_MOCK` | Run AI inline without Redis/OpenAI (`true` for local dev) |
-| `AI_PIPELINE_MODE` | `monolithic` or `multi-agent` extraction pipeline |
-| `PROMPT_SCHEMA_V2_1` | Enable extended agent output schemas with confidence scores |
+| Variable                                     | Description                                                             |
+| -------------------------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                               | PostgreSQL connection string                                            |
+| `JWT_ACCESS_SECRET`                          | Access token signing secret (≥ 32 chars)                                |
+| `JWT_REFRESH_SECRET`                         | Refresh token signing secret (≥ 32 chars)                               |
+| `VITE_API_URL`                               | Frontend API base URL                                                   |
+| `CORS_ORIGIN`                                | Allowed frontend origin                                                 |
+| `API_PORT`                                   | Backend server port (default: 3001)                                     |
+| `REDIS_URL`                                  | Redis connection for BullMQ workers (optional with `AI_USE_MOCK=true`)  |
+| `OPENAI_API_KEY`                             | OpenAI API key (optional with mock mode)                                |
+| `LLM_PRIMARY_PROVIDER`                       | Primary LLM provider (`openai`, `google`, `anthropic`, `mock`)          |
+| `EMBEDDING_MODEL`                            | Embedding model for semantic search (default: `text-embedding-3-small`) |
+| `AI_USE_MOCK`                                | Run AI inline without Redis/OpenAI (`true` for local dev)               |
+| `AI_PIPELINE_MODE`                           | `monolithic` or `multi-agent` extraction pipeline                       |
+| `PROMPT_SCHEMA_V2_1`                         | Enable extended agent output schemas with confidence scores             |
+| `TRANSCRIPTION_PROVIDER`                     | `mock` \| `openai` \| `deepgram` (audio → text)                         |
+| `OPENAI_WHISPER_MODEL`                       | Whisper model (default `whisper-1`)                                     |
+| `AUDIO_STORAGE_PATH`                         | Local recording storage root (default `./storage/audio`)                |
+| `AUDIO_MAX_BYTES`                            | Max audio upload size (default 100MB)                                   |
+| `VIDEO_MAX_BYTES`                            | Max video upload size (default 500MB)                                   |
+| `VIDEO_DISCARD_AFTER_EXTRACT`                | Delete original video after audio extract (default `true`)              |
+| `AUDIO_EXTRACT_PROVIDER`                     | `mock` \| `ffmpeg` (video → wav)                                        |
+| `GOOGLE_OAUTH_CLIENT_ID` / `SECRET`          | Google Sign-In OAuth client (or reuse Calendar vars)                    |
+| `GOOGLE_OAUTH_REDIRECT_URI`                  | Sign-In callback (default `…/auth/google/callback`)                     |
+| `GOOGLE_CALENDAR_CLIENT_*`                   | Calendar/Meet OAuth (same client recommended)                           |
+| `CALENDAR_USE_MOCK` / `GOOGLE_AUTH_USE_MOCK` | Mock Google without real OAuth                                          |
+| `MEETING_START_REMINDER_MINUTES`             | In-app start reminder window (default 15)                               |
 
-See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.
+See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.  
+Audio upload flow: [`docs/transcription-flow.md`](./docs/transcription-flow.md).  
+Google Meet: [`docs/google-meet-integration.md`](./docs/google-meet-integration.md).  
+Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
 
 ## Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start frontend + backend in dev mode |
-| `npm run build` | Build both apps for production |
-| `npm run lint` | Lint frontend and backend |
-| `npm run test` | Run all tests |
-| `npm run eval:prompts` | Run prompt fixture eval (`--mock` default) |
-| `npm run load:test:meetings` | Concurrent meeting AI job load test |
-| `npm run format` | Format code with Prettier |
-| `npm run format:check` | Check formatting |
+| Command                      | Description                                |
+| ---------------------------- | ------------------------------------------ |
+| `npm run dev`                | Start frontend + backend in dev mode       |
+| `npm run build`              | Build both apps for production             |
+| `npm run lint`               | Lint frontend and backend                  |
+| `npm run test`               | Run all tests                              |
+| `npm run eval:prompts`       | Run prompt fixture eval (`--mock` default) |
+| `npm run load:test:meetings` | Concurrent meeting AI job load test        |
+| `npm run format`             | Format code with Prettier                  |
+| `npm run format:check`       | Check formatting                           |
 
 ### Frontend
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Vite dev server |
-| `npm run build` | Production build |
-| `npm run test` | Vitest unit tests |
-| `npm run lint` | ESLint |
+| Command         | Description       |
+| --------------- | ----------------- |
+| `npm run dev`   | Vite dev server   |
+| `npm run build` | Production build  |
+| `npm run test`  | Vitest unit tests |
+| `npm run lint`  | ESLint            |
 
 ### Backend
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | tsx watch dev server |
-| `npm run build` | TypeScript compile |
-| `npm run test` | Jest tests |
+| Command                  | Description             |
+| ------------------------ | ----------------------- |
+| `npm run dev`            | tsx watch dev server    |
+| `npm run build`          | TypeScript compile      |
+| `npm run test`           | Jest tests              |
 | `npm run prisma:migrate` | Create/apply migrations |
-| `npm run prisma:studio` | Prisma database GUI |
+| `npm run prisma:studio`  | Prisma database GUI     |
 
 ## API Endpoints
 
-**MeetingMind AI v0.5.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
+**MeetingMind AI v0.6.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
-| Domain | Base Path | Backend | Frontend |
-|--------|-----------|---------|----------|
-| Health | `GET /health` | ✅ | — |
-| Observability | `/observability/*` | ✅ | — |
-| Auth | `/api/v1/auth/*` | ✅ | ✅ |
-| Users | `/api/v1/users/*` | ✅ | ✅ |
-| Workspaces | `/api/v1/workspaces/*` | ✅ | ✅ |
-| Invitations | `/api/v1/invitations/*` | ✅ | ✅ |
-| Meetings | `/api/v1/workspaces/:id/meetings/*` | ✅ | ✅ |
-| AI processing | `.../meetings/:id/ai/*` | ✅ | ✅ |
-| Audio transcription | `.../meetings/:id/audio/*` | ✅ | ✅ |
-| Tasks | `/api/v1/workspaces/:id/tasks/*` | ✅ | ✅ |
-| Notifications | `/api/v1/notifications/*` | ✅ | ✅ |
-| Dashboard | `/api/v1/workspaces/:id/dashboard` | ✅ | ✅ |
-| Search (keyword + semantic) | `/api/v1/workspaces/:id/search` | ✅ | ✅ |
-| Chat (SSE) | `/api/v1/workspaces/:id/chat/*` | ✅ | ✅ |
-| Insights | `/api/v1/workspaces/:id/insights/*` | ✅ | ✅ |
-| Reports | `/api/v1/workspaces/:id/reports/*` | ✅ | ✅ |
-| Knowledge | `/api/v1/workspaces/:id/knowledge/*` | ✅ | ✅ |
-| Calendar OAuth | `/api/v1/calendar/oauth/*` | ✅ | — |
-| Calendar sync | `/api/v1/workspaces/:id/calendar/*` | ✅ | — |
+| Domain                      | Base Path                                       | Backend | Frontend |
+| --------------------------- | ----------------------------------------------- | ------- | -------- |
+| Health                      | `GET /health`                                   | ✅      | —        |
+| Observability               | `/observability/*`                              | ✅      | —        |
+| Auth                        | `/api/v1/auth/*`                                | ✅      | ✅       |
+| Users                       | `/api/v1/users/*`                               | ✅      | ✅       |
+| Workspaces                  | `/api/v1/workspaces/*`                          | ✅      | ✅       |
+| Invitations                 | `/api/v1/invitations/*`                         | ✅      | ✅       |
+| Meetings                    | `/api/v1/workspaces/:id/meetings/*`             | ✅      | ✅       |
+| AI processing               | `.../meetings/:id/ai/*`                         | ✅      | ✅       |
+| Platform imports            | `.../meetings/imports/{zoom,google-meet,teams}` | ✅      | API      |
+| Needing transcript          | `.../meetings/needing-transcript`               | ✅      | ✅       |
+| Tasks                       | `/api/v1/workspaces/:id/tasks/*`                | ✅      | ✅       |
+| Notifications               | `/api/v1/notifications/*`                       | ✅      | ✅       |
+| Dashboard                   | `/api/v1/workspaces/:id/dashboard`              | ✅      | ✅       |
+| Search (keyword + semantic) | `/api/v1/workspaces/:id/search`                 | ✅      | ✅       |
+| Chat (SSE)                  | `/api/v1/workspaces/:id/chat/*`                 | ✅      | ✅       |
+| Insights                    | `/api/v1/workspaces/:id/insights/*`             | ✅      | ✅       |
+| Reports                     | `/api/v1/workspaces/:id/reports/*`              | ✅      | ✅       |
+| Knowledge                   | `/api/v1/workspaces/:id/knowledge/*`            | ✅      | ✅       |
+| Calendar OAuth              | `/api/v1/calendar/oauth/*`                      | ✅      | —        |
+| Calendar sync               | `/api/v1/workspaces/:id/calendar/*`             | ✅      | Partial  |
 
-**Auth highlights:** register, login, logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
+**Auth highlights:** register, login, Google Sign-In (`GET /auth/google`), logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
 **AI dev mode:** set `AI_USE_MOCK=true` in `.env` to run without Redis or external LLM keys locally. Use `AI_PIPELINE_MODE=multi-agent` for LangGraph orchestration. Set `OBSERVABILITY_API_KEY` for secured observability admin routes.
 
 ## Database Models
 
-Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`, `DocumentChunk`, `EmbeddingJob`, `LlmInvocation`, `LlmUsageDaily`, `AgentExecution`, `ChatSession`, `ChatMessage`, `KnowledgeEntry`, `WorkspaceReport`, `MeetingAudio`, `CalendarConnection`, `CalendarSyncedEvent`.
+Prisma models: `User`, `RefreshToken`, `PasswordResetToken`, `Workspace`, `WorkspaceMember`, `WorkspaceInvitation`, `Meeting`, `MeetingTranscript`, `MeetingAiOutput`, `ActionItemSuggestion`, `AiProcessingJob`, `Task`, `TaskStatusHistory`, `Comment`, `Notification`, `NotificationPreference`, `ActivityLog`, `DocumentChunk`, `EmbeddingJob`, `LlmInvocation`, `LlmUsageDaily`, `AgentExecution`, `ChatSession`, `ChatMessage`, `KnowledgeEntry`, `WorkspaceReport`, `MeetingAudio`, `MeetingImport`, `CalendarConnection`, `CalendarSyncedEvent`.
 
 See [`docs/erd.md`](./docs/erd.md) and [`docs/database-architecture.md`](./docs/database-architecture.md) for the full schema design.
 
@@ -242,19 +258,21 @@ Full architecture and requirements live in [`docs/`](./docs/):
 - [api-design.md](./docs/api-design.md) — REST API reference
 - [rag-architecture.md](./docs/rag-architecture.md) — RAG and semantic search design
 - [llm-architecture.md](./docs/llm-architecture.md) — Multi-provider LLM layer
+- [transcription-flow.md](./docs/transcription-flow.md) — Audio upload → Whisper → AI pipeline
+- [capture-architecture.md](./docs/capture-architecture.md) — Capture layer (audio, import, bots)
 - [agent-flow.md](./docs/agent-flow.md) — Multi-agent orchestration
 - [observability-design.md](./docs/observability-design.md) — Metrics, alerts, and cost tracking
 - [project-structure.md](./docs/project-structure.md) — Detailed folder conventions
 
 ## Next Steps
 
-MeetingMind AI v0.5.0 is feature-complete. Recommended next phase:
+MeetingMind AI v0.6.0 is feature-complete. Recommended next phase:
 
-1. **E2E tests** — Playwright flows for chat, semantic search, and multi-agent pipeline
+1. **E2E tests** — Playwright for Google mock auth, screen capture upload, and Meet create flow
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
-3. **Production deploy** — Redis + pgvector in production, observability dashboards, CI/CD
-4. **Calendar UI** — Frontend surfaces for calendar connect/sync and transcript reminders
-5. **Polish** — Enable reranker in production, API design doc v1.2, prompt eval in CI
+3. **Production deploy** — Redis, pgvector, ffmpeg for video extract, CI/CD
+4. **Live platform imports** — Replace Zoom/Meet/Teams stubs with provider APIs and webhooks
+5. **Polish** — Meeting bots, Deepgram transcription, prompt eval in CI, API design doc v1.2
 
 ## License
 

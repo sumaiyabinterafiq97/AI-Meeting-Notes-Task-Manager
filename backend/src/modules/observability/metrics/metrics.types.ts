@@ -12,6 +12,9 @@ export interface MetricLabels {
   namespace?: string;
   queue?: string;
   jobType?: string;
+  flow?: string;
+  mock?: string;
+  type?: string;
 }
 
 export interface LatencyMetric {

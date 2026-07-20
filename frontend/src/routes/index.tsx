@@ -7,6 +7,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
+import { GoogleCallbackPage } from '@/features/auth/pages/GoogleCallbackPage';
 import { WorkspaceListPage } from '@/features/workspaces/pages/WorkspaceListPage';
 import { WorkspaceSettingsPage } from '@/features/workspaces/pages/WorkspaceSettingsPage';
 import { AcceptInvitationPage } from '@/features/workspaces/pages/AcceptInvitationPage';
@@ -35,6 +36,10 @@ const KnowledgePage = withRouteSuspense(LazyKnowledgePage, 'Loading knowledge ba
 const MeetingDetailPage = withRouteSuspense(LazyMeetingDetailPage, 'Loading meeting');
 
 export const router = createBrowserRouter([
+  {
+    path: ROUTES.GOOGLE_CALLBACK,
+    element: <GoogleCallbackPage />,
+  },
   {
     element: <PublicRoute />,
     children: [

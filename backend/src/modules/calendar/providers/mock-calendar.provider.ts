@@ -1,7 +1,10 @@
+import { randomUUID } from 'crypto';
 import type { CalendarProvider } from '@prisma/client';
 import type {
   CalendarEvent,
   CalendarEventListOptions,
+  CreateEventWithMeetInput,
+  CreatedCalendarEvent,
   ICalendarProvider,
   OAuthTokens,
 } from '../types/calendar.types';
@@ -67,6 +70,18 @@ export class MockCalendarProvider implements ICalendarProvider {
     return MOCK_CALENDAR_EVENTS.filter(
       (event) => event.start >= options.timeMin && event.start <= options.timeMax,
     );
+  }
+
+  async createEventWithMeet(
+    _accessToken: string,
+    input: CreateEventWithMeetInput,
+  ): Promise<CreatedCalendarEvent> {
+    const id = `mock-event-${randomUUID()}`;
+    return {
+      externalEventId: id,
+      meetUrl: `https://meet.google.com/mock-${id.slice(0, 8)}`,
+      htmlLink: `https://calendar.google.com/calendar/event?eid=mock-${encodeURIComponent(input.title)}`,
+    };
   }
 }
 

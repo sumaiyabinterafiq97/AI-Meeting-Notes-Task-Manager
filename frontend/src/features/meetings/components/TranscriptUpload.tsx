@@ -8,10 +8,7 @@ import { ErrorAlert } from '@/components/common/ErrorAlert';
 import { FormField } from '@/components/common/FormField';
 import { getFieldAriaProps } from '@/components/common/form-field-aria';
 import { getApiErrorMessage } from '@/lib/api-errors';
-import {
-  uploadTranscriptSchema,
-  type UploadTranscriptFormData,
-} from '../schemas/meeting.schemas';
+import { uploadTranscriptSchema, type UploadTranscriptFormData } from '../schemas/meeting.schemas';
 import { detectSourceFormat } from '../services/meeting-api';
 import { useUploadTranscript } from '../hooks/useUploadTranscript';
 import { MIN_TRANSCRIPT_CHARS, MAX_TRANSCRIPT_BYTES } from '../types/meeting.types';
@@ -47,8 +44,8 @@ export function TranscriptUpload({
 
   const content = useWatch({ control, name: 'content', defaultValue: '' });
   const charCount = content.length;
-  const isProcessing = meetingStatus === 'PROCESSING';
-  const isDisabled = isProcessing || uploadMutation.isPending;
+  const isBusy = meetingStatus === 'PROCESSING' || meetingStatus === 'TRANSCRIBING';
+  const isDisabled = isBusy || uploadMutation.isPending;
 
   const onSubmit = handleSubmit(async (data) => {
     await uploadMutation.mutateAsync(data);
@@ -87,9 +84,11 @@ export function TranscriptUpload({
       )}
       {fileError && <ErrorAlert message={fileError} />}
 
-      {isProcessing && (
+      {isBusy && (
         <p className="text-sm text-blue-700 dark:text-blue-300" role="status">
-          AI is processing your transcript. Upload is disabled until processing completes.
+          {meetingStatus === 'TRANSCRIBING'
+            ? 'Transcription is in progress. Paste upload is disabled until it finishes.'
+            : 'AI is processing your transcript. Upload is disabled until processing completes.'}
         </p>
       )}
 
@@ -111,7 +110,7 @@ export function TranscriptUpload({
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="h-4 w-4" aria-hidden="true" />
-          Upload file
+          Upload text file
         </Button>
         <span className="flex items-center text-xs text-muted-foreground">
           Supports .txt, .md, .vtt, .srt (max 5MB)
@@ -120,12 +119,12 @@ export function TranscriptUpload({
 
       <FormField
         id="transcript-content"
-        label={hasTranscript ? 'Replace transcript' : 'Paste transcript'}
+        label={hasTranscript ? 'Replace transcript (paste)' : 'Or paste transcript'}
         error={errors.content?.message}
       >
         <Textarea
           id="transcript-content"
-          rows={10}
+          rows={8}
           placeholder={`Paste your meeting transcript here (minimum ${MIN_TRANSCRIPT_CHARS} characters)…`}
           disabled={isDisabled}
           {...register('content')}
@@ -144,12 +143,16 @@ export function TranscriptUpload({
             </span>
           )}
         </p>
-        <Button type="submit" disabled={isDisabled || charCount < MIN_TRANSCRIPT_CHARS}>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={isDisabled || charCount < MIN_TRANSCRIPT_CHARS}
+        >
           {uploadMutation.isPending
             ? 'Uploading…'
             : hasTranscript
               ? 'Replace & process'
-              : 'Upload & process'}
+              : 'Paste & process'}
         </Button>
       </div>
     </form>

@@ -17,8 +17,17 @@ export const METRIC_NAMES = {
   CONTEXT_SIZE: 'context.tokens',
   RATE_LIMIT_VIOLATION: 'ratelimit.exceeded',
   PROVIDER_OUTAGE: 'provider.outage',
+  GOOGLE_OAUTH_SUCCESS: 'google_oauth.success',
+  GOOGLE_OAUTH_FAILURE: 'google_oauth.failure',
+  MEET_LINK_CREATED: 'meet_link.created',
+  RECORDER_STARTED: 'recorder.started',
+  RECORDER_STOPPED: 'recorder.stopped',
+  RECORDER_UPLOAD_SUCCESS: 'recorder.upload_success',
+  REMINDER_SENT: 'reminder.sent',
 } as const;
 
-export const LATENCY_BUCKETS_MS = [50, 100, 250, 500, 1_000, 5_000, 30_000, 60_000, 120_000] as const;
+export const LATENCY_BUCKETS_MS = [
+  50, 100, 250, 500, 1_000, 5_000, 30_000, 60_000, 120_000,
+] as const;
 
 export const SLOW_REQUEST_THRESHOLD_MS = 30_000;

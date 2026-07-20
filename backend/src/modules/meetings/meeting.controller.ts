@@ -7,6 +7,8 @@ import {
   MeetingListQuery,
 } from './meeting.dto';
 import { routeParam } from '../../utils/route-param';
+import { AppError, ErrorCodes } from '../../utils/errors';
+import { metricsService, METRIC_NAMES } from '../observability';
 
 export class MeetingController {
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -26,10 +28,7 @@ export class MeetingController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const workspaceId = routeParam(req.params.workspaceId);
-      const result = await meetingService.listMeetings(
-        workspaceId,
-        req.query as MeetingListQuery,
-      );
+      const result = await meetingService.listMeetings(workspaceId, req.query as MeetingListQuery);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -97,6 +96,31 @@ export class MeetingController {
       const meetingId = routeParam(req.params.meetingId);
       const result = await meetingService.reprocessMeeting(workspaceId, meetingId);
       res.status(202).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async recorderEvent(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const workspaceId = routeParam(req.params.workspaceId);
+      const meetingId = routeParam(req.params.meetingId);
+      const event = req.body?.event as string;
+
+      // Authorize: meeting must exist in workspace
+      await meetingService.getMeeting(workspaceId, meetingId);
+
+      if (event === 'started') {
+        metricsService.incrementCounter(METRIC_NAMES.RECORDER_STARTED, { workspaceId });
+      } else if (event === 'stopped') {
+        metricsService.incrementCounter(METRIC_NAMES.RECORDER_STOPPED, { workspaceId });
+      } else if (event === 'upload_success') {
+        metricsService.incrementCounter(METRIC_NAMES.RECORDER_UPLOAD_SUCCESS, { workspaceId });
+      } else {
+        throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Invalid recorder event');
+      }
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }

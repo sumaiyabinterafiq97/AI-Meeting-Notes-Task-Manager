@@ -3,7 +3,7 @@ import { meetingApi } from '../services/meeting-api';
 import { meetingKeys } from './meeting-keys';
 import type { MeetingStatus } from '../types/meeting.types';
 
-const POLLING_STATUSES: MeetingStatus[] = ['PROCESSING'];
+const POLLING_STATUSES: MeetingStatus[] = ['TRANSCRIBING', 'PROCESSING'];
 
 export function useMeeting(
   workspaceId: string | undefined,

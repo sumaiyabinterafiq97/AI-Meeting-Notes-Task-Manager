@@ -34,7 +34,10 @@ export const updateMeetingValidation = [
     .trim()
     .isLength({ min: 1, max: 200 })
     .withMessage('Title must be between 1 and 200 characters'),
-  body('meetingDate').optional().isISO8601().withMessage('meetingDate must be a valid ISO 8601 date'),
+  body('meetingDate')
+    .optional()
+    .isISO8601()
+    .withMessage('meetingDate must be a valid ISO 8601 date'),
   body('durationMinutes')
     .optional({ nullable: true })
     .isInt({ min: 1 })
@@ -48,7 +51,10 @@ export const updateMeetingValidation = [
 
 export const listMeetingsQueryValidation = [
   query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('limit must be between 1 and 100'),
   query('status')
     .optional()
     .isIn(Object.values(MeetingStatus))
@@ -72,6 +78,6 @@ export const uploadTranscriptValidation = [
       return true;
     }),
   body('sourceFormat')
-    .isIn(['text', 'md', 'vtt', 'srt', 'audio'])
-    .withMessage('sourceFormat must be text, md, vtt, srt, or audio'),
+    .isIn(['text', 'md', 'vtt', 'srt', 'audio', 'video'])
+    .withMessage('sourceFormat must be text, md, vtt, srt, audio, or video'),
 ];

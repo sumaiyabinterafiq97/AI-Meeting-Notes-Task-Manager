@@ -81,11 +81,38 @@ const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   CHAT_TOOL_MAX_ITERATIONS: z.coerce.number().default(5),
-  TRANSCRIPTION_PROVIDER: z.enum(['mock', 'openai']).default('openai'),
+  TRANSCRIPTION_PROVIDER: z.enum(['mock', 'openai', 'deepgram']).default('openai'),
   OPENAI_WHISPER_MODEL: z.string().default('whisper-1'),
   AUDIO_STORAGE_PATH: z.string().default('./storage/audio'),
   AUDIO_MAX_BYTES: z.coerce.number().default(100 * 1024 * 1024),
+  /** Higher limit for mp4/webm screen recordings before audio extraction */
+  VIDEO_MAX_BYTES: z.coerce.number().default(500 * 1024 * 1024),
+  /** Discard original video after successful audio extraction */
+  VIDEO_DISCARD_AFTER_EXTRACT: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /** mock = no ffmpeg (CI / AI_USE_MOCK); ffmpeg = real extraction */
+  AUDIO_EXTRACT_PROVIDER: z.enum(['mock', 'ffmpeg']).default('ffmpeg'),
+  FFMPEG_PATH: z.string().default('ffmpeg'),
+  /** Optional — reserved for Deepgram when TRANSCRIPTION_PROVIDER=deepgram */
+  DEEPGRAM_API_KEY: z.string().optional(),
+  /** Speaker diarization (Phase A optional — off until provider supports segments) */
+  DIARIZATION_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   CALENDAR_USE_MOCK: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  /** Prefer one Google Cloud OAuth client for Sign-In + Calendar/Meet */
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_OAUTH_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3001/api/v1/auth/google/callback'),
+  GOOGLE_AUTH_USE_MOCK: z
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
@@ -103,6 +130,8 @@ const envSchema = z.object({
   CALENDAR_SYNC_LOOKBACK_DAYS: z.coerce.number().default(7),
   CALENDAR_SYNC_LOOKAHEAD_DAYS: z.coerce.number().default(30),
   CALENDAR_REMINDER_GRACE_MINUTES: z.coerce.number().default(60),
+  /** In-app reminder window before meeting start (minutes) */
+  MEETING_START_REMINDER_MINUTES: z.coerce.number().default(15),
   OBSERVABILITY_API_KEY: z.string().optional(),
 });
 

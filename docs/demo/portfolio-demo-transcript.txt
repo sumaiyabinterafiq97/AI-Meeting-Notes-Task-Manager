@@ -1,0 +1,19 @@
+Alex Chen: Welcome everyone to sprint planning for Sprint 24. Let's review the backlog.
+
+Jordan Park: We have twelve items queued. API latency is still a concern — we're seeing about 800ms p95 on the dashboard endpoints.
+
+Maria Santos: After debate, we agreed to delay the mobile launch to April 15 so QA can finish regression testing. Web-only for this quarter.
+
+Alex Chen: Good. Sarah, can you draft the database migration plan by Wednesday?
+
+Sarah Kim: Yes, I'll own the migration plan and share it in Slack by end of day Wednesday.
+
+Jordan Park: I'll review Sarah's draft once it's ready and sign off before we run anything in staging.
+
+Alex Chen: We decided to ship the new dashboard to staging first, then production after the perf deep-dive next week.
+
+Maria Santos: One risk — we can't go to production without SOC 2 sign-off. The audit might not finish until August, which puts Q3 revenue targets at risk.
+
+Jordan Park: Let's schedule a performance deep-dive on Tuesday. No sprint commitment on latency fixes until we have root cause.
+
+Alex Chen: Agreed. Any other blockers? None? Great — we're pulling the auth epic into Sprint 24. Meeting adjourned.

@@ -9,6 +9,8 @@ export interface AuthContextValue {
   login: (data: LoginFormData) => Promise<void>;
   register: (data: RegisterFormData) => Promise<void>;
   logout: () => Promise<void>;
+  /** Restore session from refresh cookie (Google OAuth callback). */
+  hydrateSession: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

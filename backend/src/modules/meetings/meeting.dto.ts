@@ -1,6 +1,6 @@
 import { MeetingStatus, WorkspaceRole, MeetingSource } from '@prisma/client';
 
-export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt' | 'audio';
+export type TranscriptSourceFormat = 'text' | 'md' | 'vtt' | 'srt' | 'audio' | 'video';
 
 export interface CreateMeetingDto {
   title: string;
@@ -36,6 +36,10 @@ export interface MeetingDto {
   agenda: string | null;
   status: MeetingStatus;
   source?: MeetingSource;
+  meetUrl?: string | null;
+  calendarHtmlLink?: string | null;
+  externalCalendarEventId?: string | null;
+  googleCalendarConnected?: boolean;
   createdById: string;
   createdAt: Date;
   updatedAt?: Date;

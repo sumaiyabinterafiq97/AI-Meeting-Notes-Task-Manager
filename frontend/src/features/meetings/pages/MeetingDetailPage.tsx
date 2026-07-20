@@ -11,9 +11,13 @@ import { ROUTES } from '@/lib/constants';
 import { formatDateTime } from '@/lib/utils';
 import { ProcessingStatusBadge } from '../components/ProcessingStatusBadge';
 import { MeetingMetadata } from '../components/MeetingMetadata';
+import { AudioUpload } from '../components/AudioUpload';
 import { TranscriptUpload } from '../components/TranscriptUpload';
 import { LinkedTasksList } from '../components/LinkedTasksList';
 import { EditMeetingDialog } from '../components/EditMeetingDialog';
+import { JoinMeetButton } from '../components/JoinMeetButton';
+import { ScreenRecorder } from '../components/ScreenRecorder';
+import { TranscriptionStatusBanner } from '../transcription-status';
 import { MeetingChatPanel } from '@/features/chat/components/MeetingChatPanel';
 import { MeetingInsightsPanel } from '@/features/insights/components/MeetingInsightsPanel';
 import { useMeeting } from '../hooks/useMeeting';
@@ -25,7 +29,12 @@ export function MeetingDetailPage() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
 
-  const { data: meeting, isLoading, isError, error } = useMeeting(workspaceId, meetingId, {
+  const {
+    data: meeting,
+    isLoading,
+    isError,
+    error,
+  } = useMeeting(workspaceId, meetingId, {
     enablePolling: true,
   });
   const deleteMutation = useDeleteMeeting(workspaceId ?? '');
@@ -59,19 +68,23 @@ export function MeetingDetailPage() {
     return <ErrorAlert message={getApiErrorMessage(error, 'Failed to load meeting')} />;
   }
 
+  const isTranscribing = meeting.status === 'TRANSCRIBING';
   const isProcessing = meeting.status === 'PROCESSING';
-  const canReprocess = Boolean(meeting.transcript) && !isProcessing;
+  const isBusy = isTranscribing || isProcessing;
+  const canReprocess = Boolean(meeting.transcript) && !isBusy;
   const canChat =
-    Boolean(meeting.transcript) &&
-    (meeting.status === 'READY' || meeting.status === 'PROCESSING');
-  const chatDisabled = isProcessing || meeting.status === 'FAILED' || meeting.status === 'DRAFT';
-  const chatDisabledReason = isProcessing
-    ? 'Chat is available once AI processing completes.'
-    : meeting.status === 'DRAFT'
-      ? 'Upload a transcript to start chatting about this meeting.'
-      : meeting.status === 'FAILED'
-        ? 'Chat is unavailable while AI processing has failed.'
-        : undefined;
+    Boolean(meeting.transcript) && (meeting.status === 'READY' || meeting.status === 'PROCESSING');
+  const chatDisabled =
+    isBusy || meeting.status === 'FAILED' || meeting.status === 'DRAFT' || isTranscribing;
+  const chatDisabledReason = isTranscribing
+    ? 'Chat is available once transcription and AI processing complete.'
+    : isProcessing
+      ? 'Chat is available once AI processing completes.'
+      : meeting.status === 'DRAFT'
+        ? 'Upload a recording or transcript to start chatting about this meeting.'
+        : meeting.status === 'FAILED'
+          ? 'Chat is unavailable while AI processing has failed.'
+          : undefined;
 
   const showInsightsPanel =
     meeting.status === 'READY' ||
@@ -98,12 +111,11 @@ export function MeetingDetailPage() {
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{meeting.title}</h2>
               <ProcessingStatusBadge status={meeting.status} />
             </div>
-            <p className="text-sm text-muted-foreground">
-              {formatDateTime(meeting.meetingDate)}
-            </p>
+            <p className="text-sm text-muted-foreground">{formatDateTime(meeting.meetingDate)}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <JoinMeetButton meetUrl={meeting.meetUrl} workspaceId={workspaceId} size="sm" />
             {canReprocess && (
               <Button
                 variant="outline"
@@ -118,12 +130,7 @@ export function MeetingDetailPage() {
                 {reprocessMutation.isPending ? 'Reprocessing…' : 'Reprocess'}
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              disabled={isProcessing}
-            >
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={isBusy}>
               <Pencil className="h-4 w-4" aria-hidden="true" />
               Edit
             </Button>
@@ -147,22 +154,13 @@ export function MeetingDetailPage() {
         />
       )}
 
-      {isProcessing && (
-        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
-          <CardContent className="flex items-center gap-3 p-4">
-            <LoadingSpinner className="h-5 w-5" label="Processing transcript" />
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              AI is analyzing your transcript. Insights and chat update automatically.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <TranscriptionStatusBanner status={meeting.status} />
 
       {meeting.status === 'FAILED' && (
         <ErrorAlert
           message={
             meeting.aiOutput?.errorMessage ??
-            'AI processing failed. Try uploading the transcript again.'
+            'Processing failed. Retry transcription or upload a recording / transcript again.'
           }
         />
       )}
@@ -194,7 +192,7 @@ export function MeetingDetailPage() {
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Upload a transcript in Meeting info to generate insights.
+                  Upload a recording or import from Zoom/Meet in Meeting info to generate insights.
                 </p>
               )}
             </CardContent>
@@ -221,7 +219,8 @@ export function MeetingDetailPage() {
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Upload a transcript in Meeting info to start chatting about this meeting.
+                  Upload a recording or transcript in Meeting info to start chatting about this
+                  meeting.
                 </p>
               )}
             </CardContent>
@@ -241,20 +240,39 @@ export function MeetingDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Transcript</CardTitle>
+              <CardTitle>Recording & transcript</CardTitle>
               <CardDescription>
                 {meeting.transcript
                   ? `Uploaded ${formatDateTime(meeting.transcript.uploadedAt)} · ${meeting.transcript.charCount.toLocaleString()} characters · ${meeting.transcript.sourceFormat.toUpperCase()}`
-                  : 'Upload or paste a transcript to start AI processing.'}
+                  : 'Upload a recording or import from Zoom/Meet, or paste a transcript.'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <TranscriptUpload
+            <CardContent className="space-y-8">
+              <ScreenRecorder
                 workspaceId={workspaceId}
                 meetingId={meetingId}
                 meetingStatus={meeting.status}
-                hasTranscript={Boolean(meeting.transcript)}
+                hasRecording={Boolean(meeting.transcript)}
               />
+              <div className="border-t pt-6">
+                <AudioUpload
+                  workspaceId={workspaceId}
+                  meetingId={meetingId}
+                  meetingStatus={meeting.status}
+                  hasTranscript={Boolean(meeting.transcript)}
+                />
+              </div>
+              <div className="border-t pt-6">
+                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Alternative: paste text transcript
+                </p>
+                <TranscriptUpload
+                  workspaceId={workspaceId}
+                  meetingId={meetingId}
+                  meetingStatus={meeting.status}
+                  hasTranscript={Boolean(meeting.transcript)}
+                />
+              </div>
             </CardContent>
           </Card>
 

@@ -28,6 +28,12 @@ export class MeetingRepository {
     });
   }
 
+  async findMeetingById(meetingId: string) {
+    return prisma.meeting.findFirst({
+      where: { id: meetingId, deletedAt: null },
+    });
+  }
+
   async findMeetingInWorkspace(workspaceId: string, meetingId: string) {
     return prisma.meeting.findFirst({
       where: {
@@ -91,11 +97,7 @@ export class MeetingRepository {
     return { items, total };
   }
 
-  async updateMeeting(
-    workspaceId: string,
-    meetingId: string,
-    data: Prisma.MeetingUpdateInput,
-  ) {
+  async updateMeeting(workspaceId: string, meetingId: string, data: Prisma.MeetingUpdateInput) {
     return prisma.meeting.update({
       where: {
         id: meetingId,

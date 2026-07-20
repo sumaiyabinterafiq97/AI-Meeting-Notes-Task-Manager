@@ -11,6 +11,7 @@ interface MeetingFiltersProps {
 const STATUS_OPTIONS: Array<{ value: MeetingStatus | ''; label: string }> = [
   { value: '', label: 'All statuses' },
   { value: 'DRAFT', label: 'Draft' },
+  { value: 'TRANSCRIBING', label: 'Transcribing' },
   { value: 'PROCESSING', label: 'Processing' },
   { value: 'READY', label: 'Ready' },
   { value: 'FAILED', label: 'Failed' },

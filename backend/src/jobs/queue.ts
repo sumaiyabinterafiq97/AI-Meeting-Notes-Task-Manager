@@ -172,9 +172,20 @@ export async function enqueueTranscribeAudio(payload: {
     return;
   }
 
-  const bullJob = await getTranscribeAudioQueue().add('transcribe-audio', payload, {
-    jobId: `transcribe-audio-${payload.audioId}`,
-  });
+  const queue = getTranscribeAudioQueue();
+  const jobId = `transcribe-audio-${payload.audioId}`;
+  const existing = await queue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === 'completed' || state === 'failed') {
+      await existing.remove();
+    } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
+      await meetingAudioRepository.setBullJobId(payload.audioId, String(existing.id));
+      return;
+    }
+  }
+
+  const bullJob = await queue.add('transcribe-audio', payload, { jobId });
 
   await meetingAudioRepository.setBullJobId(payload.audioId, String(bullJob.id));
 }
@@ -226,7 +237,10 @@ export async function enqueueEmbedMeeting(payload: {
 export async function enqueueReindexWorkspace(payload: {
   workspaceId: string;
   reason?: import('../modules/embeddings/services/reindex-observability.service').ReindexReason;
-}): Promise<{ queued: true } | { queued: false; result: Awaited<ReturnType<typeof processReindexWorkspaceJob>> }> {
+}): Promise<
+  | { queued: true }
+  | { queued: false; result: Awaited<ReturnType<typeof processReindexWorkspaceJob>> }
+> {
   if (!shouldUseRedisQueue()) {
     const result = await processReindexWorkspaceJob(payload);
     return { queued: false, result };
