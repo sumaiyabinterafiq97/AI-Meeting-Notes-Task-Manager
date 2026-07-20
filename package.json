@@ -26,7 +26,11 @@
       "npm run lint --prefix frontend -- --fix",
       "prettier --write"
     ],
-    "backend/**/*.{ts}": [
+    "backend/src/**/*.ts": [
+      "npm run lint --prefix backend -- --fix",
+      "prettier --write"
+    ],
+    "backend/tests/**/*.ts": [
       "npm run lint --prefix backend -- --fix",
       "prettier --write"
     ],
