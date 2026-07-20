@@ -3,6 +3,27 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] - 2026-07-20
+
+### Added
+
+- **Google Sign-In** — OAuth flow (`GET /auth/google`), account linking, optional mock (`GOOGLE_AUTH_USE_MOCK`); `AuthProvider` enum and nullable password hash
+- **Capture layer** — Zoom, Google Meet, and Teams import API stubs with handoff to transcription; `MeetingImport` model and platform import routes
+- **Video capture** — Screen recording upload (mp4/webm), ffmpeg/mock audio extraction, higher `VIDEO_MAX_BYTES` limit
+- **Transcription hardening** — observability metrics, deduped BullMQ transcribe jobs, per-attempt AI pipeline idempotency after audio
+- **Google Meet & Calendar** — Meet URLs on sync, create calendar event with Meet link, `Join Meet` UI, workspace calendar connect card
+- **Meeting reminders** — in-app `MEETING_STARTING_SOON` notifications (`MEETING_START_REMINDER_MINUTES`)
+- **Meetings needing transcript** — list API and frontend banner for upload/import follow-up
+- Frontend: `ScreenRecorder`, `AudioUpload`, Google callback page, transcription status banner
+- Docs: capture architecture, transcription flow, Google Meet / Zoom / Teams integration guides; portfolio demo seed (`npm run seed:portfolio-demo`)
+- Backend tests expanded to **399**; frontend **83**
+
+### Changed
+
+- Shared Google OAuth client config for Sign-In and Calendar (`GOOGLE_OAUTH_*` with calendar fallback)
+- Meeting detail and list UX for capture sources, Meet metadata, and upload flows
+- `.gitignore` excludes local demo screenshots and `screen-capture.webm`
+
 ## [0.5.0] - 2026-06-29
 
 ### Added
