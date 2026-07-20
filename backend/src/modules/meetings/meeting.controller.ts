@@ -28,10 +28,7 @@ export class MeetingController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const workspaceId = routeParam(req.params.workspaceId);
-      const result = await meetingService.listMeetings(
-        workspaceId,
-        req.query as MeetingListQuery,
-      );
+      const result = await meetingService.listMeetings(workspaceId, req.query as MeetingListQuery);
       res.status(200).json(result);
     } catch (error) {
       next(error);

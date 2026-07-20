@@ -58,9 +58,7 @@ async function postToken(body: URLSearchParams): Promise<OAuthTokens> {
   return {
     accessToken: json.access_token,
     refreshToken: json.refresh_token,
-    expiresAt: json.expires_in
-      ? new Date(Date.now() + json.expires_in * 1000)
-      : undefined,
+    expiresAt: json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : undefined,
   };
 }
 

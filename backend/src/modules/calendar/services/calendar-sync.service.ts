@@ -74,10 +74,7 @@ export class CalendarSyncService {
     let accessToken = calendarRepository.getAccessToken(connection);
 
     try {
-      if (
-        connection.tokenExpiresAt &&
-        connection.tokenExpiresAt.getTime() <= Date.now() + 60_000
-      ) {
+      if (connection.tokenExpiresAt && connection.tokenExpiresAt.getTime() <= Date.now() + 60_000) {
         const refreshToken = calendarRepository.getRefreshToken(connection);
         if (!refreshToken && !useMockCalendar()) {
           throw new Error('Access token expired and no refresh token available');
@@ -199,9 +196,7 @@ export class CalendarSyncService {
   }
 
   async sendTranscriptReminders(workspaceId: string): Promise<number> {
-    const graceCutoff = new Date(
-      Date.now() - env.CALENDAR_REMINDER_GRACE_MINUTES * 60_000,
-    );
+    const graceCutoff = new Date(Date.now() - env.CALENDAR_REMINDER_GRACE_MINUTES * 60_000);
     const events = await calendarRepository.listEventsNeedingReminder(workspaceId, graceCutoff);
     const members = await calendarRepository.listWorkspaceMembers(workspaceId);
     let remindersSent = 0;
@@ -236,9 +231,13 @@ export class CalendarSyncService {
       await notificationRepository.createMany(notifications);
       await calendarRepository.markReminderSent(syncedEvent.id);
       remindersSent += notifications.length;
-      metricsService.incrementCounter(METRIC_NAMES.REMINDER_SENT, {
-        type: 'transcript',
-      }, notifications.length);
+      metricsService.incrementCounter(
+        METRIC_NAMES.REMINDER_SENT,
+        {
+          type: 'transcript',
+        },
+        notifications.length,
+      );
     }
 
     return remindersSent;
@@ -247,9 +246,7 @@ export class CalendarSyncService {
   /** In-app reminders for meetings starting within MEETING_START_REMINDER_MINUTES */
   async sendMeetingStartReminders(workspaceId: string): Promise<number> {
     const now = new Date();
-    const windowEnd = new Date(
-      now.getTime() + env.MEETING_START_REMINDER_MINUTES * 60_000,
-    );
+    const windowEnd = new Date(now.getTime() + env.MEETING_START_REMINDER_MINUTES * 60_000);
     const meetings = await calendarRepository.listMeetingsNeedingStartReminder(
       workspaceId,
       now,
@@ -285,9 +282,13 @@ export class CalendarSyncService {
       await notificationRepository.createMany(notifications);
       await calendarRepository.markStartReminderSent(meeting.id);
       remindersSent += notifications.length;
-      metricsService.incrementCounter(METRIC_NAMES.REMINDER_SENT, {
-        type: 'meeting_start',
-      }, notifications.length);
+      metricsService.incrementCounter(
+        METRIC_NAMES.REMINDER_SENT,
+        {
+          type: 'meeting_start',
+        },
+        notifications.length,
+      );
     }
 
     return remindersSent;

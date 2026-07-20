@@ -58,10 +58,8 @@ router.post(
   (req, res, next) => meetingController.reprocess(req, res, next),
 );
 
-router.post(
-  '/:meetingId/recorder-events',
-  validate(meetingParamsValidation),
-  (req, res, next) => meetingController.recorderEvent(req, res, next),
+router.post('/:meetingId/recorder-events', validate(meetingParamsValidation), (req, res, next) =>
+  meetingController.recorderEvent(req, res, next),
 );
 
 router.use('/:meetingId', createTranscriptionRoutes());

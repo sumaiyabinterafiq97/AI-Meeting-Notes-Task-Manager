@@ -7,11 +7,7 @@ export { captureHandoffService } from './services/capture-handoff.service';
 export { malwareScanService } from './storage/malware-scan.service';
 export type { IMeetingImportProvider } from './imports/import-provider.interface';
 export type { IMeetingBotProvider } from './bots/meeting-bot.interface';
-export {
-  zoomBotStub,
-  googleMeetBotStub,
-  teamsBotStub,
-} from './bots/stubs/meeting-bot.stubs';
+export { zoomBotStub, googleMeetBotStub, teamsBotStub } from './bots/stubs/meeting-bot.stubs';
 export type {
   ImportMeetingRequest,
   ImportMeetingResponse,

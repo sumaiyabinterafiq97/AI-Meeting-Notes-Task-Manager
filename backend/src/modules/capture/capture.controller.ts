@@ -6,7 +6,9 @@ import { routeParam } from '../../utils/route-param';
 export const importMeetingValidation = [
   body('title').optional().isString().isLength({ max: 200 }),
   body('meetingDate').optional().isISO8601(),
-  body('durationMinutes').optional().isInt({ min: 1, max: 24 * 60 }),
+  body('durationMinutes')
+    .optional()
+    .isInt({ min: 1, max: 24 * 60 }),
   body('attendees').optional().isArray({ max: 50 }),
   body('agenda').optional().isString().isLength({ max: 10_000 }),
   body('transcriptText').optional().isString(),

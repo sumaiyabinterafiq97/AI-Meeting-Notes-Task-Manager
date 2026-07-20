@@ -1,9 +1,5 @@
 import { api } from '../setup';
-import {
-  connectTestDatabase,
-  disconnectTestDatabase,
-  cleanDatabase,
-} from '../helpers/db';
+import { connectTestDatabase, disconnectTestDatabase, cleanDatabase } from '../helpers/db';
 import { setupWorkspaceWithAuth } from '../helpers/meeting-helper';
 
 const dbAvailable = process.env.DATABASE_URL !== undefined;

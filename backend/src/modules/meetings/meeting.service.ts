@@ -18,33 +18,34 @@ import { logActivity } from '../../lib/activity-log';
 import { AppError, ErrorCodes } from '../../utils/errors';
 import { parsePagination, buildPaginationMeta } from '../../lib/pagination';
 
-function toMeetingDto(meeting: {
-  id: string;
-  workspaceId: string;
-  title: string;
-  meetingDate: Date;
-  durationMinutes: number | null;
-  attendees: unknown;
-  tags: string[];
-  agenda: string | null;
-  status: MeetingStatus;
-  source?: MeetingSource;
-  meetUrl?: string | null;
-  calendarHtmlLink?: string | null;
-  externalCalendarEventId?: string | null;
-  createdById: string;
-  createdAt: Date;
-  updatedAt?: Date;
-}, extras?: { googleCalendarConnected?: boolean }): MeetingDto {
+function toMeetingDto(
+  meeting: {
+    id: string;
+    workspaceId: string;
+    title: string;
+    meetingDate: Date;
+    durationMinutes: number | null;
+    attendees: unknown;
+    tags: string[];
+    agenda: string | null;
+    status: MeetingStatus;
+    source?: MeetingSource;
+    meetUrl?: string | null;
+    calendarHtmlLink?: string | null;
+    externalCalendarEventId?: string | null;
+    createdById: string;
+    createdAt: Date;
+    updatedAt?: Date;
+  },
+  extras?: { googleCalendarConnected?: boolean },
+): MeetingDto {
   return {
     id: meeting.id,
     workspaceId: meeting.workspaceId,
     title: meeting.title,
     meetingDate: meeting.meetingDate,
     durationMinutes: meeting.durationMinutes,
-    attendees: Array.isArray(meeting.attendees)
-      ? (meeting.attendees as string[])
-      : [],
+    attendees: Array.isArray(meeting.attendees) ? (meeting.attendees as string[]) : [],
     tags: meeting.tags,
     agenda: meeting.agenda,
     status: meeting.status,
@@ -125,11 +126,7 @@ export class MeetingService {
       search: query.search?.trim(),
     };
 
-    const { items, total } = await meetingRepository.listMeetings(
-      workspaceId,
-      pagination,
-      filters,
-    );
+    const { items, total } = await meetingRepository.listMeetings(workspaceId, pagination, filters);
 
     return {
       data: items.map((item) => toMeetingDto(item)),
@@ -281,10 +278,7 @@ export class MeetingService {
     };
   }
 
-  async reprocessMeeting(
-    workspaceId: string,
-    meetingId: string,
-  ): Promise<ReprocessResponseDto> {
+  async reprocessMeeting(workspaceId: string, meetingId: string): Promise<ReprocessResponseDto> {
     const meeting = await meetingRepository.findMeetingInWorkspace(workspaceId, meetingId);
     if (!meeting) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, 'Meeting not found');

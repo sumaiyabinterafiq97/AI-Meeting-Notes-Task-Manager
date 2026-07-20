@@ -91,10 +91,7 @@ export class CalendarMeetService {
     let accessToken = calendarRepository.getAccessToken(connection);
 
     try {
-      if (
-        connection.tokenExpiresAt &&
-        connection.tokenExpiresAt.getTime() <= Date.now() + 60_000
-      ) {
+      if (connection.tokenExpiresAt && connection.tokenExpiresAt.getTime() <= Date.now() + 60_000) {
         const refreshToken = calendarRepository.getRefreshToken(connection);
         if (refreshToken) {
           const refreshed = await provider.refreshAccessToken(refreshToken);
@@ -151,7 +148,10 @@ export class CalendarMeetService {
     if (useMockCalendar()) {
       return true;
     }
-    const connection = await calendarRepository.findConnection(workspaceId, CalendarProvider.GOOGLE);
+    const connection = await calendarRepository.findConnection(
+      workspaceId,
+      CalendarProvider.GOOGLE,
+    );
     return Boolean(connection && connection.status === 'ACTIVE');
   }
 }

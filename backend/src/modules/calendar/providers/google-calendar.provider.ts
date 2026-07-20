@@ -1,10 +1,7 @@
 import { randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError, ErrorCodes } from '../../../utils/errors';
-import {
-  getGoogleOAuthCredentials,
-  GOOGLE_CALENDAR_SCOPES,
-} from '../../auth/google-oauth.config';
+import { getGoogleOAuthCredentials, GOOGLE_CALENDAR_SCOPES } from '../../auth/google-oauth.config';
 import type {
   CalendarEvent,
   CalendarEventListOptions,
@@ -62,9 +59,7 @@ async function postToken(body: URLSearchParams): Promise<OAuthTokens> {
   return {
     accessToken: json.access_token,
     refreshToken: json.refresh_token,
-    expiresAt: json.expires_in
-      ? new Date(Date.now() + json.expires_in * 1000)
-      : undefined,
+    expiresAt: json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : undefined,
   };
 }
 
@@ -153,9 +148,10 @@ export class GoogleCalendarProvider implements ICalendarProvider {
           externalEventId: item.id,
           title: item.summary ?? 'Untitled meeting',
           start: new Date(item.start?.dateTime ?? item.start?.date ?? Date.now()),
-          end: item.end?.dateTime || item.end?.date
-            ? new Date(item.end.dateTime ?? item.end.date!)
-            : null,
+          end:
+            item.end?.dateTime || item.end?.date
+              ? new Date(item.end.dateTime ?? item.end.date!)
+              : null,
           description: item.description,
           location: item.location,
           meetUrl: item.hangoutLink ?? videoEntry?.uri,

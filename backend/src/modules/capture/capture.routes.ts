@@ -4,9 +4,7 @@ import { captureController, importMeetingValidation } from './capture.controller
 import { validate } from '../../middlewares';
 import { aiProcessingRateLimiter } from '../../middlewares/rate-limit';
 
-const workspaceParams = [
-  param('workspaceId').isUUID().withMessage('Invalid workspace ID'),
-];
+const workspaceParams = [param('workspaceId').isUUID().withMessage('Invalid workspace ID')];
 
 /**
  * Capture routes mounted under /workspaces/:workspaceId/meetings
@@ -16,10 +14,8 @@ const workspaceParams = [
 export function createCaptureRoutes(): Router {
   const router = Router({ mergeParams: true });
 
-  router.get(
-    '/needing-transcript',
-    validate(workspaceParams),
-    (req, res, next) => captureController.listNeedingTranscript(req, res, next),
+  router.get('/needing-transcript', validate(workspaceParams), (req, res, next) =>
+    captureController.listNeedingTranscript(req, res, next),
   );
 
   router.post(

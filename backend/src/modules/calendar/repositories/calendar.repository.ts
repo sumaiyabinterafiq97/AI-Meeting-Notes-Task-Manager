@@ -52,9 +52,7 @@ export class CalendarRepository {
         provider: data.provider,
         status: CalendarConnectionStatus.ACTIVE,
         accessTokenEnc: encryptToken(data.tokens.accessToken),
-        refreshTokenEnc: data.tokens.refreshToken
-          ? encryptToken(data.tokens.refreshToken)
-          : null,
+        refreshTokenEnc: data.tokens.refreshToken ? encryptToken(data.tokens.refreshToken) : null,
         tokenExpiresAt: data.tokens.expiresAt ?? null,
         accountEmail: data.tokens.accountEmail ?? null,
         lastSyncError: null,
@@ -93,10 +91,7 @@ export class CalendarRepository {
     });
   }
 
-  async markSyncResult(
-    connectionId: string,
-    data: { error?: string | null; syncedAt?: Date },
-  ) {
+  async markSyncResult(connectionId: string, data: { error?: string | null; syncedAt?: Date }) {
     return prisma.calendarConnection.update({
       where: { id: connectionId },
       data: {
@@ -267,11 +262,7 @@ export class CalendarRepository {
     });
   }
 
-  async listMeetingsNeedingStartReminder(
-    workspaceId: string,
-    windowStart: Date,
-    windowEnd: Date,
-  ) {
+  async listMeetingsNeedingStartReminder(workspaceId: string, windowStart: Date, windowEnd: Date) {
     return prisma.meeting.findMany({
       where: {
         workspaceId,
