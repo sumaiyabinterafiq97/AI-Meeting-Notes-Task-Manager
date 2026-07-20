@@ -1,8 +1,15 @@
+import { randomUUID } from 'crypto';
 import { env } from '../../../config/env';
 import { AppError, ErrorCodes } from '../../../utils/errors';
+import {
+  getGoogleOAuthCredentials,
+  GOOGLE_CALENDAR_SCOPES,
+} from '../../auth/google-oauth.config';
 import type {
   CalendarEvent,
   CalendarEventListOptions,
+  CreateEventWithMeetInput,
+  CreatedCalendarEvent,
   ICalendarProvider,
   OAuthTokens,
 } from '../types/calendar.types';
@@ -11,22 +18,18 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly',
-  'https://www.googleapis.com/auth/userinfo.email',
-].join(' ');
+type GoogleCreatedEventJson = {
+  id?: string;
+  hangoutLink?: string;
+  htmlLink?: string;
+  conferenceData?: { entryPoints?: Array<{ entryPointType?: string; uri?: string }> };
+};
 
 function requireGoogleConfig(): { clientId: string; clientSecret: string; redirectUri: string } {
-  if (!env.GOOGLE_CALENDAR_CLIENT_ID || !env.GOOGLE_CALENDAR_CLIENT_SECRET) {
-    throw new AppError(
-      503,
-      ErrorCodes.INTERNAL_ERROR,
-      'Google Calendar OAuth is not configured',
-    );
-  }
+  const { clientId, clientSecret } = getGoogleOAuthCredentials();
   return {
-    clientId: env.GOOGLE_CALENDAR_CLIENT_ID,
-    clientSecret: env.GOOGLE_CALENDAR_CLIENT_SECRET,
+    clientId,
+    clientSecret,
     redirectUri: env.GOOGLE_CALENDAR_REDIRECT_URI,
   };
 }
@@ -74,9 +77,10 @@ export class GoogleCalendarProvider implements ICalendarProvider {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: SCOPES,
+      scope: GOOGLE_CALENDAR_SCOPES,
       access_type: 'offline',
       prompt: 'consent',
+      include_granted_scopes: 'true',
       state,
     });
     return `${GOOGLE_AUTH_URL}?${params.toString()}`;
@@ -128,29 +132,120 @@ export class GoogleCalendarProvider implements ICalendarProvider {
         summary?: string;
         description?: string;
         location?: string;
+        hangoutLink?: string;
+        htmlLink?: string;
         start?: { dateTime?: string; date?: string };
         end?: { dateTime?: string; date?: string };
         attendees?: Array<{ email?: string; displayName?: string }>;
+        conferenceData?: {
+          entryPoints?: Array<{ entryPointType?: string; uri?: string }>;
+        };
       }>;
     };
 
     return (json.items ?? [])
       .filter((item) => item.status !== 'cancelled')
-      .map((item) => ({
-        externalEventId: item.id,
-        title: item.summary ?? 'Untitled meeting',
-        start: new Date(item.start?.dateTime ?? item.start?.date ?? Date.now()),
-        end: item.end?.dateTime || item.end?.date
-          ? new Date(item.end.dateTime ?? item.end.date!)
-          : null,
-        description: item.description,
-        location: item.location,
-        attendees: (item.attendees ?? []).map((a) => ({
-          email: a.email,
-          displayName: a.displayName,
-        })),
-        isCancelled: item.status === 'cancelled',
-      }));
+      .map((item) => {
+        const videoEntry = item.conferenceData?.entryPoints?.find(
+          (ep) => ep.entryPointType === 'video',
+        );
+        return {
+          externalEventId: item.id,
+          title: item.summary ?? 'Untitled meeting',
+          start: new Date(item.start?.dateTime ?? item.start?.date ?? Date.now()),
+          end: item.end?.dateTime || item.end?.date
+            ? new Date(item.end.dateTime ?? item.end.date!)
+            : null,
+          description: item.description,
+          location: item.location,
+          meetUrl: item.hangoutLink ?? videoEntry?.uri,
+          htmlLink: item.htmlLink,
+          attendees: (item.attendees ?? []).map((a) => ({
+            email: a.email,
+            displayName: a.displayName,
+          })),
+          isCancelled: item.status === 'cancelled',
+        };
+      });
+  }
+
+  async createEventWithMeet(
+    accessToken: string,
+    input: CreateEventWithMeetInput,
+  ): Promise<CreatedCalendarEvent> {
+    const reminderMinutes = input.reminderMinutes ?? 10;
+    const body = {
+      summary: input.title,
+      description: input.description,
+      start: { dateTime: input.start.toISOString() },
+      end: { dateTime: input.end.toISOString() },
+      attendees: (input.attendeeEmails ?? [])
+        .filter((email) => Boolean(email))
+        .map((email) => ({ email })),
+      conferenceData: {
+        createRequest: {
+          requestId: randomUUID(),
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: reminderMinutes },
+          { method: 'email', minutes: reminderMinutes },
+        ],
+      },
+    };
+
+    const url = `${GOOGLE_EVENTS_URL}?conferenceDataVersion=1&sendUpdates=all`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      // Attendee failures shouldn't block — retry without attendees once
+      if (body.attendees.length > 0 && response.status >= 400) {
+        const retryBody = { ...body, attendees: [] };
+        const retry = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(retryBody),
+        });
+        if (retry.ok) {
+          return this.mapCreatedEvent((await retry.json()) as GoogleCreatedEventJson);
+        }
+      }
+      throw new AppError(
+        502,
+        ErrorCodes.INTERNAL_ERROR,
+        `Google Calendar create event failed: ${text}`,
+      );
+    }
+
+    return this.mapCreatedEvent((await response.json()) as GoogleCreatedEventJson);
+  }
+
+  private mapCreatedEvent(json: GoogleCreatedEventJson): CreatedCalendarEvent {
+    if (!json.id) {
+      throw new AppError(502, ErrorCodes.INTERNAL_ERROR, 'Google event missing id');
+    }
+    const videoEntry = json.conferenceData?.entryPoints?.find(
+      (ep) => ep.entryPointType === 'video',
+    );
+    return {
+      externalEventId: json.id,
+      meetUrl: json.hangoutLink ?? videoEntry?.uri ?? null,
+      htmlLink: json.htmlLink ?? null,
+    };
   }
 
   private async fetchAccountEmail(accessToken: string): Promise<string | undefined> {

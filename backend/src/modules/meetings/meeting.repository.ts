@@ -28,6 +28,12 @@ export class MeetingRepository {
     });
   }
 
+  async findMeetingById(meetingId: string) {
+    return prisma.meeting.findFirst({
+      where: { id: meetingId, deletedAt: null },
+    });
+  }
+
   async findMeetingInWorkspace(workspaceId: string, meetingId: string) {
     return prisma.meeting.findFirst({
       where: {

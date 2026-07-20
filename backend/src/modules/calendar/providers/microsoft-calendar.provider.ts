@@ -3,6 +3,8 @@ import { AppError, ErrorCodes } from '../../../utils/errors';
 import type {
   CalendarEvent,
   CalendarEventListOptions,
+  CreateEventWithMeetInput,
+  CreatedCalendarEvent,
   ICalendarProvider,
   OAuthTokens,
 } from '../types/calendar.types';
@@ -145,6 +147,17 @@ export class MicrosoftCalendarProvider implements ICalendarProvider {
         })),
         isCancelled: item.isCancelled,
       }));
+  }
+
+  async createEventWithMeet(
+    _accessToken: string,
+    _input: CreateEventWithMeetInput,
+  ): Promise<CreatedCalendarEvent> {
+    throw new AppError(
+      501,
+      ErrorCodes.INTERNAL_ERROR,
+      'Microsoft Teams meeting create is out of scope for this release',
+    );
   }
 
   private async fetchAccountEmail(accessToken: string): Promise<string | undefined> {

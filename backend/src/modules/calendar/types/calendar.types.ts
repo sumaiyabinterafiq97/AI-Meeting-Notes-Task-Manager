@@ -13,6 +13,8 @@ export interface CalendarEvent {
   description?: string;
   attendees: CalendarAttendee[];
   location?: string;
+  meetUrl?: string;
+  htmlLink?: string;
   isCancelled?: boolean;
 }
 
@@ -28,12 +30,31 @@ export interface OAuthTokens {
   accountEmail?: string;
 }
 
+export interface CreateEventWithMeetInput {
+  title: string;
+  description?: string;
+  start: Date;
+  end: Date;
+  attendeeEmails?: string[];
+  reminderMinutes?: number;
+}
+
+export interface CreatedCalendarEvent {
+  externalEventId: string;
+  meetUrl: string | null;
+  htmlLink: string | null;
+}
+
 export interface ICalendarProvider {
   readonly provider: CalendarProvider;
   buildAuthorizationUrl(state: string): string;
   exchangeCodeForTokens(code: string): Promise<OAuthTokens>;
   refreshAccessToken(refreshToken: string): Promise<OAuthTokens>;
   listEvents(accessToken: string, options: CalendarEventListOptions): Promise<CalendarEvent[]>;
+  createEventWithMeet(
+    accessToken: string,
+    input: CreateEventWithMeetInput,
+  ): Promise<CreatedCalendarEvent>;
 }
 
 export interface CalendarConnectionRecord {

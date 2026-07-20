@@ -1,9 +1,5 @@
 import { api } from '../setup';
-import {
-  connectTestDatabase,
-  disconnectTestDatabase,
-  cleanDatabase,
-} from '../helpers/db';
+import { connectTestDatabase, disconnectTestDatabase, cleanDatabase } from '../helpers/db';
 import { testUser, createPasswordResetTokenForUser } from '../helpers/auth-helper';
 import { REFRESH_TOKEN_COOKIE } from '../../src/lib/cookies';
 
@@ -68,9 +64,7 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
     const register = await api.post('/api/v1/auth/register').send(testUser);
     const token = register.body.accessToken as string;
 
-    const response = await api
-      .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${token}`);
+    const response = await api.get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
     expect(response.body.email).toBe(testUser.email);
@@ -138,5 +132,28 @@ const dbAvailable = process.env.DATABASE_URL !== undefined;
 
     expect(response.status).toBe(200);
     expect(response.body.message).toContain('If an account exists');
+  });
+
+  it('Google mock sign-in creates user and session', async () => {
+    const response = await api.post('/api/v1/auth/google/mock');
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe('google.user@example.com');
+    expect(response.body.accessToken).toBeDefined();
+    expect(response.headers['set-cookie']?.[0]).toContain(REFRESH_TOKEN_COOKIE);
+  });
+
+  it('Google mock links to existing password account with same email', async () => {
+    await api.post('/api/v1/auth/register').send({
+      email: 'google.user@example.com',
+      password: 'Password1',
+      displayName: 'Existing',
+    });
+
+    const response = await api.post('/api/v1/auth/google/mock');
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe('google.user@example.com');
+    expect(response.body.user.displayName).toBe('Existing');
   });
 });

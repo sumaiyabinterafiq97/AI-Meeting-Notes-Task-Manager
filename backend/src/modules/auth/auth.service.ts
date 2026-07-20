@@ -17,10 +17,7 @@ import { generateOpaqueToken, hashToken } from '../../lib/token';
 import { signAccessToken } from '../../lib/jwt';
 import { env } from '../../config/env';
 import { parseDurationToDate } from '../../lib/duration';
-import {
-  buildPasswordResetEmail,
-  sendEmail,
-} from '../../lib/email';
+import { buildPasswordResetEmail, sendEmail } from '../../lib/email';
 
 const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000;
 
@@ -62,6 +59,14 @@ export class AuthService {
     const user = await authRepository.findUserByEmail(data.email);
     if (!user) {
       throw new AppError(401, ErrorCodes.UNAUTHORIZED, 'Invalid credentials');
+    }
+
+    if (!user.passwordHash) {
+      throw new AppError(
+        401,
+        ErrorCodes.UNAUTHORIZED,
+        'This account uses Google Sign-In. Continue with Google instead.',
+      );
     }
 
     const valid = await verifyPassword(data.password, user.passwordHash);

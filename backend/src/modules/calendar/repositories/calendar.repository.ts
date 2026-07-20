@@ -173,6 +173,8 @@ export class CalendarRepository {
     source: MeetingSource;
     externalCalendarEventId: string;
     calendarConnectionId: string;
+    meetUrl?: string | null;
+    calendarHtmlLink?: string | null;
   }) {
     return prisma.meeting.create({
       data: {
@@ -187,6 +189,8 @@ export class CalendarRepository {
         source: data.source,
         externalCalendarEventId: data.externalCalendarEventId,
         calendarConnectionId: data.calendarConnectionId,
+        meetUrl: data.meetUrl ?? null,
+        calendarHtmlLink: data.calendarHtmlLink ?? null,
         status: 'DRAFT',
       },
     });
@@ -200,6 +204,8 @@ export class CalendarRepository {
       durationMinutes: number | null;
       attendees: string[];
       agenda: string | null;
+      meetUrl?: string | null;
+      calendarHtmlLink?: string | null;
     },
   ) {
     return prisma.meeting.update({
@@ -210,6 +216,8 @@ export class CalendarRepository {
         durationMinutes: data.durationMinutes,
         attendees: data.attendees,
         agenda: data.agenda,
+        ...(data.meetUrl !== undefined && { meetUrl: data.meetUrl }),
+        ...(data.calendarHtmlLink !== undefined && { calendarHtmlLink: data.calendarHtmlLink }),
       },
     });
   }
@@ -256,6 +264,36 @@ export class CalendarRepository {
     return prisma.calendarSyncedEvent.update({
       where: { id: syncedEventId },
       data: { reminderSentAt: new Date() },
+    });
+  }
+
+  async listMeetingsNeedingStartReminder(
+    workspaceId: string,
+    windowStart: Date,
+    windowEnd: Date,
+  ) {
+    return prisma.meeting.findMany({
+      where: {
+        workspaceId,
+        deletedAt: null,
+        startReminderSentAt: null,
+        meetingDate: { gte: windowStart, lte: windowEnd },
+      },
+      select: {
+        id: true,
+        title: true,
+        meetingDate: true,
+        meetUrl: true,
+        createdById: true,
+        attendees: true,
+      },
+    });
+  }
+
+  async markStartReminderSent(meetingId: string) {
+    return prisma.meeting.update({
+      where: { id: meetingId },
+      data: { startReminderSentAt: new Date() },
     });
   }
 }
