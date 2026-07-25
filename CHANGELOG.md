@@ -5,17 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.7.1] - 2026-07-26
 
+> Ships on `main` together with **[0.7.0]** (Translate & Transcribe deferred start), which was never tagged separately.
+
 ### Added
 
 - **Meeting chat corpus fallback** — when hybrid/keyword retrieval returns no chunks for meeting-scoped `synthesis` / `general` / `meeting_query` intents, load that meeting’s indexed chunks (summary → transcript preferred) so questions like “Summarize this meeting” and “Give me an overview” work without keyword overlap
 - `vector.repository.listByMeeting` for ordered meeting corpus listing
 - Unit tests for corpus-fallback gates, meeting-scoped synthesis RAG hints, and process-meeting embed ordering
+- Backend tests **412**; frontend **84**
 
 ### Changed
 
 - Meeting-scoped **synthesis** retrieval prefers `transcript` + `summary` source types (hybrid mode unchanged)
 - `process-meeting` runs **knowledge extraction before** `enqueueEmbedMeeting` (still embeds if knowledge fails)
 - Meeting re-embed (`replaceMeetingChunks`) **preserves `KNOWLEDGE` chunks** so knowledge vectors are not wiped when transcript/summary are refreshed
+- Embedding cache unit test clears Redis keys so local Redis no longer flakes the suite
 
 ### Fixed
 

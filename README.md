@@ -271,9 +271,9 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-MeetingMind AI v0.7.1 is feature-complete for the capture + Translate & Transcribe loop, with meeting chat grounded for summarize/overview as well as keyword Q&A. Recommended next phase:
+MeetingMind AI **v0.7.1** (includes v0.7.0 Translate & Transcribe) is feature-complete for capture, deferred transcription, and grounded meeting chat. Recommended next phase:
 
-1. **E2E tests** — Playwright for Google mock auth, screen capture upload, and Meet create flow
+1. **E2E tests** — Playwright for Google mock auth, Translate & Transcribe, and meeting chat summarize
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
 3. **Production deploy** — Redis, pgvector, ffmpeg for video extract, CI/CD
 4. **Live platform imports** — Replace Zoom/Meet/Teams stubs with provider APIs and webhooks
