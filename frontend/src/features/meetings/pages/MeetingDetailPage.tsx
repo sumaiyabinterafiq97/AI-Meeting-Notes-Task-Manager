@@ -13,13 +13,12 @@ import { ProcessingStatusBadge } from '../components/ProcessingStatusBadge';
 import { MeetingMetadata } from '../components/MeetingMetadata';
 import { AudioUpload } from '../components/AudioUpload';
 import { TranscriptUpload } from '../components/TranscriptUpload';
-import { LinkedTasksList } from '../components/LinkedTasksList';
+import { TranscriptDocument } from '../components/TranscriptDocument';
 import { EditMeetingDialog } from '../components/EditMeetingDialog';
 import { JoinMeetButton } from '../components/JoinMeetButton';
 import { ScreenRecorder } from '../components/ScreenRecorder';
 import { TranscriptionStatusBanner } from '../transcription-status';
 import { MeetingChatPanel } from '@/features/chat/components/MeetingChatPanel';
-import { MeetingInsightsPanel } from '@/features/insights/components/MeetingInsightsPanel';
 import { useMeeting } from '../hooks/useMeeting';
 import { useDeleteMeeting } from '../hooks/useDeleteMeeting';
 import { useReprocessMeeting } from '../hooks/useReprocessMeeting';
@@ -72,8 +71,8 @@ export function MeetingDetailPage() {
   const isProcessing = meeting.status === 'PROCESSING';
   const isBusy = isTranscribing || isProcessing;
   const canReprocess = Boolean(meeting.transcript) && !isBusy;
-  const canChat =
-    Boolean(meeting.transcript) && (meeting.status === 'READY' || meeting.status === 'PROCESSING');
+  const hasTranscript = Boolean(meeting.transcript);
+  const canChat = hasTranscript && (meeting.status === 'READY' || meeting.status === 'PROCESSING');
   const chatDisabled =
     isBusy || meeting.status === 'FAILED' || meeting.status === 'DRAFT' || isTranscribing;
   const chatDisabledReason = isTranscribing
@@ -81,18 +80,12 @@ export function MeetingDetailPage() {
     : isProcessing
       ? 'Chat is available once AI processing completes.'
       : meeting.status === 'DRAFT'
-        ? 'Upload a recording or transcript to start chatting about this meeting.'
+        ? 'Upload a recording and run Translate & Transcribe, or paste a transcript, to chat about this meeting.'
         : meeting.status === 'FAILED'
           ? 'Chat is unavailable while AI processing has failed.'
           : undefined;
 
-  const showInsightsPanel =
-    meeting.status === 'READY' ||
-    meeting.status === 'PROCESSING' ||
-    meeting.status === 'FAILED' ||
-    meeting.actionItems.length > 0;
-
-  const defaultTab = meeting.status === 'DRAFT' ? 'details' : 'insights';
+  const defaultTab = hasTranscript ? 'transcript' : 'capture';
 
   return (
     <div className="space-y-6">
@@ -160,39 +153,90 @@ export function MeetingDetailPage() {
         <ErrorAlert
           message={
             meeting.aiOutput?.errorMessage ??
-            'Processing failed. Retry transcription or upload a recording / transcript again.'
+            'Processing failed. Retry Translate & Transcribe or upload a recording / transcript again.'
           }
         />
       )}
 
       <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="capture">Record & upload</TabsTrigger>
+          <TabsTrigger value="transcript">Transcript</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="details">Meeting info</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="insights">
+        <TabsContent value="capture" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Meeting insights</CardTitle>
+              <CardTitle>Record meeting</CardTitle>
               <CardDescription>
-                AI-generated summary, decisions, risks, and follow-ups for this meeting.
+                Join Google Meet, then record the Meet tab here. Download locally or upload — then
+                use Translate &amp; Transcribe below.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {showInsightsPanel ? (
-                <MeetingInsightsPanel
-                  embedded
-                  workspaceId={workspaceId}
-                  meetingId={meetingId}
-                  meetingStatus={meeting.status}
-                  aiOutput={meeting.aiOutput}
-                  actionItems={meeting.actionItems}
-                />
+              <ScreenRecorder
+                workspaceId={workspaceId}
+                meetingId={meetingId}
+                meetingStatus={meeting.status}
+                hasRecording={Boolean(meeting.audio) || hasTranscript}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload recording</CardTitle>
+              <CardDescription>
+                Store audio or video first. Click Translate &amp; Transcribe when you are ready to
+                create an English transcript and AI notes.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AudioUpload
+                workspaceId={workspaceId}
+                meetingId={meetingId}
+                meetingStatus={meeting.status}
+                hasTranscript={hasTranscript}
+                audio={meeting.audio}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Paste transcript</CardTitle>
+              <CardDescription>
+                Optional alternative if you already have a text transcript.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TranscriptUpload
+                workspaceId={workspaceId}
+                meetingId={meetingId}
+                meetingStatus={meeting.status}
+                hasTranscript={hasTranscript}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transcript">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transcript</CardTitle>
+              <CardDescription>
+                Readable transcript for this meeting. Download as .txt or .md anytime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {meeting.transcript ? (
+                <TranscriptDocument title={meeting.title} transcript={meeting.transcript} />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Upload a recording or import from Zoom/Meet in Meeting info to generate insights.
+                  No transcript yet. Upload a recording and click Translate &amp; Transcribe on the
+                  Record &amp; upload tab.
                 </p>
               )}
             </CardContent>
@@ -202,13 +246,13 @@ export function MeetingDetailPage() {
         <TabsContent value="chat">
           <Card>
             <CardHeader>
-              <CardTitle>Meeting AI chat</CardTitle>
+              <CardTitle>Meeting chat</CardTitle>
               <CardDescription>
-                Ask questions about &ldquo;{meeting.title}&rdquo; with grounded, cited answers.
+                Ask questions, summarize, or take notes grounded in this meeting&apos;s transcript.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {canChat || meeting.transcript ? (
+              {canChat || hasTranscript ? (
                 <MeetingChatPanel
                   embedded
                   workspaceId={workspaceId}
@@ -219,74 +263,26 @@ export function MeetingDetailPage() {
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Upload a recording or transcript in Meeting info to start chatting about this
-                  meeting.
+                  Upload a recording or transcript first, then chat about this meeting.
                 </p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="details" className="space-y-6">
+        <TabsContent value="details">
           <Card>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
-              <CardDescription>Meeting metadata and context.</CardDescription>
+              <CardTitle>Meeting details</CardTitle>
+              <CardDescription>
+                Metadata and calendar context
+                {meeting.meetUrl ? ' · Google Meet link available above' : ''}.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <MeetingMetadata meeting={meeting} />
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recording & transcript</CardTitle>
-              <CardDescription>
-                {meeting.transcript
-                  ? `Uploaded ${formatDateTime(meeting.transcript.uploadedAt)} · ${meeting.transcript.charCount.toLocaleString()} characters · ${meeting.transcript.sourceFormat.toUpperCase()}`
-                  : 'Upload a recording or import from Zoom/Meet, or paste a transcript.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <ScreenRecorder
-                workspaceId={workspaceId}
-                meetingId={meetingId}
-                meetingStatus={meeting.status}
-                hasRecording={Boolean(meeting.transcript)}
-              />
-              <div className="border-t pt-6">
-                <AudioUpload
-                  workspaceId={workspaceId}
-                  meetingId={meetingId}
-                  meetingStatus={meeting.status}
-                  hasTranscript={Boolean(meeting.transcript)}
-                />
-              </div>
-              <div className="border-t pt-6">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Alternative: paste text transcript
-                </p>
-                <TranscriptUpload
-                  workspaceId={workspaceId}
-                  meetingId={meetingId}
-                  meetingStatus={meeting.status}
-                  hasTranscript={Boolean(meeting.transcript)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {meeting.linkedTasks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Linked Tasks</CardTitle>
-                <CardDescription>Tasks created from accepted action items.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <LinkedTasksList workspaceId={workspaceId} tasks={meeting.linkedTasks} />
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
 

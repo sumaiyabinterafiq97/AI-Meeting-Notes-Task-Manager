@@ -20,12 +20,12 @@ export function WorkspaceListPage() {
 
   const handleSelect = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
-    navigate(ROUTES.CHAT(workspaceId));
+    navigate(ROUTES.MEETINGS(workspaceId));
   };
 
   const handleCreated = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
-    navigate(ROUTES.CHAT(workspaceId));
+    navigate(ROUTES.MEETINGS(workspaceId));
   };
 
   return (
@@ -81,11 +81,7 @@ export function WorkspaceListPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {workspaces.map((workspace) => (
-                <WorkspaceCard
-                  key={workspace.id}
-                  workspace={workspace}
-                  onSelect={handleSelect}
-                />
+                <WorkspaceCard key={workspace.id} workspace={workspace} onSelect={handleSelect} />
               ))}
             </div>
           </div>
