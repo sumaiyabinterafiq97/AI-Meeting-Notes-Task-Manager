@@ -1,7 +1,7 @@
 import type { ITranscriptionProvider } from './transcription-provider.interface';
 import type { TranscriptionInput, TranscriptionResult } from '../types/transcription.types';
 
-/** Realistic stand-in transcript for dev/test (≥ 100 chars). */
+/** Realistic stand-in English transcript for translate_to_english / mock (≥ 100 chars). */
 export const MOCK_TRANSCRIPTION_TEXT = [
   'Alex: Welcome everyone to sprint planning.',
   'Jordan: We need to finalize the API design and ship the transcription pipeline.',
@@ -13,11 +13,13 @@ export const MOCK_TRANSCRIPTION_TEXT = [
 export class MockTranscriptionProvider implements ITranscriptionProvider {
   readonly id = 'mock';
 
-  async transcribe(_input: TranscriptionInput): Promise<TranscriptionResult> {
+  async transcribe(input: TranscriptionInput): Promise<TranscriptionResult> {
+    const mode = input.mode ?? 'translate_to_english';
     return {
       text: MOCK_TRANSCRIPTION_TEXT,
       provider: 'mock',
-      model: 'mock-whisper',
+      model: mode === 'translate_to_english' ? 'mock-whisper-translate' : 'mock-whisper',
+      mode,
     };
   }
 }

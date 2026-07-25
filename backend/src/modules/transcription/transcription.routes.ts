@@ -26,6 +26,13 @@ export function createTranscriptionRoutes(): Router {
   );
 
   router.post(
+    '/transcription/start',
+    aiProcessingRateLimiter,
+    validate(meetingParamsValidation),
+    (req, res, next) => transcriptionController.startTranscription(req, res, next),
+  );
+
+  router.post(
     '/transcription/retry',
     aiProcessingRateLimiter,
     validate(meetingParamsValidation),

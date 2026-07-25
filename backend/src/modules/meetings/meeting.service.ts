@@ -145,9 +145,24 @@ export class MeetingService {
       transcript: meeting.transcript
         ? {
             id: meeting.transcript.id,
+            content: meeting.transcript.content,
             sourceFormat: meeting.transcript.sourceFormat,
             charCount: meeting.transcript.charCount,
             uploadedAt: meeting.transcript.uploadedAt,
+          }
+        : null,
+      audio: meeting.audio
+        ? {
+            id: meeting.audio.id,
+            meetingId: meeting.audio.meetingId,
+            workspaceId: meeting.audio.workspaceId,
+            originalName: meeting.audio.originalName,
+            mimeType: meeting.audio.mimeType,
+            fileSizeBytes: meeting.audio.fileSizeBytes,
+            status: meeting.audio.status,
+            errorMessage: meeting.audio.errorMessage,
+            transcribedAt: meeting.audio.transcribedAt,
+            createdAt: meeting.audio.createdAt,
           }
         : null,
       aiOutput: meeting.aiOutput,

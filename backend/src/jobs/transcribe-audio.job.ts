@@ -4,12 +4,15 @@ import { aiJobService } from '../modules/ai';
 import { meetingAudioRepository } from '../modules/transcription/repositories/meeting-audio.repository';
 import { audioStorageService } from '../modules/transcription/services/audio-storage.service';
 import { transcriptionService } from '../modules/transcription/services/transcription.service';
+import { transcriptionOrchestratorService } from '../modules/transcription/services/transcription-orchestrator.service';
 import { transcriptionObservabilityService } from '../modules/transcription/services/transcription-observability.service';
+import type { TranscriptionMode } from '../modules/transcription/types/transcription.types';
 
 export interface TranscribeAudioJobPayload {
   audioId: string;
   meetingId: string;
   workspaceId: string;
+  mode?: TranscriptionMode;
 }
 
 export async function processTranscribeAudioJob(payload: TranscribeAudioJobPayload): Promise<void> {
@@ -22,6 +25,7 @@ export async function processTranscribeAudioJob(payload: TranscribeAudioJobPaylo
     return;
   }
 
+  const mode = payload.mode ?? 'translate_to_english';
   const provider = transcriptionService.getActiveProviderId();
   const obsCtx = {
     workspaceId: payload.workspaceId,
@@ -37,11 +41,14 @@ export async function processTranscribeAudioJob(payload: TranscribeAudioJobPaylo
   const startedAt = Date.now();
 
   try {
-    const filePath = await audioStorageService.resolvePath(audio.storageKey);
+    const prepared = await transcriptionOrchestratorService.ensureAudioForTranscription(audio.id);
+    const filePath = await audioStorageService.resolvePath(prepared.storageKey);
+
     const result = await transcriptionService.transcribe({
       filePath,
-      mimeType: audio.mimeType,
-      originalName: audio.originalName,
+      mimeType: prepared.mimeType,
+      originalName: prepared.originalName,
+      mode,
     });
 
     const content = result.text.normalize('NFC').trim();
@@ -53,7 +60,7 @@ export async function processTranscribeAudioJob(payload: TranscribeAudioJobPaylo
 
     await meetingRepository.upsertTranscriptAndStartProcessing(payload.meetingId, {
       content,
-      sourceFormat: /\.(mp4|webm)$/i.test(audio.originalName) ? 'video' : 'audio',
+      sourceFormat: /\.(mp4|webm)$/i.test(prepared.originalName) ? 'video' : 'audio',
       charCount: content.length,
     });
 
@@ -66,7 +73,6 @@ export async function processTranscribeAudioJob(payload: TranscribeAudioJobPaylo
     );
 
     await aiJobService.enqueueProcessing(payload.workspaceId, payload.meetingId, {
-      // Unique per attempt so retries after a prior successful AI job still work
       idempotencyKey: `meeting:${payload.meetingId}:audio-transcript:${audio.id}:${Date.now()}`,
       force: true,
     });

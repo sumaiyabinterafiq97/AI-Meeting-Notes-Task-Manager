@@ -25,15 +25,33 @@ export class OpenAITranscriptionProvider implements ITranscriptionProvider {
 
   async transcribe(input: TranscriptionInput): Promise<TranscriptionResult> {
     const client = this.getClient();
-    const transcription = await client.audio.transcriptions.create({
-      file: fs.createReadStream(input.filePath),
+    const mode = input.mode ?? 'translate_to_english';
+    const file = fs.createReadStream(input.filePath);
+
+    if (mode === 'transcribe_original') {
+      const transcription = await client.audio.transcriptions.create({
+        file,
+        model: env.OPENAI_WHISPER_MODEL,
+      });
+      return {
+        text: transcription.text,
+        provider: 'openai',
+        model: env.OPENAI_WHISPER_MODEL,
+        mode,
+      };
+    }
+
+    // Default product path: Bengali+English → English (Whisper translations)
+    const translation = await client.audio.translations.create({
+      file,
       model: env.OPENAI_WHISPER_MODEL,
     });
 
     return {
-      text: transcription.text,
+      text: translation.text,
       provider: 'openai',
       model: env.OPENAI_WHISPER_MODEL,
+      mode: 'translate_to_english',
     };
   }
 }
