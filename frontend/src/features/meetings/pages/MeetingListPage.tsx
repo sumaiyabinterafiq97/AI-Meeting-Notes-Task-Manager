@@ -44,7 +44,7 @@ export function MeetingListPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Meetings</h2>
           <p className="text-muted-foreground">
-            Capture recordings, import from Zoom/Meet, or paste transcripts.
+            Create a meeting, join Meet, record or upload, then read the transcript and chat.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="min-h-10 shrink-0">

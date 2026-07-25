@@ -28,6 +28,7 @@ describe('MeetingService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     transcript: null,
+    audio: null,
     aiOutput: null,
     actionItems: [],
     tasks: [],

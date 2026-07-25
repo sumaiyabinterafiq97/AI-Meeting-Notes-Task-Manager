@@ -14,11 +14,11 @@ Copy-paste from [`portfolio-demo-transcript.txt`](./portfolio-demo-transcript.tx
 
 **Also in repo (shorter sources):**
 
-| File | Use |
-|------|-----|
-| `backend/scripts/load-test-meeting-jobs.ts` | `SAMPLE_TRANSCRIPT` (3 lines, minimal) |
-| `backend/prompts/evaluations/fixtures/summarizer.yaml` | TC-SUM-001 sprint planning snippet |
-| `backend/tests/helpers/meeting-helper.ts` | Test payload only (`'A'.repeat(120)` — not realistic) |
+| File                                                   | Use                                                   |
+| ------------------------------------------------------ | ----------------------------------------------------- |
+| `backend/scripts/load-test-meeting-jobs.ts`            | `SAMPLE_TRANSCRIPT` (3 lines, minimal)                |
+| `backend/prompts/evaluations/fixtures/summarizer.yaml` | TC-SUM-001 sprint planning snippet                    |
+| `backend/tests/helpers/meeting-helper.ts`              | Test payload only (`'A'.repeat(120)` — not realistic) |
 
 ## Step-by-step (5 minutes)
 
@@ -30,35 +30,29 @@ npm run seed:portfolio-demo
 
 Then open the printed URLs in your browser (log in first if needed).
 
-Manual flow: (optional): Title `Sprint Planning`, attendees `Alex Chen, Jordan Park, Maria Santos, Sarah Kim`
-2. Open **Meeting info** tab → paste transcript from `portfolio-demo-transcript.txt`
-3. Click **Upload & process** → wait until status is **Processed** (not Draft)
-4. Open **Insights** tab → confirm summary, decisions, risks, action items
-5. Open **Chat** tab → ask: `What blockers were raised about production launch?`
-6. Accept 1–2 action items → creates tasks for kanban screenshot
-7. Revisit **Dashboard** — metrics should show Meetings: 1, AI Summaries: 1, etc.
+Manual flow: (optional): Title `Sprint Planning`, attendees `Alex Chen, Jordan Park, Maria Santos, Sarah Kim` 2. Open meeting → **Recording & transcript** → paste transcript from `portfolio-demo-transcript.txt` **or** upload a recording then click **Translate & Transcribe** 3. Wait until status is **Processed** / `READY` (not Draft) 4. Open **Insights** / AI panel → confirm summary, decisions, risks, action items 5. Open **Chat** tab → ask: `What blockers were raised about production launch?` 6. Accept 1–2 action items → creates tasks for kanban screenshot 7. Revisit **Dashboard** if enabled — metrics should show Meetings: 1, AI Summaries: 1, etc.
 
 ## Routes to screenshot (replace `{workspaceId}` and `{meetingId}`)
 
-| Priority | Route | What to capture |
-|----------|-------|-----------------|
-| **1** | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Insights** tab | Summary, decisions, risks, action items |
-| **2** | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Chat** tab | Grounded answer with citations |
-| **3** | `/workspaces/{workspaceId}/dashboard` | AI metrics, recommendations, recent meetings (after processing) |
-| **4** | `/workspaces/{workspaceId}/search?q=API+latency` | Semantic search snippets |
-| **5** | `/workspaces/{workspaceId}/tasks` | Kanban with accepted action items |
-| **6** | `/workspaces/{workspaceId}/chat` | Workspace-level chat (optional) |
-| **7** | `/workspaces/{workspaceId}/insights` | Workspace insights hub (optional) |
+| Priority | Route                                                               | What to capture                                                 |
+| -------- | ------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **1**    | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Insights** tab | Summary, decisions, risks, action items                         |
+| **2**    | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Chat** tab     | Grounded answer with citations                                  |
+| **3**    | `/workspaces/{workspaceId}/dashboard`                               | AI metrics, recommendations, recent meetings (after processing) |
+| **4**    | `/workspaces/{workspaceId}/search?q=API+latency`                    | Semantic search snippets                                        |
+| **5**    | `/workspaces/{workspaceId}/tasks`                                   | Kanban with accepted action items                               |
+| **6**    | `/workspaces/{workspaceId}/chat`                                    | Workspace-level chat (optional)                                 |
+| **7**    | `/workspaces/{workspaceId}/insights`                                | Workspace insights hub (optional)                               |
 
 **Get IDs from the browser URL** after opening any workspace/meeting page.
 
 ## LinkedIn Featured recommendation
 
-| Slot | Asset |
-|------|-------|
-| 1 | GitHub repo link |
-| 2 | Carousel: Dashboard → Meeting Insights → Chat |
-| 3 | Architecture PNG from `docs/agent-flow.md` (optional) |
+| Slot | Asset                                                 |
+| ---- | ----------------------------------------------------- |
+| 1    | GitHub repo link                                      |
+| 2    | Carousel: Dashboard → Meeting Insights → Chat         |
+| 3    | Architecture PNG from `docs/agent-flow.md` (optional) |
 
 **Avoid:** Empty transcript upload page, Draft status, "QA Test Workspace" name.
 

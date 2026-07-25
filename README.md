@@ -9,7 +9,7 @@ MeetingMind AI is a production-grade SaaS platform that transforms meeting trans
 | **Frontend**      | React 19, TypeScript, Vite, React Router, TanStack Query, Axios, Tailwind CSS, Shadcn UI, React Hook Form, Zod, React Markdown |
 | **Backend**       | Node.js, Express 5, TypeScript, Prisma ORM, JWT, bcrypt                                                                        |
 | **LLM**           | OpenAI SDK, Anthropic SDK, Google Gemini, LangChain, LangGraph, multi-provider fallback chain                                  |
-| **RAG & Search**  | pgvector, document chunking, hybrid retrieval (vector + FTS), reciprocal rank fusion                                           |
+| **RAG & Search**  | pgvector, document chunking, hybrid retrieval (vector + FTS), RRF, meeting corpus fallback for summarize/overview chat         |
 | **Agents**        | Summarizer, task extractor, decision, risk analyzer, chat, knowledge, weekly report                                            |
 | **Jobs & Cache**  | BullMQ, Redis (ioredis), background workers, SSE streaming                                                                     |
 | **Database**      | PostgreSQL 16 + pgvector                                                                                                       |
@@ -162,13 +162,13 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `AI_USE_MOCK`                                | Run AI inline without Redis/OpenAI (`true` for local dev)               |
 | `AI_PIPELINE_MODE`                           | `monolithic` or `multi-agent` extraction pipeline                       |
 | `PROMPT_SCHEMA_V2_1`                         | Enable extended agent output schemas with confidence scores             |
-| `TRANSCRIPTION_PROVIDER`                     | `mock` \| `openai` \| `deepgram` (audio → text)                         |
+| `TRANSCRIPTION_PROVIDER`                     | `mock` \| `openai` \| `deepgram` (audio → English text)                 |
 | `OPENAI_WHISPER_MODEL`                       | Whisper model (default `whisper-1`)                                     |
 | `AUDIO_STORAGE_PATH`                         | Local recording storage root (default `./storage/audio`)                |
 | `AUDIO_MAX_BYTES`                            | Max audio upload size (default 100MB)                                   |
 | `VIDEO_MAX_BYTES`                            | Max video upload size (default 500MB)                                   |
 | `VIDEO_DISCARD_AFTER_EXTRACT`                | Delete original video after audio extract (default `true`)              |
-| `AUDIO_EXTRACT_PROVIDER`                     | `mock` \| `ffmpeg` (video → wav)                                        |
+| `AUDIO_EXTRACT_PROVIDER`                     | `mock` \| `ffmpeg` (video → wav on Translate & Transcribe)              |
 | `GOOGLE_OAUTH_CLIENT_ID` / `SECRET`          | Google Sign-In OAuth client (or reuse Calendar vars)                    |
 | `GOOGLE_OAUTH_REDIRECT_URI`                  | Sign-In callback (default `…/auth/google/callback`)                     |
 | `GOOGLE_CALENDAR_CLIENT_*`                   | Calendar/Meet OAuth (same client recommended)                           |
@@ -176,7 +176,8 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 | `MEETING_START_REMINDER_MINUTES`             | In-app start reminder window (default 15)                               |
 
 See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.  
-Audio upload flow: [`docs/transcription-flow.md`](./docs/transcription-flow.md).  
+Recording flow: upload stores file → user clicks **Translate & Transcribe** — [`docs/transcription-flow.md`](./docs/transcription-flow.md).  
+Meeting chat: hybrid RAG + meeting corpus fallback for summarize/overview — see [`CHANGELOG.md`](./CHANGELOG.md) v0.7.1 and [`backend/README.md`](./backend/README.md).  
 Google Meet: [`docs/google-meet-integration.md`](./docs/google-meet-integration.md).  
 Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
 
@@ -214,30 +215,32 @@ Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
 
 ## API Endpoints
 
-**MeetingMind AI v0.6.0** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
+**MeetingMind AI v0.7.1** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
-| Domain                      | Base Path                                       | Backend | Frontend |
-| --------------------------- | ----------------------------------------------- | ------- | -------- |
-| Health                      | `GET /health`                                   | ✅      | —        |
-| Observability               | `/observability/*`                              | ✅      | —        |
-| Auth                        | `/api/v1/auth/*`                                | ✅      | ✅       |
-| Users                       | `/api/v1/users/*`                               | ✅      | ✅       |
-| Workspaces                  | `/api/v1/workspaces/*`                          | ✅      | ✅       |
-| Invitations                 | `/api/v1/invitations/*`                         | ✅      | ✅       |
-| Meetings                    | `/api/v1/workspaces/:id/meetings/*`             | ✅      | ✅       |
-| AI processing               | `.../meetings/:id/ai/*`                         | ✅      | ✅       |
-| Platform imports            | `.../meetings/imports/{zoom,google-meet,teams}` | ✅      | API      |
-| Needing transcript          | `.../meetings/needing-transcript`               | ✅      | ✅       |
-| Tasks                       | `/api/v1/workspaces/:id/tasks/*`                | ✅      | ✅       |
-| Notifications               | `/api/v1/notifications/*`                       | ✅      | ✅       |
-| Dashboard                   | `/api/v1/workspaces/:id/dashboard`              | ✅      | ✅       |
-| Search (keyword + semantic) | `/api/v1/workspaces/:id/search`                 | ✅      | ✅       |
-| Chat (SSE)                  | `/api/v1/workspaces/:id/chat/*`                 | ✅      | ✅       |
-| Insights                    | `/api/v1/workspaces/:id/insights/*`             | ✅      | ✅       |
-| Reports                     | `/api/v1/workspaces/:id/reports/*`              | ✅      | ✅       |
-| Knowledge                   | `/api/v1/workspaces/:id/knowledge/*`            | ✅      | ✅       |
-| Calendar OAuth              | `/api/v1/calendar/oauth/*`                      | ✅      | —        |
-| Calendar sync               | `/api/v1/workspaces/:id/calendar/*`             | ✅      | Partial  |
+| Domain                      | Base Path                                        | Backend | Frontend |
+| --------------------------- | ------------------------------------------------ | ------- | -------- |
+| Health                      | `GET /health`                                    | ✅      | —        |
+| Observability               | `/observability/*`                               | ✅      | —        |
+| Auth                        | `/api/v1/auth/*`                                 | ✅      | ✅       |
+| Users                       | `/api/v1/users/*`                                | ✅      | ✅       |
+| Workspaces                  | `/api/v1/workspaces/*`                           | ✅      | ✅       |
+| Invitations                 | `/api/v1/invitations/*`                          | ✅      | ✅       |
+| Meetings                    | `/api/v1/workspaces/:id/meetings/*`              | ✅      | ✅       |
+| AI processing               | `.../meetings/:id/ai/*`                          | ✅      | ✅       |
+| Recording upload            | `.../meetings/:id/audio`                         | ✅      | ✅       |
+| Translate & Transcribe      | `.../meetings/:id/transcription/start`           | ✅      | ✅       |
+| Platform imports            | `.../meetings/imports/{zoom,google-meet,teams}`  | ✅      | API      |
+| Needing transcript          | `.../meetings/needing-transcript`                | ✅      | ✅       |
+| Tasks                       | `/api/v1/workspaces/:id/tasks/*`                 | ✅      | ✅       |
+| Notifications               | `/api/v1/notifications/*`                        | ✅      | ✅       |
+| Dashboard                   | `/api/v1/workspaces/:id/dashboard`               | ✅      | ✅       |
+| Search (keyword + semantic) | `/api/v1/workspaces/:id/search`                  | ✅      | ✅       |
+| Chat (SSE)                  | `/api/v1/workspaces/:id/chat/*` (+ meeting chat) | ✅      | ✅       |
+| Insights                    | `/api/v1/workspaces/:id/insights/*`              | ✅      | ✅       |
+| Reports                     | `/api/v1/workspaces/:id/reports/*`               | ✅      | ✅       |
+| Knowledge                   | `/api/v1/workspaces/:id/knowledge/*`             | ✅      | ✅       |
+| Calendar OAuth              | `/api/v1/calendar/oauth/*`                       | ✅      | —        |
+| Calendar sync               | `/api/v1/workspaces/:id/calendar/*`              | ✅      | Partial  |
 
 **Auth highlights:** register, login, Google Sign-In (`GET /auth/google`), logout, refresh (httpOnly cookie), forgot/reset password, `GET /auth/me`
 
@@ -258,21 +261,23 @@ Full architecture and requirements live in [`docs/`](./docs/):
 - [api-design.md](./docs/api-design.md) — REST API reference
 - [rag-architecture.md](./docs/rag-architecture.md) — RAG and semantic search design
 - [llm-architecture.md](./docs/llm-architecture.md) — Multi-provider LLM layer
-- [transcription-flow.md](./docs/transcription-flow.md) — Audio upload → Whisper → AI pipeline
+- [transcription-flow.md](./docs/transcription-flow.md) — Upload → Translate & Transcribe → AI
 - [capture-architecture.md](./docs/capture-architecture.md) — Capture layer (audio, import, bots)
+- [screen-recorder.md](./docs/screen-recorder.md) — In-app screen/tab recorder
 - [agent-flow.md](./docs/agent-flow.md) — Multi-agent orchestration
 - [observability-design.md](./docs/observability-design.md) — Metrics, alerts, and cost tracking
 - [project-structure.md](./docs/project-structure.md) — Detailed folder conventions
+- [docs/README.md](./docs/README.md) — Full documentation index
 
 ## Next Steps
 
-MeetingMind AI v0.6.0 is feature-complete. Recommended next phase:
+MeetingMind AI v0.7.1 is feature-complete for the capture + Translate & Transcribe loop, with meeting chat grounded for summarize/overview as well as keyword Q&A. Recommended next phase:
 
 1. **E2E tests** — Playwright for Google mock auth, screen capture upload, and Meet create flow
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
 3. **Production deploy** — Redis, pgvector, ffmpeg for video extract, CI/CD
 4. **Live platform imports** — Replace Zoom/Meet/Teams stubs with provider APIs and webhooks
-5. **Polish** — Meeting bots, Deepgram transcription, prompt eval in CI, API design doc v1.2
+5. **Polish** — Meeting bots, Deepgram transcription, prompt eval in CI
 
 ## License
 

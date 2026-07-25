@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Circle, Square, Upload, X } from 'lucide-react';
+import { Circle, Download, Square, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorAlert } from '@/components/common/ErrorAlert';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -173,6 +173,16 @@ export function ScreenRecorder({
     setError(null);
   };
 
+  const downloadLocal = () => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `meeting-recording-${Date.now()}.webm`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const upload = async () => {
     if (!blob) return;
     if (blob.size > MAX_VIDEO_BYTES) {
@@ -182,7 +192,7 @@ export function ScreenRecorder({
 
     if (hasRecording) {
       const confirmed = window.confirm(
-        'This replaces the existing recording and regenerates AI notes. Continue?',
+        'This replaces the uploaded recording. Run Translate & Transcribe again afterward to update the transcript. Continue?',
       );
       if (!confirmed) return;
     }
@@ -205,7 +215,7 @@ export function ScreenRecorder({
   if (busy) {
     return (
       <p className="text-sm text-muted-foreground">
-        Recording is disabled while transcription or AI processing is running.
+        Recording is disabled while Translate &amp; Transcribe or AI processing is running.
       </p>
     );
   }
@@ -215,8 +225,8 @@ export function ScreenRecorder({
       <div>
         <h4 className="text-sm font-medium">Record meeting screen/tab</h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Select the Google Meet tab and enable sharing tab audio. Recording stays in your browser
-          until you upload.
+          Select the Google Meet tab and enable sharing tab audio. Upload stores the file only — use
+          Translate &amp; Transcribe in Upload recording to process.
         </p>
       </div>
 
@@ -267,6 +277,10 @@ export function ScreenRecorder({
             <Button type="button" onClick={() => void upload()} disabled={uploadMutation.isPending}>
               <Upload className="h-4 w-4" aria-hidden="true" />
               {hasRecording ? 'Replace recording' : 'Upload recording'}
+            </Button>
+            <Button type="button" variant="outline" onClick={downloadLocal}>
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Download recording
             </Button>
             <Button type="button" variant="outline" onClick={discard}>
               Discard

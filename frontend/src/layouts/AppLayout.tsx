@@ -1,13 +1,11 @@
 import { Outlet, Link, useParams, useLocation } from 'react-router-dom';
-import { LogOut, MessageSquare } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { WorkspaceSwitcher } from '@/features/workspaces/components/WorkspaceSwitcher';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
-import { GlobalSearch } from '@/features/search/components/GlobalSearch';
-import { MobileSearch } from '@/features/search/components/MobileSearch';
 import { MobileNav } from '@/layouts/MobileNav';
 import { MobileBottomNav } from '@/layouts/MobileBottomNav';
 import { isNavItemActive, workspaceNavItems } from '@/layouts/nav-items';
@@ -67,25 +65,7 @@ export function AppLayout() {
               <WorkspaceSwitcher />
             </div>
 
-            {activeWorkspaceId && (
-              <div className="hidden min-w-0 flex-1 xl:block xl:max-w-md">
-                <GlobalSearch workspaceId={activeWorkspaceId} />
-              </div>
-            )}
-
             <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-              {activeWorkspaceId && (
-                <>
-                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 xl:hidden" asChild>
-                    <Link to={ROUTES.CHAT(activeWorkspaceId)} aria-label="Workspace chat">
-                      <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                  <div className="xl:hidden">
-                    <MobileSearch workspaceId={activeWorkspaceId} />
-                  </div>
-                </>
-              )}
               <NotificationBell />
               {user && (
                 <span className="hidden max-w-[6rem] truncate text-sm text-muted-foreground lg:inline xl:max-w-none">

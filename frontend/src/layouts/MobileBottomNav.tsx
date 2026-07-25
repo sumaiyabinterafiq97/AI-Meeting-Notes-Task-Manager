@@ -1,13 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, Search, FileText, LayoutDashboard } from 'lucide-react';
+import { FileText, Settings } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 const bottomNavItems = [
-  { label: 'Chat', icon: MessageSquare, path: (id: string) => ROUTES.CHAT(id), matchPrefix: true },
-  { label: 'Search', icon: Search, path: (id: string) => ROUTES.SEARCH(id) },
-  { label: 'Meetings', icon: FileText, path: (id: string) => ROUTES.MEETINGS(id) },
-  { label: 'Dashboard', icon: LayoutDashboard, path: (id: string) => ROUTES.DASHBOARD(id) },
+  {
+    label: 'Meetings',
+    icon: FileText,
+    path: (id: string) => ROUTES.MEETINGS(id),
+    matchPrefix: true,
+  },
+  { label: 'Settings', icon: Settings, path: (id: string) => ROUTES.SETTINGS(id) },
 ] as const;
 
 interface MobileBottomNavProps {
@@ -35,7 +38,7 @@ export function MobileBottomNav({ workspaceId }: MobileBottomNavProps) {
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 xl:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <ul className="mx-auto grid max-w-lg grid-cols-4">
+      <ul className="mx-auto grid max-w-lg grid-cols-2">
         {bottomNavItems.map((item) => {
           const path = item.path(workspaceId);
           const isActive = isBottomNavActive(location.pathname, workspaceId, item);

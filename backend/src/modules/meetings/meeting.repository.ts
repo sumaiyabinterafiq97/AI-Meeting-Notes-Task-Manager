@@ -44,6 +44,7 @@ export class MeetingRepository {
       include: {
         transcript: true,
         aiOutput: true,
+        audio: true,
         actionItems: {
           orderBy: { createdAt: 'asc' },
         },

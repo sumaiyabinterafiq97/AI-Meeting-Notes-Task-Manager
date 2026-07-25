@@ -8,6 +8,7 @@ import type {
   MeetingStatus,
   PasteTranscriptSourceFormat,
   TranscriptSourceFormat,
+  TranscriptionStartMode,
   TranscriptionStatusResponse,
   UploadAudioResponse,
   UploadTranscriptResponse,
@@ -77,6 +78,16 @@ export const meetingApi = {
   retryTranscription: (workspaceId: string, meetingId: string) =>
     apiClient.post<UploadAudioResponse>(
       `/workspaces/${workspaceId}/meetings/${meetingId}/transcription/retry`,
+    ),
+
+  startTranscription: (
+    workspaceId: string,
+    meetingId: string,
+    mode: TranscriptionStartMode = 'translate_to_english',
+  ) =>
+    apiClient.post<UploadAudioResponse>(
+      `/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`,
+      { mode },
     ),
 
   listNeedingTranscript: (workspaceId: string) =>

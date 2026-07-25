@@ -9,14 +9,17 @@ interface TranscriptionStatusBannerProps {
 export function TranscriptionStatusBanner({ status }: TranscriptionStatusBannerProps) {
   if (status === 'TRANSCRIBING') {
     return (
-      <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+      <Card
+        className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20"
+        aria-busy="true"
+      >
         <CardContent className="flex items-center gap-3 p-4">
           <Loader2
-            className="h-5 w-5 animate-spin text-amber-800 dark:text-amber-100"
+            className="h-5 w-5 shrink-0 animate-spin text-amber-800 dark:text-amber-100"
             aria-hidden
           />
           <p className="text-sm text-amber-900 dark:text-amber-100" role="status">
-            Transcribing your recording. AI insights will appear automatically when ready.
+            Translating speech to English and creating transcript…
           </p>
         </CardContent>
       </Card>
@@ -25,11 +28,17 @@ export function TranscriptionStatusBanner({ status }: TranscriptionStatusBannerP
 
   if (status === 'PROCESSING') {
     return (
-      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+      <Card
+        className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20"
+        aria-busy="true"
+      >
         <CardContent className="flex items-center gap-3 p-4">
-          <Loader2 className="h-5 w-5 animate-spin text-blue-800 dark:text-blue-200" aria-hidden />
+          <Loader2
+            className="h-5 w-5 shrink-0 animate-spin text-blue-800 dark:text-blue-200"
+            aria-hidden
+          />
           <p className="text-sm text-blue-800 dark:text-blue-200" role="status">
-            AI is analyzing your transcript. Insights and chat update automatically.
+            AI is generating summary, actions, and insights…
           </p>
         </CardContent>
       </Card>

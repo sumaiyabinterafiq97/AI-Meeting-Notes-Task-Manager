@@ -58,26 +58,35 @@ modules/
 
 ```
 Query → Embedding (provider registry) → Hybrid Search (pgvector + FTS + RRF)
+      → Keyword fallback (if empty) → Meeting corpus fallback (meeting chat only)
       → Filter validation → Score rerank → Context builder → LLM
 ```
 
-| Module | Responsibility |
-|--------|----------------|
-| `embeddings/` | OpenAI/local/voyage providers, batch embed, content-hash, reindex |
-| `chunking/` | Recursive, fixed, sliding, semantic strategies per source type |
-| `vector/` | pgvector similarity, FTS, workspace-scoped filters |
-| `retrievers/` | Top-k, threshold, dedup, ranking |
-| `rag/` | Cache, citations, token budget, observability |
+| Module        | Responsibility                                                         |
+| ------------- | ---------------------------------------------------------------------- |
+| `embeddings/` | OpenAI/local/voyage providers, batch embed, content-hash, reindex      |
+| `chunking/`   | Recursive, fixed, sliding, semantic strategies per source type         |
+| `vector/`     | pgvector similarity, FTS, workspace-scoped filters, `listByMeeting`    |
+| `retrievers/` | Top-k, threshold, dedup, ranking                                       |
+| `rag/`        | Cache, citations, token budget, observability, meeting corpus fallback |
+
+### Meeting chat retrieval
+
+- Intent classifier routes queries (`synthesis`, `task_query`, etc.) into RAG hints.
+- Meeting-scoped **synthesis** prefers `transcript` + `summary`.
+- If hybrid + keyword return **no chunks** for `synthesis` / `general` / `meeting_query` **and** `meetingId` is set, load that meeting’s chunks (summary → transcript first) so “Summarize this meeting” / “Give me an overview” still ground.
+- **Not** applied to workspace chat, `task_query`, or `factual_lookup` / `comparison` (avoids inventing action items or dumping corpus on misses).
+- After AI processing: **knowledge extract → embed meeting**; meeting re-embed preserves `KNOWLEDGE` chunks.
 
 ## Configuration (RAG)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `EMBEDDING_PROVIDER` | `openai` | Embedding provider (`openai`, `local`, `voyage`) |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Model ID (1536 dims) |
-| `RAG_CACHE_ENABLED` | `true` | Redis retrieval cache |
-| `RERANKER_ENABLED` | `false` | Enable score-boost reranking |
-| `RAG_RETRIEVAL_CACHE_TTL_SECONDS` | `900` | Retrieval cache TTL |
+| Variable                          | Default                  | Description                                      |
+| --------------------------------- | ------------------------ | ------------------------------------------------ |
+| `EMBEDDING_PROVIDER`              | `openai`                 | Embedding provider (`openai`, `local`, `voyage`) |
+| `EMBEDDING_MODEL`                 | `text-embedding-3-small` | Model ID (1536 dims)                             |
+| `RAG_CACHE_ENABLED`               | `true`                   | Redis retrieval cache                            |
+| `RERANKER_ENABLED`                | `false`                  | Enable score-boost reranking                     |
+| `RAG_RETRIEVAL_CACHE_TTL_SECONDS` | `900`                    | Retrieval cache TTL                              |
 
 Each agent module contains:
 
@@ -88,15 +97,15 @@ Each agent module contains:
 
 ## Agents
 
-| Agent | Input | Output |
-|-------|-------|--------|
-| Summarizer | Transcript, title, members | Summary, key topics, next steps |
-| Task Extractor | Transcript, members | Tasks with owner, priority, deadline |
-| Decision | Transcript, summary | Decisions with stakeholders, evidence |
-| Risk Analyzer | Transcript, summary, decisions | Risks with severity, likelihood |
-| Weekly Report | Meetings, tasks, RAG context | Sections, metrics, citations |
-| Chat | User message, history, RAG context | Markdown + citations (SSE) |
-| Knowledge | Merged output, transcript | Knowledge entries |
+| Agent          | Input                              | Output                                |
+| -------------- | ---------------------------------- | ------------------------------------- |
+| Summarizer     | Transcript, title, members         | Summary, key topics, next steps       |
+| Task Extractor | Transcript, members                | Tasks with owner, priority, deadline  |
+| Decision       | Transcript, summary                | Decisions with stakeholders, evidence |
+| Risk Analyzer  | Transcript, summary, decisions     | Risks with severity, likelihood       |
+| Weekly Report  | Meetings, tasks, RAG context       | Sections, metrics, citations          |
+| Chat           | User message, history, RAG context | Markdown + citations (SSE)            |
+| Knowledge      | Merged output, transcript          | Knowledge entries                     |
 
 ## Structured outputs
 
@@ -115,45 +124,45 @@ When `AI_PIPELINE_MODE=multi-agent`, the `process-meeting` worker invokes `orche
 START → [summarizer ∥ task_extractor ∥ decision] → risk → merge → persist → knowledge → END
 ```
 
-| Workflow | Entry point |
-|----------|-------------|
+| Workflow             | Entry point                                    |
+| -------------------- | ---------------------------------------------- |
 | Meeting intelligence | `orchestratorService.runMeetingIntelligence()` |
-| Weekly report | `orchestratorService.runWeeklyReport()` |
-| Chat | `orchestratorService.runChat()` |
-| Knowledge update | `orchestratorService.runKnowledgeUpdate()` |
+| Weekly report        | `orchestratorService.runWeeklyReport()`        |
+| Chat                 | `orchestratorService.runChat()`                |
+| Knowledge update     | `orchestratorService.runKnowledgeUpdate()`     |
 
 Workflow order is defined in `modules/orchestrator/workflows/workflow.types.ts` — not hardcoded inside agent services.
 
 ## Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AI_PIPELINE_MODE` | `monolithic` | `multi-agent` runs LangGraph meeting-intelligence workflow |
-| `PROMPT_SCHEMA_V2_1` | `false` | Enable v2.1 extended schemas |
-| `LLM_PRIMARY_PROVIDER` | `openai` | Primary model provider |
-| `LLM_FALLBACK_CHAIN` | `google,anthropic` | Fallback on failure |
-| `AI_USE_MOCK` | `false` | Deterministic mock for CI/dev |
-| `WORKSPACE_DAILY_TOKEN_BUDGET` | `500000` | Per-workspace token cap |
-| `ALERT_SLACK_WEBHOOK_URL` | — | Slack webhook for critical/high alerts |
-| `ALERT_EMAIL_TO` | — | Email recipient for alerts (stub) |
+| Variable                       | Default            | Description                                                |
+| ------------------------------ | ------------------ | ---------------------------------------------------------- |
+| `AI_PIPELINE_MODE`             | `monolithic`       | `multi-agent` runs LangGraph meeting-intelligence workflow |
+| `PROMPT_SCHEMA_V2_1`           | `false`            | Enable v2.1 extended schemas                               |
+| `LLM_PRIMARY_PROVIDER`         | `openai`           | Primary model provider                                     |
+| `LLM_FALLBACK_CHAIN`           | `google,anthropic` | Fallback on failure                                        |
+| `AI_USE_MOCK`                  | `false`            | Deterministic mock for CI/dev                              |
+| `WORKSPACE_DAILY_TOKEN_BUDGET` | `500000`           | Per-workspace token cap                                    |
+| `ALERT_SLACK_WEBHOOK_URL`      | —                  | Slack webhook for critical/high alerts                     |
+| `ALERT_EMAIL_TO`               | —                  | Email recipient for alerts (stub)                          |
 
 ## Observability
 
 Production-grade observability layer in `modules/observability/`:
 
-| Capability | Service | Endpoint / Storage |
-|------------|---------|-------------------|
-| Metrics | `MetricsService` | `GET /observability/metrics` (Prometheus) |
-| Token usage | `TokenUsageService` | `llm_invocations`, `llm_usage_daily` |
-| Cost tracking | `CostTrackerService` | Per-invocation USD estimate |
-| Latency | `LatencyTrackerService` | P50/P95/P99 histograms |
-| Logging | `structuredLogger` (Pino) | JSON logs, correlated by requestId |
-| Cache | `CacheObservabilityService` | Hit/miss by namespace |
-| Retries | `RetryObservabilityService` | Retry count, provider outages |
-| Rate limits | `RateLimitTrackerService` | Violations, abuse patterns |
-| Dashboards | `DashboardMetricsService` | `GET /observability/dashboard` |
-| Alerts | `AlertService` | `POST /observability/alerts/evaluate` |
-| Optimization | `PerformanceAnalyzerService` | `GET /observability/optimization` |
+| Capability    | Service                      | Endpoint / Storage                        |
+| ------------- | ---------------------------- | ----------------------------------------- |
+| Metrics       | `MetricsService`             | `GET /observability/metrics` (Prometheus) |
+| Token usage   | `TokenUsageService`          | `llm_invocations`, `llm_usage_daily`      |
+| Cost tracking | `CostTrackerService`         | Per-invocation USD estimate               |
+| Latency       | `LatencyTrackerService`      | P50/P95/P99 histograms                    |
+| Logging       | `structuredLogger` (Pino)    | JSON logs, correlated by requestId        |
+| Cache         | `CacheObservabilityService`  | Hit/miss by namespace                     |
+| Retries       | `RetryObservabilityService`  | Retry count, provider outages             |
+| Rate limits   | `RateLimitTrackerService`    | Violations, abuse patterns                |
+| Dashboards    | `DashboardMetricsService`    | `GET /observability/dashboard`            |
+| Alerts        | `AlertService`               | `POST /observability/alerts/evaluate`     |
+| Optimization  | `PerformanceAnalyzerService` | `GET /observability/optimization`         |
 
 ```bash
 # Run observability tests
@@ -161,7 +170,6 @@ npm test -- --testPathPatterns="observability"
 ```
 
 See [docs/observability-design.md](../docs/observability-design.md) for full architecture.
-
 
 Five search tools are registered for dynamic invocation:
 

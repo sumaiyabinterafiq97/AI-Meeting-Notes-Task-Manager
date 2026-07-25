@@ -9,12 +9,17 @@ export interface TranscriptionInput {
   filePath: string;
   mimeType: string;
   originalName: string;
+  /** Default: translate_to_english (Whisper translations → English). */
+  mode?: TranscriptionMode;
 }
+
+export type TranscriptionMode = 'translate_to_english' | 'transcribe_original';
 
 export interface TranscriptionResult {
   text: string;
   provider: TranscriptionProviderId;
   model?: string;
+  mode?: TranscriptionMode;
 }
 
 export interface MeetingAudioDto {
@@ -35,6 +40,13 @@ export interface UploadAudioResponseDto {
   audioId: string;
   status: TranscriptionJobStatus;
   meetingStatus: string;
+  /** Upload stores media only; pipeline starts via /transcription/start */
+  processingStarted: boolean;
+  audio?: MeetingAudioDto;
+}
+
+export interface StartTranscriptionDto {
+  mode?: TranscriptionMode;
 }
 
 export interface TranscriptionStatusDto {
