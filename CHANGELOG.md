@@ -3,6 +3,46 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.1] - 2026-07-26
+
+### Added
+
+- **Meeting chat corpus fallback** — when hybrid/keyword retrieval returns no chunks for meeting-scoped `synthesis` / `general` / `meeting_query` intents, load that meeting’s indexed chunks (summary → transcript preferred) so questions like “Summarize this meeting” and “Give me an overview” work without keyword overlap
+- `vector.repository.listByMeeting` for ordered meeting corpus listing
+- Unit tests for corpus-fallback gates, meeting-scoped synthesis RAG hints, and process-meeting embed ordering
+
+### Changed
+
+- Meeting-scoped **synthesis** retrieval prefers `transcript` + `summary` source types (hybrid mode unchanged)
+- `process-meeting` runs **knowledge extraction before** `enqueueEmbedMeeting` (still embeds if knowledge fails)
+- Meeting re-embed (`replaceMeetingChunks`) **preserves `KNOWLEDGE` chunks** so knowledge vectors are not wiped when transcript/summary are refreshed
+
+### Fixed
+
+- Meeting chat empty-context refusals on summarize/overview-style questions despite a Ready transcript
+- Stale TRANSCRIPT/SUMMARY RAG index after re-transcribe when embed raced ahead of (or skipped) knowledge
+
+## [0.7.0] - 2026-07-21
+
+### Added
+
+- **Translate & Transcribe** — `POST …/transcription/start` with modes `translate_to_english` (default, Whisper translations) and `transcribe_original`
+- Upload response fields `processingStarted` and optional `audio` DTO; meeting detail returns `transcript.content` and `audio` for UI banners
+- Video audio extraction runs on **start/job**, not on upload
+- Integration tests for store-only upload, start pipeline, replace-without-auto-process, and busy 409s
+- Requirements rewrite: FR-MTG-017–023, user stories MTG-02b/02c/08, MVP definition v1.2, roadmap Phase 8
+
+### Changed
+
+- `POST …/meetings/:id/audio` returns **201** and only stores media (`DRAFT` / audio `PENDING`) — no Whisper or AI enqueue
+- Replace recording resets toward `DRAFT`; user must click Translate & Transcribe again
+- Screen recorder / AudioUpload UX: upload then explicit start button
+- Docs trimmed: removed one-shot QA snapshots and legacy duplicate architecture/SRS files; index and capture docs aligned to deferred-start flow
+
+### Removed
+
+- Auto-start transcription on upload (previous 202 behavior)
+
 ## [0.6.0] - 2026-07-20
 
 ### Added
@@ -10,13 +50,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - **Google Sign-In** — OAuth flow (`GET /auth/google`), account linking, optional mock (`GOOGLE_AUTH_USE_MOCK`); `AuthProvider` enum and nullable password hash
 - **Capture layer** — Zoom, Google Meet, and Teams import API stubs with handoff to transcription; `MeetingImport` model and platform import routes
 - **Video capture** — Screen recording upload (mp4/webm), ffmpeg/mock audio extraction, higher `VIDEO_MAX_BYTES` limit
-- **Transcription hardening** — observability metrics, deduped BullMQ transcribe jobs, per-attempt AI pipeline idempotency after audio
+- **Transcription hardening** — observability metrics, BullMQ transcribe jobs, per-attempt AI pipeline idempotency after audio
 - **Google Meet & Calendar** — Meet URLs on sync, create calendar event with Meet link, `Join Meet` UI, workspace calendar connect card
 - **Meeting reminders** — in-app `MEETING_STARTING_SOON` notifications (`MEETING_START_REMINDER_MINUTES`)
 - **Meetings needing transcript** — list API and frontend banner for upload/import follow-up
 - Frontend: `ScreenRecorder`, `AudioUpload`, Google callback page, transcription status banner
 - Docs: capture architecture, transcription flow, Google Meet / Zoom / Teams integration guides; portfolio demo seed (`npm run seed:portfolio-demo`)
-- Backend tests expanded to **399**; frontend **83**
 
 ### Changed
 

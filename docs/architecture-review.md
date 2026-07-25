@@ -17,18 +17,20 @@ The initial documentation package provides a solid foundation for MVP delivery. 
 
 ## Documents Reviewed
 
-| Document | Status | Action Taken |
-|----------|--------|--------------|
-| requirements.md | Improved | Split FR/NFR; clarified RBAC delete rules |
-| functional-requirements.md | **Created** | Extracted + expanded with canonical enums |
-| non-functional-requirements.md | **Created** | Measurable NFRs with IDs |
-| user-stories.md | Improved | Fixed MTG-04 role; added traceability |
-| architecture.md | Superseded | See system-architecture.md (canonical) |
-| database-design.md | Improved | See database-architecture.md + erd.md |
-| api-design.md | Improved | See api-architecture-review.md |
-| development-roadmap.md | Improved | Added security/observability tasks |
-| mvp-definition.md | Improved | Aligned status enums |
-| project-scope.md | No change | Adequate |
+| Document                          | Status      | Action Taken                               |
+| --------------------------------- | ----------- | ------------------------------------------ |
+| requirements.md                   | Improved    | Split FR/NFR; clarified RBAC delete rules  |
+| functional-requirements.md        | **Created** | Extracted + expanded with canonical enums  |
+| non-functional-requirements.md    | **Created** | Measurable NFRs with IDs                   |
+| user-stories.md                   | Improved    | Fixed MTG-04 role; added traceability      |
+| Document                          | Status      | Notes                                      |
+| ----------                        | --------    | -------                                    |
+| system-architecture.md            | Canonical   | Use this (not the old architecture.md)     |
+| database-architecture.md + erd.md | Canonical   | Use these (not the old database-design.md) |
+| api-design.md                     | Improved    | See api-architecture-review.md             |
+| development-roadmap.md            | Improved    | Added security/observability tasks         |
+| mvp-definition.md                 | Improved    | Aligned status enums                       |
+| project-scope.md                  | No change   | Adequate                                   |
 
 ---
 
@@ -36,60 +38,60 @@ The initial documentation package provides a solid foundation for MVP delivery. 
 
 ### Critical Gaps (P0 — Must address before MVP)
 
-| # | Gap | Impact | Resolution |
-|---|-----|--------|------------|
-| G1 | No `ai_processing_jobs` table for job tracking, retries, idempotency | Duplicate AI runs, lost jobs on crash | Added to database-architecture.md |
-| G2 | Meeting status vs AI processing_status inconsistency | Frontend/backend bugs | Canonical enum table in functional-requirements.md |
-| G3 | Access token storage in localStorage mentioned | XSS token theft | Security doc: memory-only access token |
-| G4 | No refresh token rotation | Session fixation risk | FR-AUTH-012 updated; security-architecture.md |
-| G5 | No CSRF strategy for refresh cookie | CSRF on token refresh | security-architecture.md: SameSite + origin check |
-| G6 | Kanban board loads all tasks unbounded | Performance at scale | FR-TASK-013: paginate DONE column |
-| G7 | No assignee workspace membership validation | Cross-tenant assignment bug | FR-WS-015 added |
-| G8 | Last owner can be removed | Orphan workspace | FR-WS-013 added |
-| G9 | No idempotency on action-item → task creation | Duplicate tasks | FR-TASK-012 + unique `action_item_id` |
-| G10 | Concurrent transcript upload while PROCESSING | Race conditions | FR-MTG-016: return 409 |
+| #   | Gap                                                                  | Impact                                | Resolution                                         |
+| --- | -------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
+| G1  | No `ai_processing_jobs` table for job tracking, retries, idempotency | Duplicate AI runs, lost jobs on crash | Added to database-architecture.md                  |
+| G2  | Meeting status vs AI processing_status inconsistency                 | Frontend/backend bugs                 | Canonical enum table in functional-requirements.md |
+| G3  | Access token storage in localStorage mentioned                       | XSS token theft                       | Security doc: memory-only access token             |
+| G4  | No refresh token rotation                                            | Session fixation risk                 | FR-AUTH-012 updated; security-architecture.md      |
+| G5  | No CSRF strategy for refresh cookie                                  | CSRF on token refresh                 | security-architecture.md: SameSite + origin check  |
+| G6  | Kanban board loads all tasks unbounded                               | Performance at scale                  | FR-TASK-013: paginate DONE column                  |
+| G7  | No assignee workspace membership validation                          | Cross-tenant assignment bug           | FR-WS-015 added                                    |
+| G8  | Last owner can be removed                                            | Orphan workspace                      | FR-WS-013 added                                    |
+| G9  | No idempotency on action-item → task creation                        | Duplicate tasks                       | FR-TASK-012 + unique `action_item_id`              |
+| G10 | Concurrent transcript upload while PROCESSING                        | Race conditions                       | FR-MTG-016: return 409                             |
 
 ### High Gaps (P1 — Address in MVP or MVP+1)
 
-| # | Gap | Resolution |
-|---|-----|------------|
-| G11 | No `notification_preferences` table | Added to database-architecture.md |
-| G12 | No correlation/request ID | NFR-OBS-005 added |
-| G13 | Transcript FTS expression index not immutable | Use generated `search_vector` column |
-| G14 | Dashboard aggregates may full-scan | FR-DASH-005: use counters or indexed aggregates |
-| G15 | No email verification flow | Deferred v2; documented in project-scope |
-| G16 | AI chat "per user" vs "shared thread" ambiguous | Clarified: shared per meeting (MVP+1) |
-| G17 | Missing OpenAPI generation in Phase 1 | Added to roadmap Phase 7, spike in Phase 2 |
-| G18 | No staging environment in roadmap | Added to development-roadmap.md |
-| G19 | In-process queue not production-safe | BullMQ required before launch (Phase 4 exit) |
-| G20 | No object storage migration path for transcripts | scalability-design.md |
+| #   | Gap                                              | Resolution                                      |
+| --- | ------------------------------------------------ | ----------------------------------------------- |
+| G11 | No `notification_preferences` table              | Added to database-architecture.md               |
+| G12 | No correlation/request ID                        | NFR-OBS-005 added                               |
+| G13 | Transcript FTS expression index not immutable    | Use generated `search_vector` column            |
+| G14 | Dashboard aggregates may full-scan               | FR-DASH-005: use counters or indexed aggregates |
+| G15 | No email verification flow                       | Deferred v2; documented in project-scope        |
+| G16 | AI chat "per user" vs "shared thread" ambiguous  | Clarified: shared per meeting (MVP+1)           |
+| G17 | Missing OpenAPI generation in Phase 1            | Added to roadmap Phase 7, spike in Phase 2      |
+| G18 | No staging environment in roadmap                | Added to development-roadmap.md                 |
+| G19 | In-process queue not production-safe             | BullMQ required before launch (Phase 4 exit)    |
+| G20 | No object storage migration path for transcripts | scalability-design.md                           |
 
 ### Medium Gaps (P2 — Post-MVP)
 
-| # | Gap |
-|---|-----|
+| #   | Gap                                        |
+| --- | ------------------------------------------ |
 | G21 | No audit log table requirements (ADMIN-03) |
-| G22 | No billing/usage metering tables |
-| G23 | No webhook delivery infrastructure |
+| G22 | No billing/usage metering tables           |
+| G23 | No webhook delivery infrastructure         |
 
 ---
 
 ## Phase 2: Inconsistencies Found & Fixed
 
-| # | Issue | Documents Affected | Fix |
-|---|-------|-------------------|-----|
-| I1 | Meeting status `READY` vs AI `COMPLETED` | requirements, database, architecture, roadmap | Canonical mapping documented |
-| I2 | MTG-04: "owner only" vs FR "owner or creator" | user-stories, requirements | Aligned: creator or owner; member deletes own only |
-| I3 | Task delete: RBAC matrix vs API (creator or owner) | requirements, api-design | Matrix updated |
-| I4 | Auth rate limit: 5 vs 10 req/min | requirements vs api-design | Standardized: 10/min IP, 5 failures/15min per email |
-| I5 | Access token in localStorage (architecture) | architecture.md | Changed to in-memory |
-| I6 | AI chat per-user vs per-meeting | requirements, database | Shared per meeting |
-| I7 | `meetings` ON DELETE RESTRICT vs workspace soft-delete | database-design | Workspace delete cascades soft-delete to meetings |
-| I8 | Notifications missing FR IDs | user-stories traceability | FR-NOTIF-* added |
-| I9 | Phase 4 exit: `READY` but diagram says status on meeting only | roadmap, architecture | Both entities updated consistently |
-| I10 | `PATCH /users/me` vs `GET /auth/me` split | api-design | Documented under `/users/me` namespace |
-| I11 | Invitation accept at `/invitations/:token` outside workspace scope | api-design | Valid; auth required; email must match |
-| I12 | MVP timeline 12–16 vs 14–18 weeks | requirements vs roadmap | Standardized to 14–18 weeks |
+| #   | Issue                                                              | Documents Affected                            | Fix                                                 |
+| --- | ------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------- |
+| I1  | Meeting status `READY` vs AI `COMPLETED`                           | requirements, database, architecture, roadmap | Canonical mapping documented                        |
+| I2  | MTG-04: "owner only" vs FR "owner or creator"                      | user-stories, requirements                    | Aligned: creator or owner; member deletes own only  |
+| I3  | Task delete: RBAC matrix vs API (creator or owner)                 | requirements, api-design                      | Matrix updated                                      |
+| I4  | Auth rate limit: 5 vs 10 req/min                                   | requirements vs api-design                    | Standardized: 10/min IP, 5 failures/15min per email |
+| I5  | Access token in localStorage (architecture)                        | architecture.md                               | Changed to in-memory                                |
+| I6  | AI chat per-user vs per-meeting                                    | requirements, database                        | Shared per meeting                                  |
+| I7  | `meetings` ON DELETE RESTRICT vs workspace soft-delete             | database-design                               | Workspace delete cascades soft-delete to meetings   |
+| I8  | Notifications missing FR IDs                                       | user-stories traceability                     | FR-NOTIF-\* added                                   |
+| I9  | Phase 4 exit: `READY` but diagram says status on meeting only      | roadmap, architecture                         | Both entities updated consistently                  |
+| I10 | `PATCH /users/me` vs `GET /auth/me` split                          | api-design                                    | Documented under `/users/me` namespace              |
+| I11 | Invitation accept at `/invitations/:token` outside workspace scope | api-design                                    | Valid; auth required; email must match              |
+| I12 | MVP timeline 12–16 vs 14–18 weeks                                  | requirements vs roadmap                       | Standardized to 14–18 weeks                         |
 
 ---
 
@@ -129,15 +131,15 @@ The initial documentation package provides a solid foundation for MVP delivery. 
 
 ## Phase 4: Security Concerns
 
-| Concern | Severity | Mitigation |
-|---------|----------|------------|
-| XSS → token theft | High | Memory-only access token; CSP headers |
-| CSRF on refresh | Medium | SameSite=Strict cookie; Origin header validation |
-| IDOR on workspace resources | High | Membership check + workspaceId on every query |
-| OpenAI data exposure | Medium | Minimize PII; DPA; opt-out per workspace (v2) |
-| Rate limit bypass | Medium | Per-IP + per-user limits; AI quota per workspace |
-| Invitation token brute force | Low | 256-bit tokens; rate limit accept endpoint |
-| Password reset enumeration | Low | Generic response always (already specified) |
+| Concern                      | Severity | Mitigation                                       |
+| ---------------------------- | -------- | ------------------------------------------------ |
+| XSS → token theft            | High     | Memory-only access token; CSP headers            |
+| CSRF on refresh              | Medium   | SameSite=Strict cookie; Origin header validation |
+| IDOR on workspace resources  | High     | Membership check + workspaceId on every query    |
+| OpenAI data exposure         | Medium   | Minimize PII; DPA; opt-out per workspace (v2)    |
+| Rate limit bypass            | Medium   | Per-IP + per-user limits; AI quota per workspace |
+| Invitation token brute force | Low      | 256-bit tokens; rate limit accept endpoint       |
+| Password reset enumeration   | Low      | Generic response always (already specified)      |
 
 Full details: [security-architecture.md](./security-architecture.md)
 
@@ -145,14 +147,14 @@ Full details: [security-architecture.md](./security-architecture.md)
 
 ## Phase 5: Scalability Concerns
 
-| Area | Current Design | Risk at Scale | Recommendation |
-|------|----------------|---------------|----------------|
-| Kanban board | Load all tasks | Slow at 500+ tasks | Paginate DONE; virtualize UI |
-| AI jobs | Single worker | Backlog under load | Horizontal workers + Redis queue |
-| DB connections | Prisma default | Connection exhaustion | Neon pooler; limit 20/instance |
-| Transcript storage | PostgreSQL TEXT | DB size, backup time | Object storage migration path |
-| Search | ILIKE + FTS | Slow on large corpus | pg_trgm + materialized search_vector |
-| Notifications | Poll only | Stale UX | SSE or WebSocket (v2) |
+| Area               | Current Design  | Risk at Scale         | Recommendation                       |
+| ------------------ | --------------- | --------------------- | ------------------------------------ |
+| Kanban board       | Load all tasks  | Slow at 500+ tasks    | Paginate DONE; virtualize UI         |
+| AI jobs            | Single worker   | Backlog under load    | Horizontal workers + Redis queue     |
+| DB connections     | Prisma default  | Connection exhaustion | Neon pooler; limit 20/instance       |
+| Transcript storage | PostgreSQL TEXT | DB size, backup time  | Object storage migration path        |
+| Search             | ILIKE + FTS     | Slow on large corpus  | pg_trgm + materialized search_vector |
+| Notifications      | Poll only       | Stale UX              | SSE or WebSocket (v2)                |
 
 Full details: [scalability-design.md](./scalability-design.md)
 
@@ -195,50 +197,57 @@ Full details: [scalability-design.md](./scalability-design.md)
 ## Phase 7: Improvements Applied
 
 ### requirements.md
+
 - Split into functional/non-functional documents
 - Clarified meeting delete permissions
 - Added architecture cross-references
 
 ### functional-requirements.md (new)
+
 - Canonical status enums
 - 20+ new requirements (FR-AUTH-018 through FR-ACT-003)
 - Idempotency and concurrency rules
 
 ### non-functional-requirements.md (new)
+
 - Numbered NFR IDs with measurable targets
 - Observability and correlation ID requirements
 
 ### user-stories.md
+
 - Fixed MTG-04 role alignment
 - Added notification and activity traceability
 
 ### development-roadmap.md
+
 - Staging environment in Phase 7
 - BullMQ required for Phase 4 production exit
 - Security review gate before launch
 
 ### mvp-definition.md
+
 - Status enum alignment (DRAFT, PROCESSING, READY, FAILED)
 - Added concurrent upload and idempotency to must-haves
 
-### database-design.md
-- Reference to database-architecture.md for canonical schema
+### Schema docs
+
+- Canonical: database-architecture.md + erd.md
 - Note on `ai_processing_jobs` and `search_vector`
 
 ---
 
 ## Phase 8: New Artifacts Created
 
-| Document | Purpose |
-|----------|---------|
-| system-architecture.md | Canonical high-level and component architecture |
-| database-architecture.md | Validated schema, performance, indexes |
-| erd.md | GitHub-renderable Mermaid ERD |
-| api-architecture-review.md | REST standards, versioning, error handling |
-| security-architecture.md | Production security controls |
-| scalability-design.md | Caching, queues, storage, monitoring |
-| project-structure.md | Production folder layouts |
-| risk-assessment.md | Technical risk register |
+| Document                   | Purpose                                         |
+| -------------------------- | ----------------------------------------------- |
+| system-architecture.md     | Canonical high-level and component architecture |
+| database-architecture.md   | Validated schema, performance, indexes          |
+| erd.md                     | GitHub-renderable Mermaid ERD                   |
+| api-architecture-review.md | REST standards, versioning, error handling      |
+| security-architecture.md   | Production security controls                    |
+| scalability-design.md      | Caching, queues, storage, monitoring            |
+| project-structure.md       | Production folder layouts                       |
+| risk-assessment.md         | Technical risk register                         |
 
 ---
 
@@ -256,20 +265,20 @@ Full details: [scalability-design.md](./scalability-design.md)
 
 ## Sign-Off Checklist
 
-| Area | Reviewer Role | Status |
-|------|---------------|--------|
-| Requirements completeness | Principal PM | ✅ |
-| API design | Staff Backend | ✅ with noted improvements |
-| Database design | Database Architect | ✅ with job table addition |
-| Frontend architecture | Senior Frontend | ✅ |
-| Security | Security Architect | ✅ see security-architecture.md |
-| DevOps / scale | DevOps Architect | ✅ see scalability-design.md |
-| MVP scope | Technical Lead | ✅ |
+| Area                      | Reviewer Role      | Status                          |
+| ------------------------- | ------------------ | ------------------------------- |
+| Requirements completeness | Principal PM       | ✅                              |
+| API design                | Staff Backend      | ✅ with noted improvements      |
+| Database design           | Database Architect | ✅ with job table addition      |
+| Frontend architecture     | Senior Frontend    | ✅                              |
+| Security                  | Security Architect | ✅ see security-architecture.md |
+| DevOps / scale            | DevOps Architect   | ✅ see scalability-design.md    |
+| MVP scope                 | Technical Lead     | ✅                              |
 
 ---
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-15 | Initial architecture review |
+| Version | Date       | Changes                     |
+| ------- | ---------- | --------------------------- |
+| 1.0     | 2026-06-15 | Initial architecture review |
