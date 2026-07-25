@@ -14,6 +14,10 @@ build/
 .env.*.local
 !.env.example
 
+# Local secrets notes (never commit)
+docs/Oauth Client- not for git
+docs/**/*not for git*
+
 # Logs
 logs/
 *.log

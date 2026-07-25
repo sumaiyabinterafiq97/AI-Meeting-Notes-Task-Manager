@@ -46,24 +46,22 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Invalid request body",
-    "details": [
-      { "field": "email", "message": "Invalid email format" }
-    ]
+    "details": [{ "field": "email", "message": "Invalid email format" }]
   }
 }
 ```
 
 ### Error Codes
 
-| HTTP | Code | Description |
-|------|------|-------------|
-| 400 | VALIDATION_ERROR | Invalid input |
-| 401 | UNAUTHORIZED | Missing or invalid token |
-| 403 | FORBIDDEN | Insufficient permissions |
-| 404 | NOT_FOUND | Resource not found |
-| 409 | CONFLICT | Duplicate resource |
-| 429 | RATE_LIMITED | Too many requests |
-| 500 | INTERNAL_ERROR | Server error |
+| HTTP | Code             | Description              |
+| ---- | ---------------- | ------------------------ |
+| 400  | VALIDATION_ERROR | Invalid input            |
+| 401  | UNAUTHORIZED     | Missing or invalid token |
+| 403  | FORBIDDEN        | Insufficient permissions |
+| 404  | NOT_FOUND        | Resource not found       |
+| 409  | CONFLICT         | Duplicate resource       |
+| 429  | RATE_LIMITED     | Too many requests        |
+| 500  | INTERNAL_ERROR   | Server error             |
 
 ---
 
@@ -73,69 +71,69 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ### POST `/auth/register`
 
-| | |
-|--|--|
-| **Auth** | None |
-| **Body** | `{ "email": "string", "password": "string", "displayName": "string" }` |
-| **Validation** | email: valid format; password: ≥ 8 chars, letter + number; displayName: 2–100 chars |
+|                  |                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| **Auth**         | None                                                                                      |
+| **Body**         | `{ "email": "string", "password": "string", "displayName": "string" }`                    |
+| **Validation**   | email: valid format; password: ≥ 8 chars, letter + number; displayName: 2–100 chars       |
 | **Response 201** | `{ "user": { "id", "email", "displayName" }, "accessToken": "..." }` + Set-Cookie refresh |
-| **Errors** | 400 validation, 409 email exists |
+| **Errors**       | 400 validation, 409 email exists                                                          |
 
 ### POST `/auth/login`
 
-| | |
-|--|--|
-| **Auth** | None |
-| **Body** | `{ "email": "string", "password": "string" }` |
+|                  |                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| **Auth**         | None                                                                                               |
+| **Body**         | `{ "email": "string", "password": "string" }`                                                      |
 | **Response 200** | `{ "user": { "id", "email", "displayName", "avatarUrl" }, "accessToken": "..." }` + refresh cookie |
-| **Errors** | 401 invalid credentials, 429 rate limited |
+| **Errors**       | 401 invalid credentials, 429 rate limited                                                          |
 
 ### POST `/auth/logout`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                                |
+| ---------------- | ------------------------------ |
+| **Auth**         | Required                       |
 | **Response 204** | No body; clears refresh cookie |
 
 ### POST `/auth/refresh`
 
-| | |
-|--|--|
-| **Auth** | Refresh cookie |
-| **Response 200** | `{ "accessToken": "..." }` |
-| **Errors** | 401 invalid/expired refresh token |
+|                  |                                   |
+| ---------------- | --------------------------------- |
+| **Auth**         | Refresh cookie                    |
+| **Response 200** | `{ "accessToken": "..." }`        |
+| **Errors**       | 401 invalid/expired refresh token |
 
 ### POST `/auth/forgot-password`
 
-| | |
-|--|--|
-| **Auth** | None |
-| **Body** | `{ "email": "string" }` |
+|                  |                                                                      |
+| ---------------- | -------------------------------------------------------------------- |
+| **Auth**         | None                                                                 |
+| **Body**         | `{ "email": "string" }`                                              |
 | **Response 200** | `{ "message": "If an account exists, a reset email has been sent" }` |
 
 ### POST `/auth/reset-password`
 
-| | |
-|--|--|
-| **Auth** | None |
-| **Body** | `{ "token": "string", "password": "string" }` |
-| **Validation** | password meets registration rules |
+|                  |                                                  |
+| ---------------- | ------------------------------------------------ |
+| **Auth**         | None                                             |
+| **Body**         | `{ "token": "string", "password": "string" }`    |
+| **Validation**   | password meets registration rules                |
 | **Response 200** | `{ "message": "Password updated successfully" }` |
-| **Errors** | 400 invalid/expired token |
+| **Errors**       | 400 invalid/expired token                        |
 
 ### PATCH `/users/me`
 
-| | |
-|--|--|
-| **Auth** | Required |
-| **Body** | `{ "displayName?": "string", "avatarUrl?": "string" }` |
-| **Response 200** | Updated user object |
+|                  |                                                        |
+| ---------------- | ------------------------------------------------------ |
+| **Auth**         | Required                                               |
+| **Body**         | `{ "displayName?": "string", "avatarUrl?": "string" }` |
+| **Response 200** | Updated user object                                    |
 
 ### GET `/auth/me`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                                                              |
+| ---------------- | ------------------------------------------------------------ |
+| **Auth**         | Required                                                     |
 | **Response 200** | `{ "id", "email", "displayName", "avatarUrl", "createdAt" }` |
 
 > **Status:** Implemented (v1.0) — includes `PATCH /users/me` for profile updates. Password reset emails sent via Resend when `EMAIL_API_KEY` is set.
@@ -148,87 +146,87 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ### POST `/workspaces`
 
-| | |
-|--|--|
-| **Auth** | Required |
-| **Body** | `{ "name": "string", "description?": "string" }` |
-| **Validation** | name: 3–100 chars |
+|                  |                                                                         |
+| ---------------- | ----------------------------------------------------------------------- |
+| **Auth**         | Required                                                                |
+| **Body**         | `{ "name": "string", "description?": "string" }`                        |
+| **Validation**   | name: 3–100 chars                                                       |
 | **Response 201** | `{ "id", "name", "slug", "description", "role": "OWNER", "createdAt" }` |
 
 ### GET `/workspaces`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                                                                              |
+| ---------------- | ---------------------------------------------------------------------------- |
+| **Auth**         | Required                                                                     |
 | **Response 200** | `{ "data": [{ "id", "name", "slug", "role", "memberCount", "createdAt" }] }` |
 
 ### GET `/workspaces/:workspaceId`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                                        |
 | **Response 200** | `{ "id", "name", "slug", "description", "memberCount", "createdAt", "members": [...] }` |
 
 ### PATCH `/workspaces/:workspaceId`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
-| **Body** | `{ "name?": "string", "description?": "string" }` |
-| **Response 200** | Updated workspace |
+|                  |                                                   |
+| ---------------- | ------------------------------------------------- |
+| **Auth**         | Workspace Owner                                   |
+| **Body**         | `{ "name?": "string", "description?": "string" }` |
+| **Response 200** | Updated workspace                                 |
 
 ### DELETE `/workspaces/:workspaceId`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
-| **Response 204** | Soft delete |
+|                  |                 |
+| ---------------- | --------------- |
+| **Auth**         | Workspace Owner |
+| **Response 204** | Soft delete     |
 
 ### POST `/workspaces/:workspaceId/invitations`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
-| **Body** | `{ "email": "string", "role": "MEMBER" }` |
-| **Validation** | email valid; role: MEMBER (default) |
+|                  |                                                       |
+| ---------------- | ----------------------------------------------------- |
+| **Auth**         | Workspace Owner                                       |
+| **Body**         | `{ "email": "string", "role": "MEMBER" }`             |
+| **Validation**   | email valid; role: MEMBER (default)                   |
 | **Response 201** | `{ "id", "email", "role", "expiresAt", "createdAt" }` |
 
 ### GET `/workspaces/:workspaceId/invitations`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
+|                  |                                                                     |
+| ---------------- | ------------------------------------------------------------------- |
+| **Auth**         | Workspace Owner                                                     |
 | **Response 200** | `{ "data": [{ "id", "email", "role", "expiresAt", "createdAt" }] }` |
 
 ### POST `/invitations/:token/accept`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                                                               |
+| ---------------- | ------------------------------------------------------------- |
+| **Auth**         | Required                                                      |
 | **Response 200** | `{ "workspace": { "id", "name", "slug" }, "role": "MEMBER" }` |
-| **Errors** | 404 invalid token, 410 expired token |
+| **Errors**       | 404 invalid token, 410 expired token                          |
 
 ### GET `/workspaces/:workspaceId/members`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                                      |
 | **Response 200** | `{ "data": [{ "userId", "displayName", "email", "avatarUrl", "role", "joinedAt" }] }` |
 
 ### PATCH `/workspaces/:workspaceId/members/:userId`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
-| **Body** | `{ "role": "MEMBER" | "OWNER" }` |
-| **Response 200** | Updated member |
+|                  |                     |
+| ---------------- | ------------------- | ---------- |
+| **Auth**         | Workspace Owner     |
+| **Body**         | `{ "role": "MEMBER" | "OWNER" }` |
+| **Response 200** | Updated member      |
 
 ### DELETE `/workspaces/:workspaceId/members/:userId`
 
-| | |
-|--|--|
-| **Auth** | Workspace Owner |
-| **Response 204** | Member removed |
+|                  |                 |
+| ---------------- | --------------- |
+| **Auth**         | Workspace Owner |
+| **Response 204** | Member removed  |
 
 ---
 
@@ -238,14 +236,15 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ### POST `/workspaces/:workspaceId/meetings`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "title", "meetingDate", "durationMinutes?", "attendees?", "tags?" }` |
-| **Validation** | title: 1–200 chars; meetingDate: ISO 8601 |
-| **Response 201** | Full meeting object |
+|                  |                                                                         |
+| ---------------- | ----------------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                        |
+| **Body**         | `{ "title", "meetingDate", "durationMinutes?", "attendees?", "tags?" }` |
+| **Validation**   | title: 1–200 chars; meetingDate: ISO 8601                               |
+| **Response 201** | Full meeting object                                                     |
 
 **Response body example:**
+
 ```json
 {
   "id": "uuid",
@@ -263,60 +262,61 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ### GET `/workspaces/:workspaceId/meetings`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Query** | `page`, `limit`, `status`, `from`, `to`, `tag`, `search` |
-| **Response 200** | Paginated meeting list |
+|                  |                                                          |
+| ---------------- | -------------------------------------------------------- |
+| **Auth**         | Workspace member                                         |
+| **Query**        | `page`, `limit`, `status`, `from`, `to`, `tag`, `search` |
+| **Response 200** | Paginated meeting list                                   |
 
 ### GET `/workspaces/:workspaceId/meetings/:meetingId`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                             |
+| ---------------- | ----------------------------------------------------------- |
+| **Auth**         | Workspace member                                            |
 | **Response 200** | Meeting + transcript + aiOutput + actionItems + linkedTasks |
 
 ### PATCH `/workspaces/:workspaceId/meetings/:meetingId`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | Partial meeting fields |
-| **Response 200** | Updated meeting |
+|                  |                        |
+| ---------------- | ---------------------- |
+| **Auth**         | Workspace member       |
+| **Body**         | Partial meeting fields |
+| **Response 200** | Updated meeting        |
 
 ### DELETE `/workspaces/:workspaceId/meetings/:meetingId`
 
-| | |
-|--|--|
-| **Auth** | Creator or Owner |
-| **Response 204** | Soft delete |
+|                  |                  |
+| ---------------- | ---------------- |
+| **Auth**         | Creator or Owner |
+| **Response 204** | Soft delete      |
 
 ### PUT `/workspaces/:workspaceId/meetings/:meetingId/transcript`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "content": "string", "sourceFormat": "text|md|vtt|srt" }` |
-| **Validation** | content: 100 chars min, 5MB max |
+|                  |                                                        |
+| ---------------- | ------------------------------------------------------ | --- | --- | ------- |
+| **Auth**         | Workspace member                                       |
+| **Body**         | `{ "content": "string", "sourceFormat": "text          | md  | vtt | srt" }` |
+| **Validation**   | content: 100 chars min, 5MB max                        |
 | **Response 200** | `{ "meetingId", "status": "PROCESSING", "charCount" }` |
 
 ### POST `/workspaces/:workspaceId/meetings/:meetingId/reprocess`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                              |
+| ---------------- | ---------------------------- |
+| **Auth**         | Workspace member             |
 | **Response 202** | `{ "status": "PROCESSING" }` |
-| **Errors** | 400 no transcript |
+| **Errors**       | 400 no transcript            |
 
 ### Capture endpoints (audio + imports)
 
-| Method | Path | Notes |
-|--------|------|-------|
-| `POST` | `.../meetings/:meetingId/audio` | Multipart `audio`; `.mp3`/`.m4a`/`.wav` |
-| `GET` | `.../meetings/:meetingId/transcription` | Status only |
-| `POST` | `.../meetings/:meetingId/transcription/retry` | Failed transcription retry |
-| `GET` | `.../meetings/needing-transcript` | Calendar drafts without transcript |
-| `POST` | `.../meetings/imports/{zoom\|google-meet\|teams}` | Normalize → AI pipeline |
+| Method | Path                                              | Notes                                                                                             |
+| ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `POST` | `.../meetings/:meetingId/audio`                   | Multipart store only (`201`, `processingStarted: false`); audio/video                             |
+| `POST` | `.../meetings/:meetingId/transcription/start`     | Translate & Transcribe (`202`); body `{ mode?: "translate_to_english" \| "transcribe_original" }` |
+| `GET`  | `.../meetings/:meetingId/transcription`           | Status only                                                                                       |
+| `POST` | `.../meetings/:meetingId/transcription/retry`     | After `FAILED` (same pipeline as start)                                                           |
+| `GET`  | `.../meetings/needing-transcript`                 | Calendar drafts without transcript                                                                |
+| `POST` | `.../meetings/imports/{zoom\|google-meet\|teams}` | Normalize → AI pipeline                                                                           |
 
 See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](./capture-architecture.md).
 
@@ -328,20 +328,16 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ### GET `/workspaces/:workspaceId/meetings/:meetingId/ai-output`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                   |
+| ---------------- | ----------------- |
+| **Auth**         | Workspace member  |
 | **Response 200** | See example below |
 
 ```json
 {
   "summary": "The team discussed sprint goals...",
-  "decisions": [
-    { "text": "Launch date set to July 1", "context": "..." }
-  ],
-  "risks": [
-    { "text": "API dependency may slip", "severity": "high", "context": "..." }
-  ],
+  "decisions": [{ "text": "Launch date set to July 1", "context": "..." }],
+  "risks": [{ "text": "API dependency may slip", "severity": "high", "context": "..." }],
   "processingStatus": "COMPLETED",
   "processedAt": "2026-06-15T11:05:00.000Z",
   "modelVersion": "gpt-4o"
@@ -350,49 +346,49 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ### PATCH `/workspaces/:workspaceId/meetings/:meetingId/ai-output`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "summary?": "string", "decisions?": [...], "risks?": [...] }` |
-| **Response 200** | Updated AI output |
+|                  |                                                                  |
+| ---------------- | ---------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                 |
+| **Body**         | `{ "summary?": "string", "decisions?": [...], "risks?": [...] }` |
+| **Response 200** | Updated AI output                                                |
 
 ### GET `/workspaces/:workspaceId/meetings/:meetingId/action-items`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                      |
+| ---------------- | ------------------------------------ |
+| **Auth**         | Workspace member                     |
 | **Response 200** | `{ "data": [ActionItemSuggestion] }` |
 
 ### POST `/workspaces/:workspaceId/meetings/:meetingId/action-items/accept`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "actionItemIds": ["uuid"], "overrides?": [{ "id", "assigneeId", "dueDate", "title" }] }` |
-| **Response 201** | `{ "tasks": [Task] }` |
+|                  |                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                                            |
+| **Body**         | `{ "actionItemIds": ["uuid"], "overrides?": [{ "id", "assigneeId", "dueDate", "title" }] }` |
+| **Response 201** | `{ "tasks": [Task] }`                                                                       |
 
 ### POST `/workspaces/:workspaceId/meetings/:meetingId/action-items/reject`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "actionItemIds": ["uuid"] }` |
-| **Response 200** | `{ "rejected": 3 }` |
+|                  |                                 |
+| ---------------- | ------------------------------- |
+| **Auth**         | Workspace member                |
+| **Body**         | `{ "actionItemIds": ["uuid"] }` |
+| **Response 200** | `{ "rejected": 3 }`             |
 
 ### POST `/workspaces/:workspaceId/meetings/:meetingId/chat`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "message": "string" }` |
-| **Validation** | message: 1–4000 chars |
+|                  |                                                            |
+| ---------------- | ---------------------------------------------------------- |
+| **Auth**         | Workspace member                                           |
+| **Body**         | `{ "message": "string" }`                                  |
+| **Validation**   | message: 1–4000 chars                                      |
 | **Response 200** | SSE stream or `{ "reply": "string", "messageId": "uuid" }` |
 
 ### GET `/workspaces/:workspaceId/meetings/:meetingId/chat`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                          |
+| ---------------- | -------------------------------------------------------- |
+| **Auth**         | Workspace member                                         |
 | **Response 200** | `{ "data": [{ "id", "role", "content", "createdAt" }] }` |
 
 ---
@@ -403,65 +399,65 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ### POST `/workspaces/:workspaceId/tasks`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "title", "description?", "assigneeId?", "dueDate?", "priority?", "meetingId?" }` |
-| **Validation** | title: 1–300 chars; priority: LOW|MEDIUM|HIGH |
-| **Response 201** | Task object |
+|                  |                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------- | ------ | ---- |
+| **Auth**         | Workspace member                                                                    |
+| **Body**         | `{ "title", "description?", "assigneeId?", "dueDate?", "priority?", "meetingId?" }` |
+| **Validation**   | title: 1–300 chars; priority: LOW                                                   | MEDIUM | HIGH |
+| **Response 201** | Task object                                                                         |
 
 ### GET `/workspaces/:workspaceId/tasks`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Query** | `status`, `assigneeId`, `priority`, `page`, `limit`, `search` |
-| **Response 200** | Paginated tasks |
+|                  |                                                               |
+| ---------------- | ------------------------------------------------------------- |
+| **Auth**         | Workspace member                                              |
+| **Query**        | `status`, `assigneeId`, `priority`, `page`, `limit`, `search` |
+| **Response 200** | Paginated tasks                                               |
 
 ### GET `/workspaces/:workspaceId/tasks/board`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Query** | `assigneeId?` |
+|                  |                                                          |
+| ---------------- | -------------------------------------------------------- |
+| **Auth**         | Workspace member                                         |
+| **Query**        | `assigneeId?`                                            |
 | **Response 200** | `{ "TODO": [...], "IN_PROGRESS": [...], "DONE": [...] }` |
 
 ### GET `/workspaces/:workspaceId/tasks/:taskId`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                  |
+| ---------------- | ------------------------------------------------ |
+| **Auth**         | Workspace member                                 |
 | **Response 200** | Task with meeting link, assignee, comments count |
 
 ### PATCH `/workspaces/:workspaceId/tasks/:taskId`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "title?", "description?", "status?", "assigneeId?", "dueDate?", "priority?" }` |
-| **Response 200** | Updated task; sets `completedAt` when status → DONE |
+|                  |                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                                  |
+| **Body**         | `{ "title?", "description?", "status?", "assigneeId?", "dueDate?", "priority?" }` |
+| **Response 200** | Updated task; sets `completedAt` when status → DONE                               |
 
 ### DELETE `/workspaces/:workspaceId/tasks/:taskId`
 
-| | |
-|--|--|
-| **Auth** | Creator or Owner |
-| **Response 204** | Soft delete |
+|                  |                  |
+| ---------------- | ---------------- |
+| **Auth**         | Creator or Owner |
+| **Response 204** | Soft delete      |
 
 ### POST `/workspaces/:workspaceId/tasks/:taskId/comments`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "content": "string" }` |
-| **Validation** | content: 1–5000 chars |
+|                  |                                                |
+| ---------------- | ---------------------------------------------- |
+| **Auth**         | Workspace member                               |
+| **Body**         | `{ "content": "string" }`                      |
+| **Validation**   | content: 1–5000 chars                          |
 | **Response 201** | Comment object; triggers mention notifications |
 
 ### GET `/workspaces/:workspaceId/tasks/:taskId/comments`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                                                                   |
+| ---------------- | ----------------------------------------------------------------- |
+| **Auth**         | Workspace member                                                  |
 | **Response 200** | `{ "data": [{ "id", "content", "author": {...}, "createdAt" }] }` |
 
 ---
@@ -472,9 +468,9 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ### GET `/workspaces/:workspaceId/dashboard`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
+|                  |                   |
+| ---------------- | ----------------- |
+| **Auth**         | Workspace member  |
 | **Response 200** | See example below |
 
 ```json
@@ -508,20 +504,20 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ### GET `/workspaces/:workspaceId/search`
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Query** | `q` (required), `type` (meetings\|tasks\|all), `mode` (keyword\|semantic\|hybrid), `sourceTypes`, `similarityMin`, `from`, `to`, `page`, `limit` |
-| **Response 200** | `{ "meetings": [...], "tasks": [...], "snippets": [...], "retrievalMode"?: "hybrid" \| "keyword_only" }` |
+|                  |                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Auth**         | Workspace member                                                                                                                                 |
+| **Query**        | `q` (required), `type` (meetings\|tasks\|all), `mode` (keyword\|semantic\|hybrid), `sourceTypes`, `similarityMin`, `from`, `to`, `page`, `limit` |
+| **Response 200** | `{ "meetings": [...], "tasks": [...], "snippets": [...], "retrievalMode"?: "hybrid" \| "keyword_only" }`                                         |
 
 **Semantic/hybrid modes** use the RAG pipeline (`HybridRetriever` → pgvector ANN + PostgreSQL FTS → RRF fusion). Degrades to `keyword_only` when vector search fails.
 
 ### POST `/workspaces/:workspaceId/reindex` (internal / admin)
 
-| | |
-|--|--|
-| **Auth** | Workspace admin |
-| **Body** | `{ "reason"?: "model_upgrade" \| "admin" }` |
+|                  |                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| **Auth**         | Workspace admin                                                                                       |
+| **Body**         | `{ "reason"?: "model_upgrade" \| "admin" }`                                                           |
 | **Response 202** | `{ "queued": true }` or `{ "queued": false, "result": { "meetingsProcessed", "totalChunksStored" } }` |
 
 Enqueues BullMQ `reindex-workspace` job — re-embeds all READY meetings in batches of 50.
@@ -534,40 +530,40 @@ Enqueues BullMQ `reindex-workspace` job — re-embeds all READY meetings in batc
 
 ### GET `/notifications`
 
-| | |
-|--|--|
-| **Auth** | Required |
-| **Query** | `unreadOnly`, `page`, `limit` |
-| **Response 200** | Paginated notifications |
+|                  |                               |
+| ---------------- | ----------------------------- |
+| **Auth**         | Required                      |
+| **Query**        | `unreadOnly`, `page`, `limit` |
+| **Response 200** | Paginated notifications       |
 
 ### PATCH `/notifications/:id/read`
 
-| | |
-|--|--|
-| **Auth** | Required (own notification) |
-| **Response 200** | `{ "id", "isRead": true }` |
+|                  |                             |
+| ---------------- | --------------------------- |
+| **Auth**         | Required (own notification) |
+| **Response 200** | `{ "id", "isRead": true }`  |
 
 ### POST `/notifications/read-all`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                       |
+| ---------------- | --------------------- |
+| **Auth**         | Required              |
 | **Response 200** | `{ "markedRead": 5 }` |
 
 ### GET `/users/me/notification-preferences`
 
-| | |
-|--|--|
-| **Auth** | Required |
+|                  |                                                            |
+| ---------------- | ---------------------------------------------------------- |
+| **Auth**         | Required                                                   |
 | **Response 200** | `{ "emailTaskAssigned", "emailDueSoon", "inAppMentions" }` |
 
 ### PATCH `/users/me/notification-preferences`
 
-| | |
-|--|--|
-| **Auth** | Required |
-| **Body** | Partial preferences object |
-| **Response 200** | Updated preferences |
+|                  |                            |
+| ---------------- | -------------------------- |
+| **Auth**         | Required                   |
+| **Body**         | Partial preferences object |
+| **Response 200** | Updated preferences        |
 
 ---
 
@@ -575,22 +571,22 @@ Enqueues BullMQ `reindex-workspace` job — re-embeds all READY meetings in batc
 
 ### GET `/health`
 
-| | |
-|--|--|
-| **Auth** | None |
+|                  |                                                      |
+| ---------------- | ---------------------------------------------------- |
+| **Auth**         | None                                                 |
 | **Response 200** | `{ "status": "ok", "db": "ok", "version": "1.0.0" }` |
-| **Response 503** | `{ "status": "degraded", "db": "error" }` |
+| **Response 503** | `{ "status": "degraded", "db": "error" }`            |
 
 ---
 
 ## 10. Rate Limits
 
-| Endpoint Group | Limit |
-|----------------|-------|
-| `/auth/login`, `/auth/register` | 10 req/min per IP |
-| `/auth/forgot-password` | 5 req/hour per email |
-| AI processing trigger | 20 req/hour per workspace |
-| General API | 100 req/min per user |
+| Endpoint Group                  | Limit                     |
+| ------------------------------- | ------------------------- |
+| `/auth/login`, `/auth/register` | 10 req/min per IP         |
+| `/auth/forgot-password`         | 5 req/hour per email      |
+| AI processing trigger           | 20 req/hour per workspace |
+| General API                     | 100 req/min per user      |
 
 ---
 
@@ -600,15 +596,15 @@ Enqueues BullMQ `reindex-workspace` job — re-embeds all READY meetings in batc
 
 ### Agent pipeline
 
-| Agent | Trigger | Output schema |
-|-------|---------|---------------|
-| Summarizer | `process-meeting` job | `SummarizerOutputSchema` |
+| Agent          | Trigger               | Output schema               |
+| -------------- | --------------------- | --------------------------- |
+| Summarizer     | `process-meeting` job | `SummarizerOutputSchema`    |
 | Task Extractor | `process-meeting` job | `TaskExtractorOutputSchema` |
-| Decision | `process-meeting` job | `DecisionOutputSchema` |
-| Risk Analyzer | `process-meeting` job | `RiskAnalyzerOutputSchema` |
-| Knowledge | Post-merge (optional) | `KnowledgeOutputSchema` |
-| Weekly Report | Cron / manual | `WeeklyReportOutputSchema` |
-| Chat | `POST .../chat` (SSE) | Markdown + `Citation[]` |
+| Decision       | `process-meeting` job | `DecisionOutputSchema`      |
+| Risk Analyzer  | `process-meeting` job | `RiskAnalyzerOutputSchema`  |
+| Knowledge      | Post-merge (optional) | `KnowledgeOutputSchema`     |
+| Weekly Report  | Cron / manual         | `WeeklyReportOutputSchema`  |
+| Chat           | `POST .../chat` (SSE) | Markdown + `Citation[]`     |
 
 Set `AI_PIPELINE_MODE=multi-agent` to run parallel extraction agents. Default: `monolithic`.
 
@@ -616,18 +612,18 @@ Set `PROMPT_SCHEMA_V2_1=true` to enable extended v2.1 schemas (confidence scores
 
 ### POST `/workspaces/:workspaceId/chat` (SSE)
 
-| | |
-|--|--|
-| **Auth** | Workspace member |
-| **Body** | `{ "message": "string", "sessionId?": "uuid" }` |
-| **Response** | `text/event-stream` |
+|              |                                                 |
+| ------------ | ----------------------------------------------- |
+| **Auth**     | Workspace member                                |
+| **Body**     | `{ "message": "string", "sessionId?": "uuid" }` |
+| **Response** | `text/event-stream`                             |
 
-| Event | Payload |
-|-------|---------|
-| `token` | `{ "content": "..." }` |
+| Event      | Payload                                                          |
+| ---------- | ---------------------------------------------------------------- |
+| `token`    | `{ "content": "..." }`                                           |
 | `citation` | `{ "index", "chunkId", "meetingId", "meetingTitle", "excerpt" }` |
-| `done` | `{ "sessionId", "messageId", "tokenUsage" }` |
-| `error` | `{ "code", "message" }` |
+| `done`     | `{ "sessionId", "messageId", "tokenUsage" }`                     |
+| `error`    | `{ "code", "message" }`                                          |
 
 **Behavior:** Hybrid RAG retrieval → context builder → prompt builder → streaming LLM. Empty retrieval returns a grounded refusal without LLM call. Conversation memory compresses long histories.
 
@@ -643,12 +639,12 @@ Available to chat/tool-use loops via `ToolExecutorService`:
 
 ### Error handling
 
-| Condition | HTTP / SSE | User message |
-|-----------|------------|--------------|
-| Provider unavailable | 503 / `error` event | AI temporarily unavailable |
-| Token budget exceeded | 429 | Workspace AI limit reached |
-| Validation failure | 500 / job FAILED | Processing failed — retry |
-| Empty RAG context | 200 | Not found in your meetings |
+| Condition             | HTTP / SSE          | User message               |
+| --------------------- | ------------------- | -------------------------- |
+| Provider unavailable  | 503 / `error` event | AI temporarily unavailable |
+| Token budget exceeded | 429                 | Workspace AI limit reached |
+| Validation failure    | 500 / job FAILED    | Processing failed — retry  |
+| Empty RAG context     | 200                 | Not found in your meetings |
 
 ### Observability
 
@@ -659,6 +655,7 @@ All LLM calls log to `llm_invocations` with `workflow`, `provider`, `model`, tok
 ## 13. Webhooks (Future)
 
 Planned events for v2:
+
 - `meeting.processed`
 - `task.created`
 - `task.completed`

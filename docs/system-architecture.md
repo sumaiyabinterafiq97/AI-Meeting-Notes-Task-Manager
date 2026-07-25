@@ -3,7 +3,7 @@
 **Product:** AI Meeting Notes & Task Manager  
 **Version:** 1.0  
 **Status:** Canonical Architecture Reference  
-**Supersedes:** [architecture.md](./architecture.md) (retained for historical reference)
+**Canonical** system architecture for MeetingMind AI.
 
 ---
 
@@ -137,15 +137,15 @@ flowchart TB
     Modules --> Shared
 ```
 
-| Module | Responsibility | Key Pages / Components |
-|--------|----------------|------------------------|
-| **Authentication** | Login, register, password reset, session management | `LoginPage`, `RegisterPage`, `AuthProvider`, `ProtectedRoute` |
-| **Workspace** | CRUD workspaces, invitations, member management, switcher | `WorkspaceList`, `WorkspaceSettings`, `InviteMemberForm`, `WorkspaceSwitcher` |
-| **Dashboard** | Stats cards, activity feed, productivity charts | `DashboardPage`, `StatCards`, `ActivityFeed`, `ProductivityChart` |
-| **Meeting** | Meeting CRUD, transcript upload, AI output display, action item review | `MeetingList`, `MeetingDetail`, `TranscriptUpload`, `AIOutputPanel`, `ActionItemReview` |
-| **Task** | Kanban board, task CRUD, comments, assignment | `KanbanBoard`, `TaskCard`, `TaskDetailDrawer`, `CommentThread` |
-| **Notification** | Bell icon, notification list, read state | `NotificationBell`, `NotificationDropdown`, `NotificationItem` |
-| **Search** | Global search bar, results page | `SearchBar`, `SearchResults` |
+| Module             | Responsibility                                                         | Key Pages / Components                                                                  |
+| ------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Authentication** | Login, register, password reset, session management                    | `LoginPage`, `RegisterPage`, `AuthProvider`, `ProtectedRoute`                           |
+| **Workspace**      | CRUD workspaces, invitations, member management, switcher              | `WorkspaceList`, `WorkspaceSettings`, `InviteMemberForm`, `WorkspaceSwitcher`           |
+| **Dashboard**      | Stats cards, activity feed, productivity charts                        | `DashboardPage`, `StatCards`, `ActivityFeed`, `ProductivityChart`                       |
+| **Meeting**        | Meeting CRUD, transcript upload, AI output display, action item review | `MeetingList`, `MeetingDetail`, `TranscriptUpload`, `AIOutputPanel`, `ActionItemReview` |
+| **Task**           | Kanban board, task CRUD, comments, assignment                          | `KanbanBoard`, `TaskCard`, `TaskDetailDrawer`, `CommentThread`                          |
+| **Notification**   | Bell icon, notification list, read state                               | `NotificationBell`, `NotificationDropdown`, `NotificationItem`                          |
+| **Search**         | Global search bar, results page                                        | `SearchBar`, `SearchResults`                                                            |
 
 ### 2.2 Backend Components
 
@@ -191,18 +191,18 @@ flowchart TB
     CommentSvc --> NotifSvc
 ```
 
-| Service | Responsibility |
-|---------|----------------|
-| **Auth Service** | Register, login, logout, refresh rotation, password reset, token revocation |
-| **User Service** | Profile CRUD, notification preferences |
-| **Workspace Service** | Workspace CRUD, slug generation, soft delete |
-| **Meeting Service** | Meeting CRUD, transcript storage, status transitions, enqueue AI jobs |
-| **AI Service** | OpenAI prompt construction, response parsing, assignee matching, output persistence |
-| **Task Service** | Task CRUD, status transitions, history logging, action-item conversion |
-| **Comment Service** | Comment CRUD, @mention parsing, mention notifications |
-| **Notification Service** | Create, list, mark read notifications; email dispatch (MVP+1) |
-| **Dashboard Service** | Aggregate stats, activity feed queries |
-| **Search Service** | Full-text and filtered search across meetings/tasks |
+| Service                  | Responsibility                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| **Auth Service**         | Register, login, logout, refresh rotation, password reset, token revocation         |
+| **User Service**         | Profile CRUD, notification preferences                                              |
+| **Workspace Service**    | Workspace CRUD, slug generation, soft delete                                        |
+| **Meeting Service**      | Meeting CRUD, transcript storage, status transitions, enqueue AI jobs               |
+| **AI Service**           | OpenAI prompt construction, response parsing, assignee matching, output persistence |
+| **Task Service**         | Task CRUD, status transitions, history logging, action-item conversion              |
+| **Comment Service**      | Comment CRUD, @mention parsing, mention notifications                               |
+| **Notification Service** | Create, list, mark read notifications; email dispatch (MVP+1)                       |
+| **Dashboard Service**    | Aggregate stats, activity feed queries                                              |
+| **Search Service**       | Full-text and filtered search across meetings/tasks                                 |
 
 ---
 
@@ -365,11 +365,11 @@ sequenceDiagram
 
 ## 4. Deployment View
 
-| Environment | Frontend | API | Worker | DB | Redis |
-|-------------|----------|-----|--------|-----|-------|
-| Local | Vite dev :5173 | :3001 | Same process | Docker PG | Docker Redis |
-| Staging | Vercel preview | Railway staging | Railway worker | Neon branch | Upstash |
-| Production | Vercel prod | Railway prod | Railway worker | Neon prod | Upstash |
+| Environment | Frontend       | API             | Worker         | DB          | Redis        |
+| ----------- | -------------- | --------------- | -------------- | ----------- | ------------ |
+| Local       | Vite dev :5173 | :3001           | Same process   | Docker PG   | Docker Redis |
+| Staging     | Vercel preview | Railway staging | Railway worker | Neon branch | Upstash      |
+| Production  | Vercel prod    | Railway prod    | Railway worker | Neon prod   | Upstash      |
 
 ---
 

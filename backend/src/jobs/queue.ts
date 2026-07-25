@@ -166,6 +166,7 @@ export async function enqueueTranscribeAudio(payload: {
   audioId: string;
   meetingId: string;
   workspaceId: string;
+  mode?: 'translate_to_english' | 'transcribe_original';
 }): Promise<void> {
   if (!shouldUseRedisQueue()) {
     await processTranscribeAudioJob(payload);
@@ -173,18 +174,7 @@ export async function enqueueTranscribeAudio(payload: {
   }
 
   const queue = getTranscribeAudioQueue();
-  const jobId = `transcribe-audio-${payload.audioId}`;
-  const existing = await queue.getJob(jobId);
-  if (existing) {
-    const state = await existing.getState();
-    if (state === 'completed' || state === 'failed') {
-      await existing.remove();
-    } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
-      await meetingAudioRepository.setBullJobId(payload.audioId, String(existing.id));
-      return;
-    }
-  }
-
+  const jobId = `transcribe-audio-${payload.audioId}-${payload.mode ?? 'translate_to_english'}-${Date.now()}`;
   const bullJob = await queue.add('transcribe-audio', payload, { jobId });
 
   await meetingAudioRepository.setBullJobId(payload.audioId, String(bullJob.id));

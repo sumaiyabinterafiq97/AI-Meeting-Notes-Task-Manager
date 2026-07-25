@@ -61,16 +61,16 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | `LLMProvider` interface + OpenAI adapter (refactor existing) |
-| 2 | Versioned prompt templates per extraction type |
-| 3 | Provider fallback chain (OpenAI → Gemini → Claude) |
-| 4 | `llm_invocations` table + token/cost logging |
-| 5 | Meeting recommendations on dashboard |
-| 6 | Enhanced summary with topics array |
-| 7 | Gemini + Claude provider adapters (staging) |
-| 8 | Feature flag: `AI_PIPELINE_MODE=monolithic|multi-prompt` |
+| #   | Deliverable                                                  |
+| --- | ------------------------------------------------------------ | ------------- |
+| 1   | `LLMProvider` interface + OpenAI adapter (refactor existing) |
+| 2   | Versioned prompt templates per extraction type               |
+| 3   | Provider fallback chain (OpenAI → Gemini → Claude)           |
+| 4   | `llm_invocations` table + token/cost logging                 |
+| 5   | Meeting recommendations on dashboard                         |
+| 6   | Enhanced summary with topics array                           |
+| 7   | Gemini + Claude provider adapters (staging)                  |
+| 8   | Feature flag: `AI_PIPELINE_MODE=monolithic                   | multi-prompt` |
 
 ### Preserved
 
@@ -106,17 +106,17 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | `pgvector` extension + `document_chunks` table |
-| 2 | Chunking service with overlap strategy |
-| 3 | `embed-meeting` BullMQ job (post-processing) |
-| 4 | Embedding batch API integration |
-| 5 | RAG retrieval service with metadata filters |
-| 6 | Hybrid search (vector + FTS fusion) |
-| 7 | `embedding_jobs` tracking |
-| 8 | Re-index on transcript edit |
-| 9 | Index status UI indicator |
+| #   | Deliverable                                    |
+| --- | ---------------------------------------------- |
+| 1   | `pgvector` extension + `document_chunks` table |
+| 2   | Chunking service with overlap strategy         |
+| 3   | `embed-meeting` BullMQ job (post-processing)   |
+| 4   | Embedding batch API integration                |
+| 5   | RAG retrieval service with metadata filters    |
+| 6   | Hybrid search (vector + FTS fusion)            |
+| 7   | `embedding_jobs` tracking                      |
+| 8   | Re-index on transcript edit                    |
+| 9   | Index status UI indicator                      |
 
 ### Preserved
 
@@ -150,17 +150,17 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Context Retrieval Agent |
-| 2 | Chat Agent with streaming |
-| 3 | Workspace chat sessions API |
-| 4 | Per-meeting chat RAG enhancement |
-| 5 | Citation UI components |
-| 6 | Conversation memory + rolling summary |
-| 7 | Intent classification (SQL vs RAG routing) |
-| 8 | Thumbs up/down feedback |
-| 9 | Chat SSE frontend component |
+| #   | Deliverable                                |
+| --- | ------------------------------------------ |
+| 1   | Context Retrieval Agent                    |
+| 2   | Chat Agent with streaming                  |
+| 3   | Workspace chat sessions API                |
+| 4   | Per-meeting chat RAG enhancement           |
+| 5   | Citation UI components                     |
+| 6   | Conversation memory + rolling summary      |
+| 7   | Intent classification (SQL vs RAG routing) |
+| 8   | Thumbs up/down feedback                    |
+| 9   | Chat SSE frontend component                |
 
 ### Preserved
 
@@ -192,15 +192,15 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | `mode=hybrid|semantic|keyword` on search endpoint |
-| 2 | Snippet results with similarity scores |
-| 3 | Metadata filters (date, tags, type, severity) |
-| 4 | Re-ranking with recency + type boosts |
-| 5 | Search UI: match type badges, snippet cards |
-| 6 | Embed tasks on create/update |
-| 7 | Search analytics (zero-result rate) |
+| #   | Deliverable                                   |
+| --- | --------------------------------------------- | -------- | --------------------------- |
+| 1   | `mode=hybrid                                  | semantic | keyword` on search endpoint |
+| 2   | Snippet results with similarity scores        |
+| 3   | Metadata filters (date, tags, type, severity) |
+| 4   | Re-ranking with recency + type boosts         |
+| 5   | Search UI: match type badges, snippet cards   |
+| 6   | Embed tasks on create/update                  |
+| 7   | Search analytics (zero-result rate)           |
 
 ### Preserved
 
@@ -232,17 +232,17 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Agent Orchestrator service |
-| 2 | Summarizer, Decision, Task, Risk agents (parallel) |
-| 3 | Knowledge Agent + `knowledge_entries` table |
-| 4 | `agent_executions` tracking |
-| 5 | Merge layer → canonical `meeting_ai_outputs` schema |
-| 6 | Feature flag: `AI_PIPELINE_MODE=multi-agent` |
-| 7 | Per-agent metrics dashboard |
-| 8 | Partial failure handling (graceful degradation) |
-| 9 | Agent registry for future agents |
+| #   | Deliverable                                         |
+| --- | --------------------------------------------------- |
+| 1   | Agent Orchestrator service                          |
+| 2   | Summarizer, Decision, Task, Risk agents (parallel)  |
+| 3   | Knowledge Agent + `knowledge_entries` table         |
+| 4   | `agent_executions` tracking                         |
+| 5   | Merge layer → canonical `meeting_ai_outputs` schema |
+| 6   | Feature flag: `AI_PIPELINE_MODE=multi-agent`        |
+| 7   | Per-agent metrics dashboard                         |
+| 8   | Partial failure handling (graceful degradation)     |
+| 9   | Agent registry for future agents                    |
 
 ### Preserved
 
@@ -275,16 +275,16 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Weekly Report Agent + cron scheduler |
-| 2 | `workspace_reports` table + report UI |
-| 3 | Productivity insights dashboard cards |
-| 4 | Cross-meeting analysis endpoint |
-| 5 | Historical trend charts (meetings/week, task velocity) |
-| 6 | Anomaly detection (overdue spike, meeting volume) |
-| 7 | Optional email digest to Owners |
-| 8 | Report export (PDF/Markdown) |
+| #   | Deliverable                                            |
+| --- | ------------------------------------------------------ |
+| 1   | Weekly Report Agent + cron scheduler                   |
+| 2   | `workspace_reports` table + report UI                  |
+| 3   | Productivity insights dashboard cards                  |
+| 4   | Cross-meeting analysis endpoint                        |
+| 5   | Historical trend charts (meetings/week, task velocity) |
+| 6   | Anomaly detection (overdue spike, meeting volume)      |
+| 7   | Optional email digest to Owners                        |
+| 8   | Report export (PDF/Markdown)                           |
 
 ### Success Criteria
 
@@ -302,7 +302,7 @@ gantt
 
 **Duration:** 6–8 weeks  
 **Depends on:** Phase 6  
-**Implementation status (2026-07):** Phase A audio capture **shipped** (`modules/transcription` + UI). See [transcription-flow.md](./transcription-flow.md) and [capture-architecture.md](./capture-architecture.md).
+**Implementation status (2026-07):** Phase A audio/video capture **shipped** with user-triggered **Translate & Transcribe** (`modules/transcription` + UI). Upload stores only; Whisper/AI start on explicit action. See [transcription-flow.md](./transcription-flow.md) and [capture-architecture.md](./capture-architecture.md).
 
 ### Objectives
 
@@ -311,14 +311,14 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Audio upload (.mp3, .m4a, .wav, max 100MB) |
-| 2 | Whisper API or Deepgram integration |
-| 3 | `transcribe-audio` BullMQ job |
-| 4 | Transcription status UI (uploading → transcribing → processing) |
-| 5 | Object storage for audio files (S3/R2) |
-| 6 | Speaker diarization (optional, MVP+1 within phase) |
+| #   | Deliverable                                                     |
+| --- | --------------------------------------------------------------- |
+| 1   | Audio upload (.mp3, .m4a, .wav, max 100MB)                      |
+| 2   | Whisper API or Deepgram integration                             |
+| 3   | `transcribe-audio` BullMQ job                                   |
+| 4   | Transcription status UI (uploading → transcribing → processing) |
+| 5   | Object storage for audio files (S3/R2)                          |
+| 6   | Speaker diarization (optional, MVP+1 within phase)              |
 
 ### Preserved
 
@@ -345,14 +345,14 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Google Calendar OAuth integration |
-| 2 | Microsoft Outlook OAuth integration |
-| 3 | Calendar sync job (hourly) |
-| 4 | Auto-create meeting stubs from calendar events |
-| 5 | Attendee mapping to workspace members |
-| 6 | Post-meeting reminder to upload transcript |
+| #   | Deliverable                                    |
+| --- | ---------------------------------------------- |
+| 1   | Google Calendar OAuth integration              |
+| 2   | Microsoft Outlook OAuth integration            |
+| 3   | Calendar sync job (hourly)                     |
+| 4   | Auto-create meeting stubs from calendar events |
+| 5   | Attendee mapping to workspace members          |
+| 6   | Post-meeting reminder to upload transcript     |
 
 ### Success Criteria
 
@@ -373,13 +373,13 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | Slack OAuth app installation per workspace |
-| 2 | Channel notification on meeting READY |
-| 3 | Task assignment notifications in Slack |
-| 4 | `/meetingmind search <query>` slash command |
-| 5 | Weekly report posted to configured channel |
+| #   | Deliverable                                 |
+| --- | ------------------------------------------- |
+| 1   | Slack OAuth app installation per workspace  |
+| 2   | Channel notification on meeting READY       |
+| 3   | Task assignment notifications in Slack      |
+| 4   | `/meetingmind search <query>` slash command |
+| 5   | Weekly report posted to configured channel  |
 
 ### Success Criteria
 
@@ -400,21 +400,21 @@ gantt
 
 ### Deliverables
 
-| # | Deliverable |
-|---|-------------|
-| 1 | SSO (SAML/OIDC) |
-| 2 | SCIM user provisioning |
-| 3 | Organization-level admin (multi-workspace) |
-| 4 | Audit log export |
-| 5 | Data retention policies |
-| 6 | BYOK (bring your own OpenAI key) |
-| 7 | Local LLM support (Ollama/vLLM) |
-| 8 | Stripe billing (Free/Pro/Team/Enterprise) |
-| 9 | Pinecone migration path for large tenants |
-| 10 | SOC 2 readiness documentation |
-| 11 | GDPR data export/delete |
-| 12 | Custom agent prompts per workspace |
-| 13 | SLA monitoring + dedicated support tier |
+| #   | Deliverable                                |
+| --- | ------------------------------------------ |
+| 1   | SSO (SAML/OIDC)                            |
+| 2   | SCIM user provisioning                     |
+| 3   | Organization-level admin (multi-workspace) |
+| 4   | Audit log export                           |
+| 5   | Data retention policies                    |
+| 6   | BYOK (bring your own OpenAI key)           |
+| 7   | Local LLM support (Ollama/vLLM)            |
+| 8   | Stripe billing (Free/Pro/Team/Enterprise)  |
+| 9   | Pinecone migration path for large tenants  |
+| 10  | SOC 2 readiness documentation              |
+| 11  | GDPR data export/delete                    |
+| 12  | Custom agent prompts per workspace         |
+| 13  | SLA monitoring + dedicated support tier    |
 
 ### Success Criteria
 
@@ -441,6 +441,7 @@ flowchart TD
 ```
 
 **Parallelization opportunities:**
+
 - Phase 3 + Phase 4 (after Phase 2)
 - Phase 7 transcription R&D can start during Phase 5
 
@@ -448,47 +449,47 @@ flowchart TD
 
 ## 4. Team Allocation (Suggested)
 
-| Phase | Backend | Frontend | ML/AI | DevOps |
-|-------|---------|----------|-------|--------|
-| 1 | 1.5 w | 0.5 w | 1 w | — |
-| 2 | 2 w | 0.5 w | 1 w | 0.5 w |
-| 3 | 1.5 w | 1.5 w | 0.5 w | — |
-| 4 | 1 w | 1 w | 0.5 w | — |
-| 5 | 2 w | 0.5 w | 2 w | — |
-| 6 | 1.5 w | 1.5 w | 0.5 w | — |
-| 7–10 | Scale team | | | |
+| Phase | Backend    | Frontend | ML/AI | DevOps |
+| ----- | ---------- | -------- | ----- | ------ |
+| 1     | 1.5 w      | 0.5 w    | 1 w   | —      |
+| 2     | 2 w        | 0.5 w    | 1 w   | 0.5 w  |
+| 3     | 1.5 w      | 1.5 w    | 0.5 w | —      |
+| 4     | 1 w        | 1 w      | 0.5 w | —      |
+| 5     | 2 w        | 0.5 w    | 2 w   | —      |
+| 6     | 1.5 w      | 1.5 w    | 0.5 w | —      |
+| 7–10  | Scale team |          |       |        |
 
 ---
 
 ## 5. Risk Summary by Phase
 
-| Phase | Top Risk | Mitigation |
-|-------|----------|------------|
-| 1 | Provider API changes | Abstraction layer |
-| 2 | pgvector performance | HNSW tuning; Pinecone escape hatch |
-| 3 | Chat hallucinations | RAG grounding + citations |
-| 4 | Search relevance | Hybrid + eval set |
-| 5 | Multi-agent complexity | Feature flag; monolithic fallback |
-| 6 | Report quality | Human review loop |
-| 7 | Audio cost | Whisper pricing monitoring |
-| 8 | OAuth scope approval | Early Google/Microsoft app review |
-| 9 | Slack app review | Early submission |
-| 10 | Compliance scope | Phased SOC 2 |
+| Phase | Top Risk               | Mitigation                         |
+| ----- | ---------------------- | ---------------------------------- |
+| 1     | Provider API changes   | Abstraction layer                  |
+| 2     | pgvector performance   | HNSW tuning; Pinecone escape hatch |
+| 3     | Chat hallucinations    | RAG grounding + citations          |
+| 4     | Search relevance       | Hybrid + eval set                  |
+| 5     | Multi-agent complexity | Feature flag; monolithic fallback  |
+| 6     | Report quality         | Human review loop                  |
+| 7     | Audio cost             | Whisper pricing monitoring         |
+| 8     | OAuth scope approval   | Early Google/Microsoft app review  |
+| 9     | Slack app review       | Early submission                   |
+| 10    | Compliance scope       | Phased SOC 2                       |
 
 ---
 
 ## 6. Documentation Index (MeetingMind AI)
 
-| Document | Phase |
-|----------|-------|
-| [llm-requirements.md](./llm-requirements.md) | 1, 5, 6 |
-| [rag-requirements.md](./rag-requirements.md) | 2, 3 |
-| [vector-db-requirements.md](./vector-db-requirements.md) | 2 |
-| [semantic-search-requirements.md](./semantic-search-requirements.md) | 4 |
-| [ai-chat-requirements.md](./ai-chat-requirements.md) | 3 |
-| [multi-agent-requirements.md](./multi-agent-requirements.md) | 5 |
-| [observability-requirements.md](./observability-requirements.md) | 1+ (all) |
-| [future-roadmap.md](./future-roadmap.md) | This document |
+| Document                                                             | Phase         |
+| -------------------------------------------------------------------- | ------------- |
+| [llm-requirements.md](./llm-requirements.md)                         | 1, 5, 6       |
+| [rag-requirements.md](./rag-requirements.md)                         | 2, 3          |
+| [vector-db-requirements.md](./vector-db-requirements.md)             | 2             |
+| [semantic-search-requirements.md](./semantic-search-requirements.md) | 4             |
+| [ai-chat-requirements.md](./ai-chat-requirements.md)                 | 3             |
+| [multi-agent-requirements.md](./multi-agent-requirements.md)         | 5             |
+| [observability-requirements.md](./observability-requirements.md)     | 1+ (all)      |
+| [future-roadmap.md](./future-roadmap.md)                             | This document |
 
 ### Existing Platform Docs (Preserved)
 
@@ -501,6 +502,6 @@ flowchart TD
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial MeetingMind AI roadmap |
+| Version | Date       | Changes                        |
+| ------- | ---------- | ------------------------------ |
+| 1.0     | 2026-06-18 | Initial MeetingMind AI roadmap |

@@ -315,25 +315,24 @@ Every status transition creates an immutable **history** record for audit and an
 
 ## Cardinality Summary
 
-| Parent | Child | Relationship |
-|--------|-------|--------------|
-| users | workspace_members | 1:N |
-| workspaces | workspace_members | 1:N |
-| workspaces | meetings | 1:N |
-| meetings | meeting_transcripts | 1:1 |
-| meetings | meeting_ai_outputs | 1:1 |
-| meetings | ai_processing_jobs | 1:N |
-| meetings | action_item_suggestions | 1:N |
-| meetings | tasks | 1:N |
-| action_item_suggestions | tasks | 1:1 |
-| tasks | task_comments | 1:N |
-| tasks | task_status_history | 1:N |
-| users | notifications | 1:N |
-| workspaces | activity_logs | 1:N |
+| Parent                  | Child                   | Relationship |
+| ----------------------- | ----------------------- | ------------ |
+| users                   | workspace_members       | 1:N          |
+| workspaces              | workspace_members       | 1:N          |
+| workspaces              | meetings                | 1:N          |
+| meetings                | meeting_transcripts     | 1:1          |
+| meetings                | meeting_ai_outputs      | 1:1          |
+| meetings                | ai_processing_jobs      | 1:N          |
+| meetings                | action_item_suggestions | 1:N          |
+| meetings                | tasks                   | 1:N          |
+| action_item_suggestions | tasks                   | 1:1          |
+| tasks                   | task_comments           | 1:N          |
+| tasks                   | task_status_history     | 1:N          |
+| users                   | notifications           | 1:N          |
+| workspaces              | activity_logs           | 1:N          |
 
 ---
 
 ## Related Documents
 
 - [database-architecture.md](./database-architecture.md) — Full schema, indexes, performance
-- [database-design.md](./database-design.md) — Original design reference

@@ -8,31 +8,24 @@ Loom-like capture on the meeting detail page. Frontend-only (no extension, no Me
 2. Browser `getDisplayMedia({ video, audio })` — “Share this screen/tab?”
 3. Guidance: select the **Google Meet tab** and enable **Share tab audio**
 4. `MediaRecorder` writes WebM chunks
-5. Stop → review duration/size → **Upload** / **Replace recording** or Discard
-6. Upload uses existing `POST …/meetings/:id/audio` (video path)
-7. If a recording already exists, upload **replaces** it (confirm dialog) and regenerates AI notes
-8. Pipeline: extract audio → Whisper/mock → AI → `READY`
+5. Stop → review → **Download** locally and/or **Upload**
+6. Upload uses `POST …/meetings/:id/audio` — **stores file only** (`DRAFT` / audio `PENDING`)
+7. User clicks **Translate & Transcribe** on the Upload recording section
+8. Pipeline: extract audio → Whisper **translate to English** / mock → AI → `READY`
+
+See [transcription-flow.md](./transcription-flow.md).
 
 ## Constraints
 
 - Disabled while `TRANSCRIBING` / `PROCESSING` (preserves 409 behavior)
-- Re-upload while READY/DRAFT/FAILED **replaces** the previous recording (not 409)
+- Re-upload replaces media only; does not auto-run AI
 - Max size: `VIDEO_MAX_BYTES` (default 500MB)
-- Permission denied / missing audio track: clear UX, do not fail silently for permission
-- Consent copy: recordings may include sensitive on-screen content
-- No silent background recording; requires user gesture
-
-## Telemetry
-
-`POST …/meetings/:id/recorder-events` with `{ event: started|stopped|upload_success }`
-
-Metrics: `recorder.started`, `recorder.stopped`, `recorder.upload_success`
+- Consent copy for screen recordings
+- No silent background recording
 
 ## Manual QA
 
-1. Meeting detail → Start recording → share a tab with audio
-2. Stop → preview → Upload → status becomes TRANSCRIBING then READY
-3. Record again → **Replace recording** → confirm → new READY insights
-4. Cancel/discard does not upload
-5. While TRANSCRIBING, Start recording and Upload are disabled
-6. Existing file Upload / Replace with recording + paste transcript still work
+1. Record → Upload → still DRAFT / “Uploaded — not processed yet”
+2. Translate & Transcribe → amber then blue banners → READY
+3. Replace recording → confirm → must click Translate & Transcribe again
+4. While busy, record/upload/start disabled

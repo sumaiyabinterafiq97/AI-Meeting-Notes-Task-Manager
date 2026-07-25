@@ -5,7 +5,6 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { renderWithProviders } from '@/test/render-with-providers';
 import { authApi } from '@/features/auth/services/auth-api';
 import { dashboardApi } from '@/features/dashboard/services/dashboard-api';
-import { insightsApi } from '@/features/dashboard/services/insights-api';
 
 vi.mock('@/features/auth/services/auth-api', () => ({
   authApi: {
@@ -22,12 +21,6 @@ vi.mock('@/features/auth/services/auth-api', () => ({
 vi.mock('@/features/dashboard/services/dashboard-api', () => ({
   dashboardApi: {
     get: vi.fn(),
-  },
-}));
-
-vi.mock('@/features/dashboard/services/insights-api', () => ({
-  insightsApi: {
-    getWorkspace: vi.fn(),
   },
 }));
 
@@ -108,23 +101,9 @@ describe('DashboardPage', () => {
     vi.mocked(authApi.refresh).mockResolvedValue({ data: { accessToken: 'token' } } as never);
     vi.mocked(authApi.getMe).mockResolvedValue({ data: mockUser } as never);
     vi.mocked(dashboardApi.get).mockResolvedValue({ data: mockDashboard } as never);
-    vi.mocked(insightsApi.getWorkspace).mockResolvedValue({
-      data: {
-        insights: [
-          {
-            id: 'insight-1',
-            type: 'trend',
-            title: 'Meetings this week',
-            description: '2 meetings held this week.',
-          },
-        ],
-        narrative: 'The workspace is making steady progress.',
-        generatedAt: '2026-06-15T10:00:00.000Z',
-      },
-    } as never);
   });
 
-  it('renders stats, AI sections, and activity feed', async () => {
+  it('renders operational overview and insights teaser without full intelligence cards', async () => {
     renderWithProviders(
       <Routes>
         <Route path="/workspaces/:workspaceId/dashboard" element={<DashboardPage />} />
@@ -139,10 +118,18 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('12')).toBeInTheDocument();
     expect(screen.getByText('Open Tasks')).toBeInTheDocument();
     expect(screen.getByText('AI Summaries')).toBeInTheDocument();
-    expect(screen.getByText('Recommendations')).toBeInTheDocument();
     expect(screen.getByText('Recent Meetings')).toBeInTheDocument();
     expect(screen.getByText('Tasks Due Soon')).toBeInTheDocument();
-    expect(await screen.findByText(/steady progress/i)).toBeInTheDocument();
     expect(screen.getByText(/created task "review api"/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/1 recommendation available/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view insights/i })).toHaveAttribute(
+      'href',
+      '/workspaces/ws-1/insights',
+    );
+
+    expect(screen.queryByText('Recommendations')).not.toBeInTheDocument();
+    expect(screen.queryByText('Productivity Insights')).not.toBeInTheDocument();
+    expect(screen.queryByText('Review pending action items')).not.toBeInTheDocument();
   });
 });

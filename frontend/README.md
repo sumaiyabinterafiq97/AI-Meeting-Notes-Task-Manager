@@ -1,26 +1,22 @@
 # AI Meeting Notes & Task Manager — Frontend
 
-React SPA for workspace-scoped meeting notes, AI summaries, task management, and **MeetingMind AI** — conversational search, insights, reports, and a workspace knowledge base.
+React SPA for MeetingMind AI — Google Meet meetings, screen recording, transcription, and meeting-scoped chat.
 
-## MeetingMind AI
+## MeetingMind AI (current product loop)
 
-MeetingMind AI extends the core app with streaming chat, semantic search, meeting insights, weekly reports, and a searchable knowledge base. Shared AI UI lives in `src/components/ai/`; SSE streaming utilities live in `src/services/api/`.
+**Primary journey:** sign in → workspace → create meeting (Calendar + Meet) → join Meet → record/upload → **Translate & Transcribe** → English transcript → meeting chat / insights.
 
-### Workspace routes
+### Active workspace routes
 
-| Route | Feature | Description |
-|-------|---------|-------------|
-| `/workspaces/:id/dashboard` | Dashboard | AI metrics, recommendations, tasks due soon |
-| `/workspaces/:id/insights` | Insights hub | Workspace trends, risks, decisions, search links |
-| `/workspaces/:id/meetings/:meetingId` | Meetings + Insights | Meeting detail with insights/chat hero tabs |
-| `/workspaces/:id/search` | Semantic search | Full-page search with filters and snippets |
-| `/workspaces/:id/chat` | Workspace chat | Multi-session AI chat with sidebar |
-| `/workspaces/:id/chat/:sessionId` | Workspace chat | Deep link to a chat session |
-| `/workspaces/:id/reports` | Reports | Weekly report list and generation |
-| `/workspaces/:id/reports/:reportId` | Reports | Report detail, charts, markdown export |
-| `/workspaces/:id/knowledge` | Knowledge base | Decisions, facts, and semantic search link |
+| Route                                 | Feature        | Description                                                        |
+| ------------------------------------- | -------------- | ------------------------------------------------------------------ |
+| `/workspaces/:id/meetings`            | Meetings       | Default home after workspace select                                |
+| `/workspaces/:id/meetings/:meetingId` | Meeting detail | Join Meet, record/upload, Translate & Transcribe, transcript, chat |
+| `/workspaces/:id/settings`            | Settings       | Workspace + Google Calendar/Meet connect                           |
 
-Heavy routes (search, chat, reports, knowledge, meeting detail) are **lazy-loaded** with `React.lazy` and a shared `PageLoader` fallback. Vite splits `recharts` and markdown libraries into separate chunks for faster initial load.
+Nav is intentionally minimal: **Meetings** + **Settings**. Other surfaces (dashboard, insights, tasks, reports, knowledge, workspace chat, search) soft-redirect to Meetings and are not shown in navigation.
+
+Meeting detail is **lazy-loaded**. Shared AI UI lives in `src/components/ai/`; SSE streaming in `src/services/api/`.
 
 ## Stack
 
@@ -46,12 +42,12 @@ Set `VITE_API_URL` to your backend API base (default: `http://localhost:3001/api
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/login` | Login | Email/password sign in |
-| `/register` | Register | Create a new account |
-| `/forgot-password` | Forgot Password | Request password reset email |
-| `/reset-password?token=...` | Reset Password | Set a new password via email link |
+| Route                       | Page            | Description                       |
+| --------------------------- | --------------- | --------------------------------- |
+| `/login`                    | Login           | Email/password sign in            |
+| `/register`                 | Register        | Create a new account              |
+| `/forgot-password`          | Forgot Password | Request password reset email      |
+| `/reset-password?token=...` | Reset Password  | Set a new password via email link |
 
 ### User Flows
 
@@ -82,11 +78,11 @@ Routes under `/workspaces` require authentication. Unauthenticated users are red
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/workspaces` | Workspace List | View, select, or create workspaces |
-| `/workspaces/:id/settings` | Settings | Edit workspace, manage members, send invites |
-| `/invitations/:token/accept` | Accept Invitation | Join a workspace via email invite link |
+| Route                        | Page              | Description                                  |
+| ---------------------------- | ----------------- | -------------------------------------------- |
+| `/workspaces`                | Workspace List    | View, select, or create workspaces           |
+| `/workspaces/:id/settings`   | Settings          | Edit workspace, manage members, send invites |
+| `/invitations/:token/accept` | Accept Invitation | Join a workspace via email invite link       |
 
 ### User Flows
 
@@ -113,20 +109,21 @@ src/features/workspaces/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/workspaces/:id/meetings` | Meeting List | Browse, search, and filter meetings |
-| `/workspaces/:id/meetings/:meetingId` | Meeting Detail | View metadata, upload transcript, track AI status |
+| Route                                 | Page           | Description                                                        |
+| ------------------------------------- | -------------- | ------------------------------------------------------------------ |
+| `/workspaces/:id/meetings`            | Meeting List   | Browse, search, and filter meetings                                |
+| `/workspaces/:id/meetings/:meetingId` | Meeting Detail | Record/upload, Translate & Transcribe, paste transcript, AI status |
 
 ### User Flows
 
 1. **List** — Paginated meeting history with search and status filters
 2. **Create** — New meeting dialog with title, date, attendees, tags
-3. **Upload transcript** — Paste or upload `.txt`, `.md`, `.vtt`, `.srt` (min 100 chars, max 5MB)
-4. **Processing** — Status badge + auto-polling every 3s while `PROCESSING`
-5. **Ready** — AI summary preview shown on detail page when complete
-6. **Reprocess** — Re-run AI analysis on an existing transcript (when not processing)
-7. **Action items** — Review extracted items; accept to create tasks or reject to dismiss
+3. **Capture** — Screen/tab record or upload audio/video (stores only; meeting stays `DRAFT`)
+4. **Translate & Transcribe** — Explicit start → English transcript → AI pipeline → `READY`
+5. **Paste transcript** — Alternative: paste/upload `.txt`, `.md`, `.vtt`, `.srt` (min 100 chars)
+6. **Processing** — Status banners + polling while `TRANSCRIBING` / `PROCESSING`
+7. **Ready** — Transcript document + AI insights on detail page
+8. **Action items** — Review extracted items; accept to create tasks or reject to dismiss
 
 ### Feature Module
 
@@ -144,8 +141,8 @@ src/features/meetings/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
+| Route                   | Page       | Description                                           |
+| ----------------------- | ---------- | ----------------------------------------------------- |
 | `/workspaces/:id/tasks` | Task Board | Kanban view with To Do, In Progress, and Done columns |
 
 ### User Flows
@@ -174,26 +171,27 @@ src/features/tasks/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/workspaces/:id/dashboard` | Dashboard | Workspace stats, AI metrics, recommendations, tasks due, insights |
+| Route                       | Page      | Description                                                                  |
+| --------------------------- | --------- | ---------------------------------------------------------------------------- |
+| `/workspaces/:id/dashboard` | Dashboard | Operational home: KPIs, AI metrics, recent meetings, tasks due, productivity |
 
 ### User Flows
 
 1. **Stats** — Open tasks, overdue tasks, meetings, completed this week
 2. **AI metrics** — Summaries generated, pending action item reviews, processing failures
-3. **Recommendations** — Rule-based follow-ups from risks and pending action items
+3. **Insights teaser** — Count of recommendations with a link to the Insights hub (no full cards)
 4. **Recent meetings** — Quick links to latest meetings with AI summary badges
 5. **Tasks due soon** — Open tasks due within 7 days with link to task board
-6. **Productivity insights** — Workspace trends and optional AI narrative (`GET /insights`)
-7. **Productivity** — Weekly completion bar chart + average days to complete
-8. **Activity** — Recent actions with links to meetings/tasks
+6. **Productivity** — Weekly completion bar chart + average days to complete
+7. **Activity** — Recent actions with links to meetings/tasks
+
+Full recommendations, workspace pulse, risks, and decisions live on **Insights** (`/workspaces/:id/insights`).
 
 ### Feature Module
 
 ```
 src/features/dashboard/
-├── components/     # StatsGrid, AiMetricsGrid, RecommendationsRow, RecentMeetingsStrip, TasksDueSoon, AiInsightsCard, ProductivityChart, ActivityFeed
+├── components/     # StatsGrid, AiMetricsGrid, InsightsTeaser, RecentMeetingsStrip, TasksDueSoon, ProductivityChart, ActivityFeed
 ├── hooks/          # useDashboard, useDashboardInsights
 ├── pages/          # DashboardPage
 ├── services/       # dashboard-api.ts, insights-api.ts
@@ -204,8 +202,8 @@ src/features/dashboard/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
+| Route                    | Page   | Description                            |
+| ------------------------ | ------ | -------------------------------------- |
 | `/workspaces/:id/search` | Search | Full-page semantic search with filters |
 
 ### UI
@@ -239,9 +237,9 @@ src/features/search/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/workspaces/:id/chat` | Chat | New workspace chat conversation |
+| Route                             | Page | Description                     |
+| --------------------------------- | ---- | ------------------------------- |
+| `/workspaces/:id/chat`            | Chat | New workspace chat conversation |
 | `/workspaces/:id/chat/:sessionId` | Chat | Resume a workspace chat session |
 
 ### UI
@@ -252,13 +250,17 @@ src/features/search/
 ### User Flows
 
 #### Meeting chat
-1. **Open** — On meeting detail after a transcript is uploaded
-2. **Ask** — Natural language questions grounded in transcript + AI outputs
+
+1. **Open** — On meeting detail after Translate & Transcribe (or paste) leaves the meeting `READY`
+2. **Ask** — Natural language questions grounded in transcript + AI outputs (summarize/overview and keyword Q&A)
 3. **Stream** — SSE tokens via `POST /workspaces/:id/meetings/:meetingId/chat`
 4. **Citations** — Source cards link back to the meeting
 5. **History** — Thread persisted per meeting via `GET .../chat`
 
+Backend retrieval uses hybrid search first; for meeting-scoped summarize/overview intents with no search hits, it falls back to this meeting’s indexed transcript/summary (workspace chat and action-item-only queries stay unchanged).
+
 #### Workspace chat
+
 1. **New chat** — Start from `/chat` or sidebar **New chat**
 2. **Sessions** — List via `GET /workspaces/:id/chat/sessions`; deep link `/chat/:sessionId`
 3. **Stream** — SSE via `POST /workspaces/:id/chat` with optional `sessionId`
@@ -284,9 +286,9 @@ src/components/ai/  # ChatBubble, CitationCard, MarkdownRenderer, TypingIndicato
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
-| `/workspaces/:id/reports` | Reports | Report history and on-demand generation |
+| Route                               | Page          | Description                               |
+| ----------------------------------- | ------------- | ----------------------------------------- |
+| `/workspaces/:id/reports`           | Reports       | Report history and on-demand generation   |
 | `/workspaces/:id/reports/:reportId` | Report detail | Metrics charts, sections, markdown export |
 
 ### User Flows
@@ -313,8 +315,8 @@ src/features/reports/
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
+| Route                       | Page      | Description                                                   |
+| --------------------------- | --------- | ------------------------------------------------------------- |
 | `/workspaces/:id/knowledge` | Knowledge | Filterable knowledge entries, detail panel, decision timeline |
 
 ### User Flows
@@ -382,8 +384,8 @@ Bell icon in the app header (workspace layout) with unread badge and dropdown pa
 
 ### Pages
 
-| Route | Page | Description |
-|-------|------|-------------|
+| Route                    | Page                     | Description                                      |
+| ------------------------ | ------------------------ | ------------------------------------------------ |
 | `/account/notifications` | Notification Preferences | Configure email and in-app notification settings |
 
 ### User Flows
@@ -408,12 +410,12 @@ src/features/notifications/
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server (port 5173) |
-| `npm run build` | Production build |
-| `npm run test` | Run Vitest tests |
-| `npm run lint` | ESLint |
+| Command         | Description                  |
+| --------------- | ---------------------------- |
+| `npm run dev`   | Start dev server (port 5173) |
+| `npm run build` | Production build             |
+| `npm run test`  | Run Vitest tests             |
+| `npm run lint`  | ESLint                       |
 
 ### Testing & accessibility
 

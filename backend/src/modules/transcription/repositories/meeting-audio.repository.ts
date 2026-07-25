@@ -10,6 +10,10 @@ export class MeetingAudioRepository {
     return prisma.meetingAudio.findUnique({ where: { meetingId } });
   }
 
+  /**
+   * Stores uploaded media in PENDING state. Meeting stays DRAFT (or prior status
+   * if READY with old transcript) — does NOT start TRANSCRIBING.
+   */
   async createPendingAudio(data: {
     meetingId: string;
     workspaceId: string;
@@ -17,12 +21,16 @@ export class MeetingAudioRepository {
     mimeType: string;
     fileSizeBytes: number;
     storageKey: string;
+    /** When replacing after READY, reset meeting to DRAFT so UI shows "not processed". */
+    resetMeetingToDraft?: boolean;
   }): Promise<MeetingAudio> {
     return prisma.$transaction(async (tx) => {
-      await tx.meeting.update({
-        where: { id: data.meetingId },
-        data: { status: MeetingStatus.TRANSCRIBING },
-      });
+      if (data.resetMeetingToDraft) {
+        await tx.meeting.update({
+          where: { id: data.meetingId },
+          data: { status: MeetingStatus.DRAFT },
+        });
+      }
 
       return tx.meetingAudio.create({
         data: {
@@ -35,6 +43,20 @@ export class MeetingAudioRepository {
           status: TranscriptionJobStatus.PENDING,
         },
       });
+    });
+  }
+
+  async updateStorageAfterExtract(
+    audioId: string,
+    data: { storageKey: string; mimeType: string; fileSizeBytes: number },
+  ): Promise<MeetingAudio> {
+    return prisma.meetingAudio.update({
+      where: { id: audioId },
+      data: {
+        storageKey: data.storageKey,
+        mimeType: data.mimeType,
+        fileSizeBytes: data.fileSizeBytes,
+      },
     });
   }
 
@@ -82,7 +104,8 @@ export class MeetingAudioRepository {
     });
   }
 
-  async resetForRetry(audioId: string): Promise<MeetingAudio> {
+  /** Prepare audio + meeting for Translate & Transcribe (or retry). */
+  async prepareForStart(audioId: string, meetingId: string): Promise<MeetingAudio> {
     return prisma.$transaction(async (tx) => {
       const audio = await tx.meetingAudio.update({
         where: { id: audioId },
@@ -95,12 +118,20 @@ export class MeetingAudioRepository {
       });
 
       await tx.meeting.update({
-        where: { id: audio.meetingId },
+        where: { id: meetingId },
         data: { status: MeetingStatus.TRANSCRIBING },
       });
 
       return audio;
     });
+  }
+
+  async resetForRetry(audioId: string): Promise<MeetingAudio> {
+    const audio = await this.findById(audioId);
+    if (!audio) {
+      throw new Error(`Meeting audio not found: ${audioId}`);
+    }
+    return this.prepareForStart(audioId, audio.meetingId);
   }
 
   async deleteByMeetingId(meetingId: string): Promise<void> {

@@ -22,7 +22,7 @@ export function AcceptInvitationPage() {
     mutate(token, {
       onSuccess: (response) => {
         setActiveWorkspaceId(response.data.workspace.id);
-        navigate(ROUTES.CHAT(response.data.workspace.id), { replace: true });
+        navigate(ROUTES.MEETINGS(response.data.workspace.id), { replace: true });
       },
     });
   }, [token, mutate, navigate, setActiveWorkspaceId]);
@@ -36,7 +36,10 @@ export function AcceptInvitationPage() {
             <CardDescription>This invitation link is missing or malformed.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Link to={ROUTES.WORKSPACES} className="text-sm font-medium text-primary hover:underline">
+            <Link
+              to={ROUTES.WORKSPACES}
+              className="text-sm font-medium text-primary hover:underline"
+            >
               Go to workspaces
             </Link>
           </CardContent>
@@ -66,12 +69,12 @@ export function AcceptInvitationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <ErrorAlert
-              message={getApiErrorMessage(
-                error,
-                'This invitation may be invalid or expired.',
-              )}
+              message={getApiErrorMessage(error, 'This invitation may be invalid or expired.')}
             />
-            <Link to={ROUTES.WORKSPACES} className="text-sm font-medium text-primary hover:underline">
+            <Link
+              to={ROUTES.WORKSPACES}
+              className="text-sm font-medium text-primary hover:underline"
+            >
               Go to workspaces
             </Link>
           </CardContent>

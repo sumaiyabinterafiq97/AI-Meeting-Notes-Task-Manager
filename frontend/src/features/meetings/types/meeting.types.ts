@@ -31,6 +31,7 @@ export interface Meeting {
 
 export interface MeetingTranscriptMeta {
   id: string;
+  content?: string;
   sourceFormat: TranscriptSourceFormat;
   charCount: number;
   uploadedAt: string;
@@ -80,6 +81,7 @@ export interface TaskFromActionItem extends LinkedTask {
 
 export interface MeetingDetail extends Meeting {
   transcript: MeetingTranscriptMeta | null;
+  audio?: MeetingAudioMeta | null;
   aiOutput: MeetingAiOutput | null;
   actionItems: ActionItem[];
   linkedTasks: LinkedTask[];
@@ -128,7 +130,11 @@ export interface UploadAudioResponse {
   audioId: string;
   status: TranscriptionJobStatus;
   meetingStatus: MeetingStatus;
+  processingStarted?: boolean;
+  audio?: MeetingAudioMeta;
 }
+
+export type TranscriptionStartMode = 'translate_to_english' | 'transcribe_original';
 
 export interface TranscriptionStatusResponse {
   meetingId: string;

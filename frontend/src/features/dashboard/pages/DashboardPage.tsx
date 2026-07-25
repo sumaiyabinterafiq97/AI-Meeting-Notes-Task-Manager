@@ -5,10 +5,9 @@ import { getApiErrorMessage } from '@/lib/api-errors';
 import { useDashboard } from '../hooks/useDashboard';
 import { StatsGrid } from '../components/StatsGrid';
 import { AiMetricsGrid } from '../components/AiMetricsGrid';
-import { RecommendationsRow } from '../components/RecommendationsRow';
+import { InsightsTeaser } from '../components/InsightsTeaser';
 import { RecentMeetingsStrip } from '../components/RecentMeetingsStrip';
 import { TasksDueSoon } from '../components/TasksDueSoon';
-import { AiInsightsCard } from '../components/AiInsightsCard';
 import { ProductivityChart } from '../components/ProductivityChart';
 import { ActivityFeed } from '../components/ActivityFeed';
 
@@ -37,21 +36,19 @@ export function DashboardPage() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h2>
         <p className="text-muted-foreground">
-          AI-powered overview of meetings, tasks, and workspace productivity.
+          Operational overview of meetings, tasks, and workspace productivity.
         </p>
       </div>
 
       <StatsGrid stats={data.stats} />
       <AiMetricsGrid metrics={data.aiMetrics} />
 
-      <RecommendationsRow workspaceId={workspaceId} recommendations={data.recommendations} />
+      <InsightsTeaser workspaceId={workspaceId} recommendationCount={data.recommendations.length} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentMeetingsStrip workspaceId={workspaceId} meetings={data.recentMeetings} />
         <TasksDueSoon workspaceId={workspaceId} tasks={data.tasksDueSoon} />
       </div>
-
-      <AiInsightsCard workspaceId={workspaceId} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ProductivityChart

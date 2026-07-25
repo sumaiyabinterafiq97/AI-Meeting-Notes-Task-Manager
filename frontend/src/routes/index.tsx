@@ -3,6 +3,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { PublicRoute } from '@/routes/PublicRoute';
+import { RedirectToMeetings } from '@/routes/RedirectToMeetings';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
@@ -12,27 +13,11 @@ import { WorkspaceListPage } from '@/features/workspaces/pages/WorkspaceListPage
 import { WorkspaceSettingsPage } from '@/features/workspaces/pages/WorkspaceSettingsPage';
 import { AcceptInvitationPage } from '@/features/workspaces/pages/AcceptInvitationPage';
 import { MeetingListPage } from '@/features/meetings/pages/MeetingListPage';
-import { TaskBoardPage } from '@/features/tasks/pages/TaskBoardPage';
-import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { NotificationPreferencesPage } from '@/features/notifications/pages/NotificationPreferencesPage';
 import { ROUTES } from '@/lib/constants';
-import {
-  LazyChatPage,
-  LazyInsightsPage,
-  LazyKnowledgePage,
-  LazyMeetingDetailPage,
-  LazyReportDetailPage,
-  LazyReportsListPage,
-  LazySearchPage,
-} from '@/routes/lazy-pages';
+import { LazyMeetingDetailPage } from '@/routes/lazy-pages';
 import { withRouteSuspense } from '@/routes/with-suspense';
 
-const SearchPage = withRouteSuspense(LazySearchPage, 'Loading search');
-const ChatPage = withRouteSuspense(LazyChatPage, 'Loading chat');
-const InsightsPage = withRouteSuspense(LazyInsightsPage, 'Loading insights');
-const ReportsListPage = withRouteSuspense(LazyReportsListPage, 'Loading reports');
-const ReportDetailPage = withRouteSuspense(LazyReportDetailPage, 'Loading report');
-const KnowledgePage = withRouteSuspense(LazyKnowledgePage, 'Loading knowledge base');
 const MeetingDetailPage = withRouteSuspense(LazyMeetingDetailPage, 'Loading meeting');
 
 export const router = createBrowserRouter([
@@ -63,18 +48,19 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: '/workspaces/:workspaceId/dashboard', element: <DashboardPage /> },
-          { path: '/workspaces/:workspaceId/insights', element: <InsightsPage /> },
           { path: '/workspaces/:workspaceId/meetings', element: <MeetingListPage /> },
           { path: '/workspaces/:workspaceId/meetings/:meetingId', element: <MeetingDetailPage /> },
-          { path: '/workspaces/:workspaceId/tasks', element: <TaskBoardPage /> },
-          { path: '/workspaces/:workspaceId/search', element: <SearchPage /> },
-          { path: '/workspaces/:workspaceId/chat', element: <ChatPage /> },
-          { path: '/workspaces/:workspaceId/chat/:sessionId', element: <ChatPage /> },
-          { path: '/workspaces/:workspaceId/reports', element: <ReportsListPage /> },
-          { path: '/workspaces/:workspaceId/reports/:reportId', element: <ReportDetailPage /> },
-          { path: '/workspaces/:workspaceId/knowledge', element: <KnowledgePage /> },
           { path: '/workspaces/:workspaceId/settings', element: <WorkspaceSettingsPage /> },
+          // Soft-hide non-core surfaces — keep URLs resolving without exposing product complexity
+          { path: '/workspaces/:workspaceId/dashboard', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/insights', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/tasks', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/search', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/chat', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/chat/:sessionId', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/reports', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/reports/:reportId', element: <RedirectToMeetings /> },
+          { path: '/workspaces/:workspaceId/knowledge', element: <RedirectToMeetings /> },
         ],
       },
     ],

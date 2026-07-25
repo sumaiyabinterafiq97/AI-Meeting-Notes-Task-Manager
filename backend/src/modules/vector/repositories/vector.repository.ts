@@ -60,7 +60,9 @@ export class VectorRepository {
     const sourceTypeFilter =
       query.sourceTypes && query.sourceTypes.length > 0
         ? Prisma.sql`AND source_type IN (${Prisma.join(
-            query.sourceTypes.map((type) => Prisma.sql`${toPrismaSourceType(type)}::"DocumentSourceType"`),
+            query.sourceTypes.map(
+              (type) => Prisma.sql`${toPrismaSourceType(type)}::"DocumentSourceType"`,
+            ),
           )})`
         : Prisma.empty;
 
@@ -93,9 +95,7 @@ export class VectorRepository {
       LIMIT ${topK}
     `;
 
-    return rows
-      .filter((row) => (row.similarity ?? 0) >= minSimilarity)
-      .map(mapRow);
+    return rows.filter((row) => (row.similarity ?? 0) >= minSimilarity).map(mapRow);
   }
 
   async keywordSearch(query: HybridSearchQuery): Promise<DocumentChunk[]> {
@@ -106,7 +106,9 @@ export class VectorRepository {
     const sourceTypeFilter =
       query.sourceTypes && query.sourceTypes.length > 0
         ? Prisma.sql`AND source_type IN (${Prisma.join(
-            query.sourceTypes.map((type) => Prisma.sql`${toPrismaSourceType(type)}::"DocumentSourceType"`),
+            query.sourceTypes.map(
+              (type) => Prisma.sql`${toPrismaSourceType(type)}::"DocumentSourceType"`,
+            ),
           )})`
         : Prisma.empty;
 
@@ -199,14 +201,72 @@ export class VectorRepository {
     });
   }
 
+  /**
+   * List meeting chunks for corpus fallback (prefer summary → transcript → other).
+   * Does not require query-term or embedding matches.
+   */
+  async listByMeeting(
+    meetingId: string,
+    workspaceId: string,
+    options?: { topK?: number; sourceTypes?: DocumentChunk['sourceType'][] },
+  ): Promise<DocumentChunk[]> {
+    const topK = options?.topK ?? 12;
+
+    const sourceTypeFilter =
+      options?.sourceTypes && options.sourceTypes.length > 0
+        ? Prisma.sql`AND source_type IN (${Prisma.join(
+            options.sourceTypes.map(
+              (type) => Prisma.sql`${toPrismaSourceType(type)}::"DocumentSourceType"`,
+            ),
+          )})`
+        : Prisma.empty;
+
+    const rows = await prisma.$queryRaw<ChunkRow[]>`
+      SELECT
+        id,
+        workspace_id,
+        meeting_id,
+        source_type::text,
+        source_id,
+        chunk_index,
+        content,
+        token_count,
+        metadata,
+        1::float AS similarity
+      FROM document_chunks
+      WHERE workspace_id = ${workspaceId}::uuid
+        AND meeting_id = ${meetingId}::uuid
+        ${sourceTypeFilter}
+      ORDER BY
+        CASE source_type::text
+          WHEN 'SUMMARY' THEN 0
+          WHEN 'TRANSCRIPT' THEN 1
+          WHEN 'DECISION' THEN 2
+          WHEN 'RISK' THEN 3
+          WHEN 'ACTION_ITEM' THEN 4
+          WHEN 'KNOWLEDGE' THEN 5
+          ELSE 6
+        END,
+        chunk_index ASC
+      LIMIT ${topK}
+    `;
+
+    return rows.map(mapRow);
+  }
+
   async replaceMeetingChunks(
     meetingId: string,
     workspaceId: string,
     chunks: StoredChunkInput[],
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
+      // Preserve KNOWLEDGE rows — they are owned by knowledge embedding, not meeting embed.
       await tx.documentChunk.deleteMany({
-        where: { meetingId, workspaceId },
+        where: {
+          meetingId,
+          workspaceId,
+          NOT: { sourceType: 'KNOWLEDGE' },
+        },
       });
 
       for (const chunk of chunks) {
@@ -282,7 +342,10 @@ export class VectorRepository {
         AND embedding IS NOT NULL
     `;
 
-    const map = new Map<string, { contentHash?: string; embedding: number[]; embeddingModel: string }>();
+    const map = new Map<
+      string,
+      { contentHash?: string; embedding: number[]; embeddingModel: string }
+    >();
 
     for (const row of rows) {
       if (!row.embedding_text) continue;

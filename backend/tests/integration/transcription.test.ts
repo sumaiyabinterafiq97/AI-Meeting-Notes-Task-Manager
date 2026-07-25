@@ -38,7 +38,7 @@ function minimalWavBuffer(): Buffer {
     await cleanDatabase();
   });
 
-  it('uploads audio and completes mock transcription + AI pipeline', async () => {
+  it('upload alone stores file in DRAFT without transcript or READY', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
     expect(created.status).toBe(201);
@@ -49,9 +49,48 @@ function minimalWavBuffer(): Buffer {
       .set('Authorization', `Bearer ${accessToken}`)
       .attach('audio', minimalWavBuffer(), 'standup.wav');
 
-    expect(upload.status).toBe(202);
-    expect(upload.body.meetingStatus).toBe('READY');
+    expect(upload.status).toBe(201);
+    expect(upload.body.processingStarted).toBe(false);
+    expect(upload.body.meetingStatus).toBe('DRAFT');
     expect(upload.body.audioId).toBeDefined();
+    expect(upload.body.status).toBe('PENDING');
+
+    const status = await api
+      .get(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription`)
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    expect(status.status).toBe(200);
+    expect(status.body.audio.status).toBe('PENDING');
+    expect(status.body.meetingStatus).toBe('DRAFT');
+    expect(status.body.transcript).toBeNull();
+
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: { transcript: true },
+    });
+    expect(meeting?.status).toBe('DRAFT');
+    expect(meeting?.transcript).toBeNull();
+  });
+
+  it('Translate & Transcribe start reaches READY with mock English transcript', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+    const created = await createMeeting(accessToken, workspaceId);
+    const meetingId = created.body.id as string;
+
+    const upload = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/audio`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .attach('audio', minimalWavBuffer(), 'standup.wav');
+    expect(upload.status).toBe(201);
+
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ mode: 'translate_to_english' });
+
+    expect(start.status).toBe(202);
+    expect(start.body.processingStarted).toBe(true);
+    expect(start.body.meetingStatus).toBe('READY');
 
     const status = await api
       .get(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription`)
@@ -78,7 +117,7 @@ function minimalWavBuffer(): Buffer {
     expect(response.status).toBe(400);
   });
 
-  it('uploads mp4 video, extracts audio (mock), and completes AI pipeline', async () => {
+  it('uploads mp4 then start extracts (mock) and reaches READY', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
     const meetingId = created.body.id as string;
@@ -91,8 +130,16 @@ function minimalWavBuffer(): Buffer {
         contentType: 'video/mp4',
       });
 
-    expect(upload.status).toBe(202);
-    expect(upload.body.meetingStatus).toBe('READY');
+    expect(upload.status).toBe(201);
+    expect(upload.body.meetingStatus).toBe('DRAFT');
+
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    expect(start.status).toBe(202);
+    expect(start.body.meetingStatus).toBe('READY');
 
     const status = await api
       .get(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription`)
@@ -104,7 +151,7 @@ function minimalWavBuffer(): Buffer {
     expect(status.body.audio.originalName).toBe('zoom-recording.mp4');
   });
 
-  it('uploads webm video and reaches READY via mock extraction', async () => {
+  it('uploads webm then start reaches READY via mock extraction', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
     const meetingId = created.body.id as string;
@@ -117,40 +164,62 @@ function minimalWavBuffer(): Buffer {
         contentType: 'video/webm',
       });
 
-    expect(upload.status).toBe(202);
-    expect(upload.body.meetingStatus).toBe('READY');
+    expect(upload.status).toBe(201);
+
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ mode: 'translate_to_english' });
+
+    expect(start.status).toBe(202);
+    expect(start.body.meetingStatus).toBe('READY');
   });
 
-  it('replaces an existing recording on re-upload and reaches READY', async () => {
+  it('replaces recording without auto-processing; start again reaches READY', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
     const meetingId = created.body.id as string;
 
-    const first = await api
+    await api
       .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/audio`)
       .set('Authorization', `Bearer ${accessToken}`)
       .attach('audio', minimalWavBuffer(), 'standup.wav');
-    expect(first.status).toBe(202);
-    const firstAudioId = first.body.audioId as string;
+
+    await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    const firstAudioId = (
+      await api
+        .get(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription`)
+        .set('Authorization', `Bearer ${accessToken}`)
+    ).body.audio.id as string;
 
     const second = await api
       .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/audio`)
       .set('Authorization', `Bearer ${accessToken}`)
       .attach('audio', minimalWavBuffer(), 'again.wav');
 
-    expect(second.status).toBe(202);
-    expect(second.body.meetingStatus).toBe('READY');
-    expect(second.body.audioId).toBeDefined();
+    expect(second.status).toBe(201);
+    expect(second.body.meetingStatus).toBe('DRAFT');
+    expect(second.body.processingStarted).toBe(false);
     expect(second.body.audioId).not.toBe(firstAudioId);
 
-    const status = await api
+    const mid = await api
       .get(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription`)
       .set('Authorization', `Bearer ${accessToken}`);
+    expect(mid.body.meetingStatus).toBe('DRAFT');
+    expect(mid.body.audio.status).toBe('PENDING');
+    expect(mid.body.audio.originalName).toBe('again.wav');
 
-    expect(status.status).toBe(200);
-    expect(status.body.audio.status).toBe('COMPLETED');
-    expect(status.body.audio.originalName).toBe('again.wav');
-    expect(status.body.meetingStatus).toBe('READY');
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    expect(start.status).toBe(202);
+    expect(start.body.meetingStatus).toBe('READY');
 
     const audioCount = await prisma.meetingAudio.count({ where: { meetingId } });
     expect(audioCount).toBe(1);
@@ -191,10 +260,33 @@ function minimalWavBuffer(): Buffer {
       .attach('audio', minimalWavBuffer(), 'standup.wav');
 
     expect(upload.status).toBe(409);
-    expect(upload.body.error.message).toMatch(/transcribing/i);
+    expect(upload.body.error.message).toMatch(/transcrib/i);
   });
 
-  it('retries a failed transcription and reaches READY', async () => {
+  it('returns 409 when start is called while already busy', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+    const created = await createMeeting(accessToken, workspaceId);
+    const meetingId = created.body.id as string;
+
+    await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/audio`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .attach('audio', minimalWavBuffer(), 'standup.wav');
+
+    await prisma.meeting.update({
+      where: { id: meetingId },
+      data: { status: 'TRANSCRIBING' },
+    });
+
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    expect(start.status).toBe(409);
+  });
+
+  it('retries a failed transcription via retry endpoint and reaches READY', async () => {
     const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
     const created = await createMeeting(accessToken, workspaceId);
     const meetingId = created.body.id as string;
@@ -203,7 +295,7 @@ function minimalWavBuffer(): Buffer {
       .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/audio`)
       .set('Authorization', `Bearer ${accessToken}`)
       .attach('audio', minimalWavBuffer(), 'standup.wav');
-    expect(upload.status).toBe(202);
+    expect(upload.status).toBe(201);
 
     const audioId = upload.body.audioId as string;
 
@@ -246,5 +338,18 @@ function minimalWavBuffer(): Buffer {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(retry.status).toBe(409);
+  });
+
+  it('start without recording returns 404', async () => {
+    const { accessToken, workspaceId } = await setupWorkspaceWithAuth();
+    const created = await createMeeting(accessToken, workspaceId);
+    const meetingId = created.body.id as string;
+
+    const start = await api
+      .post(`/api/v1/workspaces/${workspaceId}/meetings/${meetingId}/transcription/start`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    expect(start.status).toBe(404);
   });
 });
