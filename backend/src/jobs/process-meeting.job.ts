@@ -43,9 +43,7 @@ export async function processMeetingJob(jobId: string): Promise<void> {
 
     const members = await aiRepository.getWorkspaceMembers(currentJob.workspaceId);
     const memberNames = members.map((member) => member.user.displayName);
-    const attendees = Array.isArray(meeting.attendees)
-      ? (meeting.attendees as string[])
-      : [];
+    const attendees = Array.isArray(meeting.attendees) ? (meeting.attendees as string[]) : [];
 
     const pipelineOutput = await pipelineOrchestrator.run({
       transcript: meeting.transcript.content,
@@ -89,11 +87,8 @@ export async function processMeetingJob(jobId: string): Promise<void> {
 
     await aiRepository.markJobCompleted(jobId);
 
-    await enqueueEmbedMeeting({
-      meetingId: currentJob.meetingId,
-      workspaceId: currentJob.workspaceId,
-    });
-
+    // Knowledge first, then embed — so transcript/summary re-index after AI output is saved,
+    // and meeting embed no longer races ahead of (and wiping) knowledge vectors.
     try {
       await knowledgeExtractionService.extractFromMeeting(
         currentJob.meetingId,
@@ -106,6 +101,11 @@ export async function processMeetingJob(jobId: string): Promise<void> {
         error instanceof Error ? error.message : error,
       );
     }
+
+    await enqueueEmbedMeeting({
+      meetingId: currentJob.meetingId,
+      workspaceId: currentJob.workspaceId,
+    });
   } catch (error) {
     const message = getErrorMessage(error);
     const refreshed = await aiRepository.findJobById(jobId);

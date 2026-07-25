@@ -3,10 +3,7 @@ import { env } from '../../../../config/env';
 import { llmService } from '../../../llm';
 import { promptRegistry } from '../../../prompts';
 import type { RAGQuery } from '../../../rag/types/rag.types';
-import type {
-  ChatQueryIntent,
-  QueryClassificationResult,
-} from '../types/query-classifier.types';
+import type { ChatQueryIntent, QueryClassificationResult } from '../types/query-classifier.types';
 import {
   AMBIGUOUS_RULE_CONFIDENCE,
   INTENT_RETRIEVAL_HINTS,
@@ -76,7 +73,8 @@ export class QueryClassifierService {
       variables: { query },
     });
 
-    const systemMessage = rendered?.messages[0]?.content ??
+    const systemMessage =
+      rendered?.messages[0]?.content ??
       'Classify the user query into one intent: factual_lookup, synthesis, comparison, task_query, meeting_query, or general. Return JSON only.';
 
     try {
@@ -145,11 +143,18 @@ export class QueryClassifierService {
     const hints = classification.retrievalHints;
     const meetingScopedTopK = base.meetingId ? Math.max(6, (hints.topK ?? 10) - 2) : hints.topK;
 
+    let sourceTypes = hints.sourceTypes ?? base.sourceTypes;
+    // Meeting-scoped synthesis: prefer transcript + summary for overview/summarize.
+    if (base.meetingId && classification.intent === 'synthesis') {
+      sourceTypes = ['transcript', 'summary'];
+    }
+
     return {
       ...base,
       mode: hints.mode ?? base.mode ?? 'hybrid',
       topK: meetingScopedTopK ?? base.topK,
-      sourceTypes: hints.sourceTypes ?? base.sourceTypes,
+      sourceTypes,
+      queryIntent: classification.intent,
     };
   }
 }

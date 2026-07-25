@@ -1,4 +1,7 @@
-import { classifyQueryByRules, queryClassifierService } from '../../../../src/modules/agents/chat/services/query-classifier.service';
+import {
+  classifyQueryByRules,
+  queryClassifierService,
+} from '../../../../src/modules/agents/chat/services/query-classifier.service';
 import { env } from '../../../../src/config/env';
 import { llmService } from '../../../../src/modules/llm';
 
@@ -43,6 +46,39 @@ describe('query classifier', () => {
 
     expect(ragQuery.sourceTypes).toEqual(['decision', 'summary', 'action_item']);
     expect(classification.intent).toBe('factual_lookup');
+  });
+
+  it('narrows meeting-scoped synthesis to transcript and summary', () => {
+    const classification = classifyQueryByRules('Summarize this meeting');
+    const ragQuery = queryClassifierService.applyToRagQuery(
+      {
+        query: 'Summarize this meeting',
+        workspaceId: '00000000-0000-0000-0000-000000000001',
+        meetingId: '00000000-0000-0000-0000-000000000002',
+      },
+      classification,
+    );
+
+    expect(classification.intent).toBe('synthesis');
+    expect(ragQuery.sourceTypes).toEqual(['transcript', 'summary']);
+    expect(ragQuery.mode).toBe('hybrid');
+    expect(ragQuery.queryIntent).toBe('synthesis');
+  });
+
+  it('leaves task_query source types unchanged when meeting-scoped', () => {
+    const classification = classifyQueryByRules('Summarize the action items');
+    const ragQuery = queryClassifierService.applyToRagQuery(
+      {
+        query: 'Summarize the action items',
+        workspaceId: '00000000-0000-0000-0000-000000000001',
+        meetingId: '00000000-0000-0000-0000-000000000002',
+      },
+      classification,
+    );
+
+    expect(classification.intent).toBe('task_query');
+    expect(ragQuery.sourceTypes).toEqual(['action_item']);
+    expect(ragQuery.mode).toBe('keyword');
   });
 
   it('uses LLM refinement for general queries when enabled', async () => {

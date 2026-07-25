@@ -79,14 +79,23 @@ export class RAGPipelineService {
     if (retrieval.chunks.length === 0 && mode !== 'keyword') {
       degraded = true;
       retrieval = await ragFallbackService.keywordFallback(query);
-      stages.push(stageMetric('vector_search', Date.now(), false, 'empty_results_keyword_fallback'));
+      stages.push(
+        stageMetric('vector_search', Date.now(), false, 'empty_results_keyword_fallback'),
+      );
+    }
+
+    if (retrieval.chunks.length === 0 && ragFallbackService.shouldUseMeetingCorpusFallback(query)) {
+      degraded = true;
+      retrieval = await ragFallbackService.meetingCorpusFallback(query);
+      stages.push(
+        stageMetric('vector_search', Date.now(), false, 'empty_results_meeting_corpus_fallback'),
+      );
     }
 
     const filterStart = Date.now();
     let filtered = toRetrievedChunks(retrieval.chunks);
     const applyCosineThreshold =
-      mode === 'semantic' ||
-      (retrieval.retrievalMode === 'semantic' && mode !== 'hybrid');
+      mode === 'semantic' || (retrieval.retrievalMode === 'semantic' && mode !== 'hybrid');
     if (applyCosineThreshold) {
       filtered = rankingService.applyThreshold(filtered, minSimilarity);
     }
