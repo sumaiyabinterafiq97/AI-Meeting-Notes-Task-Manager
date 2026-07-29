@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Load test: N concurrent meeting AI processing jobs (mock or live).
- * @see docs/load-test-report.md
+ * Concurrent meeting AI job load harness (`npm run load:test:meetings`).
  */
 import dotenv from 'dotenv';
 import fs from 'fs';

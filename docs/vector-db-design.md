@@ -3,7 +3,7 @@
 **Product:** MeetingMind AI  
 **Version:** 1.0  
 **Status:** Architecture — Documentation Only  
-**Requirements:** [vector-db-requirements.md](./vector-db-requirements.md) · [rag-requirements.md](./rag-requirements.md)
+**Requirements:** [rag-requirements.md](./rag-requirements.md)
 
 ---
 
@@ -11,24 +11,25 @@
 
 ### 1.1 Comparison Matrix
 
-| Criterion | pgvector (Neon) | Pinecone | Weaviate | Chroma |
-|-----------|-----------------|----------|----------|--------|
-| **Operational complexity** | ✅ Low (existing PG) | Medium | High | Medium |
-| **ACID + metadata joins** | ✅ Native SQL | ❌ Separate store | Partial | ❌ |
-| **Workspace isolation** | ✅ Row-level + RLS | Namespace per tenant | Multi-tenancy | Collection per tenant |
-| **Hybrid search (FTS)** | ✅ Same DB | Requires sparse vectors | ✅ Built-in | Limited |
-| **Cost at MVP** | ✅ Included in Neon | $70+/mo minimum | Self-host or cloud | Self-host |
-| **Scale ceiling** | ~10M vectors | ✅ Billions | ✅ Large | ~1M practical |
-| **Latency p95** | 50–200ms | 20–50ms | 30–80ms | 50–150ms |
-| **Backup** | ✅ Neon PITR | Managed | Varies | Manual |
-| **Team familiarity** | ✅ Prisma + SQL | New SDK | New stack | New stack |
-| **Migration path** | N/A (baseline) | Export embeddings | Export | Export |
+| Criterion                  | pgvector (Neon)      | Pinecone                | Weaviate           | Chroma                |
+| -------------------------- | -------------------- | ----------------------- | ------------------ | --------------------- |
+| **Operational complexity** | ✅ Low (existing PG) | Medium                  | High               | Medium                |
+| **ACID + metadata joins**  | ✅ Native SQL        | ❌ Separate store       | Partial            | ❌                    |
+| **Workspace isolation**    | ✅ Row-level + RLS   | Namespace per tenant    | Multi-tenancy      | Collection per tenant |
+| **Hybrid search (FTS)**    | ✅ Same DB           | Requires sparse vectors | ✅ Built-in        | Limited               |
+| **Cost at MVP**            | ✅ Included in Neon  | $70+/mo minimum         | Self-host or cloud | Self-host             |
+| **Scale ceiling**          | ~10M vectors         | ✅ Billions             | ✅ Large           | ~1M practical         |
+| **Latency p95**            | 50–200ms             | 20–50ms                 | 30–80ms            | 50–150ms              |
+| **Backup**                 | ✅ Neon PITR         | Managed                 | Varies             | Manual                |
+| **Team familiarity**       | ✅ Prisma + SQL      | New SDK                 | New stack          | New stack             |
+| **Migration path**         | N/A (baseline)       | Export embeddings       | Export             | Export                |
 
 ### 1.2 Decision
 
 **Primary: pgvector on Neon PostgreSQL**
 
 **Justification:**
+
 1. Platform already runs on Neon + Prisma — zero new infrastructure for MVP
 2. Hybrid search (vector + FTS) in single query with transactional consistency
 3. `document_chunks` joins `meetings`, `workspaces` without sync lag
@@ -147,22 +148,22 @@ flowchart TB
 
 ### 3.1 Index Definitions
 
-| Index | Type | Columns | Purpose |
-|-------|------|---------|---------|
-| `idx_chunks_embedding_hnsw` | HNSW | `embedding vector_cosine_ops` | ANN similarity search |
-| `idx_chunks_search_vector` | GIN | `search_vector` | Keyword search |
-| `idx_chunks_workspace` | B-tree | `workspace_id` | Tenant filter |
-| `idx_chunks_meeting` | B-tree | `meeting_id` | Meeting-scoped retrieval |
-| `idx_chunks_source` | B-tree | `source_type, source_id` | Dedup / re-embed |
-| `idx_chunks_workspace_source` | Composite | `workspace_id, source_type` | Filtered ANN |
+| Index                         | Type      | Columns                       | Purpose                  |
+| ----------------------------- | --------- | ----------------------------- | ------------------------ |
+| `idx_chunks_embedding_hnsw`   | HNSW      | `embedding vector_cosine_ops` | ANN similarity search    |
+| `idx_chunks_search_vector`    | GIN       | `search_vector`               | Keyword search           |
+| `idx_chunks_workspace`        | B-tree    | `workspace_id`                | Tenant filter            |
+| `idx_chunks_meeting`          | B-tree    | `meeting_id`                  | Meeting-scoped retrieval |
+| `idx_chunks_source`           | B-tree    | `source_type, source_id`      | Dedup / re-embed         |
+| `idx_chunks_workspace_source` | Composite | `workspace_id, source_type`   | Filtered ANN             |
 
 ### 3.2 HNSW Parameters
 
-| Parameter | MVP Value | Tuned Value |
-|-----------|-----------|-------------|
-| `m` | 16 | 32 at > 1M vectors |
-| `ef_construction` | 64 | 128 at > 1M vectors |
-| `ef_search` | 40 | 100 for higher recall |
+| Parameter         | MVP Value | Tuned Value           |
+| ----------------- | --------- | --------------------- |
+| `m`               | 16        | 32 at > 1M vectors    |
+| `ef_construction` | 64        | 128 at > 1M vectors   |
+| `ef_search`       | 40        | 100 for higher recall |
 
 ---
 
@@ -185,20 +186,20 @@ LIMIT $top_k;
 
 ### 4.2 Distance Metric
 
-| Metric | Operator | Use |
-|--------|----------|-----|
+| Metric            | Operator                | Use                             |
+| ----------------- | ----------------------- | ------------------------------- |
 | Cosine similarity | `<=>` (cosine distance) | Default — normalized embeddings |
-| L2 distance | `<->` | Fallback if not normalized |
-| Inner product | `<#>` | Alternative for specific models |
+| L2 distance       | `<->`                   | Fallback if not normalized      |
+| Inner product     | `<#>`                   | Alternative for specific models |
 
 ### 4.3 Similarity Thresholds
 
-| Use Case | Min Similarity | Top-K |
-|----------|----------------|-------|
-| Chat retrieval | 0.70 | 10 |
-| Semantic search | 0.65 | 20 |
-| Knowledge dedup | 0.92 | 5 |
-| Weekly report | 0.60 | 30 |
+| Use Case        | Min Similarity | Top-K |
+| --------------- | -------------- | ----- |
+| Chat retrieval  | 0.70           | 10    |
+| Semantic search | 0.65           | 20    |
+| Knowledge dedup | 0.92           | 5     |
+| Weekly report   | 0.60           | 30    |
 
 ---
 
@@ -212,14 +213,14 @@ flowchart TB
     PostFilter --> Results[Filtered Results]
 ```
 
-| Filter | Implementation | Performance |
-|--------|----------------|-------------|
-| `workspace_id` | WHERE clause (B-tree) | ✅ Fast |
-| `meeting_id` | WHERE clause (B-tree) | ✅ Fast |
-| `source_type` | WHERE IN | ✅ Fast |
-| `date_range` | JOIN meetings ON date | Medium |
-| `metadata.speaker` | JSONB `@>` | Medium |
-| `metadata.section` | JSONB path | Medium |
+| Filter             | Implementation        | Performance |
+| ------------------ | --------------------- | ----------- |
+| `workspace_id`     | WHERE clause (B-tree) | ✅ Fast     |
+| `meeting_id`       | WHERE clause (B-tree) | ✅ Fast     |
+| `source_type`      | WHERE IN              | ✅ Fast     |
+| `date_range`       | JOIN meetings ON date | Medium      |
+| `metadata.speaker` | JSONB `@>`            | Medium      |
+| `metadata.section` | JSONB path            | Medium      |
 
 **Rule:** Always filter `workspace_id` first — mandatory for security and index efficiency.
 
@@ -234,12 +235,12 @@ flowchart LR
     Embed[Embedding Export] -->|Weekly| S3[S3 — Parquet archive]
 ```
 
-| Strategy | Frequency | RPO | RTO |
-|----------|-----------|-----|-----|
-| Neon PITR | Continuous | < 1 min | < 1 hour |
-| Logical dump | Daily | 24h | 2 hours |
-| Embedding export | Weekly | 7 days | 4 hours (re-import) |
-| Re-embed from source | On demand | N/A | 24h (full workspace) |
+| Strategy             | Frequency  | RPO     | RTO                  |
+| -------------------- | ---------- | ------- | -------------------- |
+| Neon PITR            | Continuous | < 1 min | < 1 hour             |
+| Logical dump         | Daily      | 24h     | 2 hours              |
+| Embedding export     | Weekly     | 7 days  | 4 hours (re-import)  |
+| Re-embed from source | On demand  | N/A     | 24h (full workspace) |
 
 **Disaster recovery:** Re-embed from `meetings.transcript` + `meeting_ai_outputs` if vector data lost.
 
@@ -247,24 +248,24 @@ flowchart LR
 
 ## 7. Performance Optimization
 
-| Optimization | Impact | When |
-|--------------|--------|------|
-| HNSW index | 100x vs sequential scan | Always |
-| Partial index on `embedding IS NOT NULL` | Smaller index | Pending embeds exist |
-| Connection pooling (PgBouncer) | Reduce connection overhead | > 100 concurrent |
-| Read replica for search | Offload ANN from primary | > 50 QPS search |
-| Batch embed (100 chunks) | 50% fewer API calls | Ingestion |
-| `ef_search` tuning | Recall vs latency tradeoff | After 500k vectors |
-| Vacuum + analyze | Index health | Weekly cron |
+| Optimization                             | Impact                     | When                 |
+| ---------------------------------------- | -------------------------- | -------------------- |
+| HNSW index                               | 100x vs sequential scan    | Always               |
+| Partial index on `embedding IS NOT NULL` | Smaller index              | Pending embeds exist |
+| Connection pooling (PgBouncer)           | Reduce connection overhead | > 100 concurrent     |
+| Read replica for search                  | Offload ANN from primary   | > 50 QPS search      |
+| Batch embed (100 chunks)                 | 50% fewer API calls        | Ingestion            |
+| `ef_search` tuning                       | Recall vs latency tradeoff | After 500k vectors   |
+| Vacuum + analyze                         | Index health               | Weekly cron          |
 
 ### Latency Targets
 
-| Operation | p50 | p95 |
-|-----------|-----|-----|
-| ANN query (filtered) | 30ms | 100ms |
-| FTS query | 10ms | 50ms |
-| Hybrid (parallel) | 50ms | 150ms |
-| Embed batch (100) | 500ms | 2s |
+| Operation            | p50   | p95   |
+| -------------------- | ----- | ----- |
+| ANN query (filtered) | 30ms  | 100ms |
+| FTS query            | 10ms  | 50ms  |
+| Hybrid (parallel)    | 50ms  | 150ms |
+| Embed batch (100)    | 500ms | 2s    |
 
 ---
 
@@ -289,25 +290,25 @@ flowchart TB
     Phase1 --> Phase2 --> Phase3
 ```
 
-| Milestone | Vectors | Action |
-|-----------|---------|--------|
-| Launch | 0 | Enable pgvector extension |
-| 100k meetings | ~500k | Monitor p95; tune HNSW |
-| 500k meetings | ~2.5M | Read replica; increase `ef_search` |
-| 2M meetings | ~10M | Evaluate Pinecone migration |
-| Enterprise | 50M+ | Pinecone + dedicated embed fleet |
+| Milestone     | Vectors | Action                             |
+| ------------- | ------- | ---------------------------------- |
+| Launch        | 0       | Enable pgvector extension          |
+| 100k meetings | ~500k   | Monitor p95; tune HNSW             |
+| 500k meetings | ~2.5M   | Read replica; increase `ef_search` |
+| 2M meetings   | ~10M    | Evaluate Pinecone migration        |
+| Enterprise    | 50M+    | Pinecone + dedicated embed fleet   |
 
 ---
 
 ## 9. Update / Reindex / Deletion
 
-| Event | Action |
-|-------|--------|
-| New meeting processed | INSERT chunks + embeddings |
-| Transcript edited | DELETE old chunks → re-chunk → re-embed |
-| Meeting deleted | CASCADE DELETE chunks |
-| Model upgrade | Background re-embed job per workspace |
-| AI output updated | UPSERT summary/decision chunks only |
+| Event                 | Action                                  |
+| --------------------- | --------------------------------------- |
+| New meeting processed | INSERT chunks + embeddings              |
+| Transcript edited     | DELETE old chunks → re-chunk → re-embed |
+| Meeting deleted       | CASCADE DELETE chunks                   |
+| Model upgrade         | Background re-embed job per workspace   |
+| AI output updated     | UPSERT summary/decision chunks only     |
 
 See [embedding-flow.md](./embedding-flow.md) for detailed flows.
 
@@ -315,24 +316,24 @@ See [embedding-flow.md](./embedding-flow.md) for detailed flows.
 
 ## 10. Security
 
-| Control | Implementation |
-|---------|----------------|
-| Tenant isolation | `workspace_id` on every row; enforced in service layer + optional RLS |
-| Row-level security | `CREATE POLICY workspace_isolation ON document_chunks` |
-| No raw vector in API | Return chunk content + metadata only |
-| Encryption at rest | Neon default AES-256 |
-| Access audit | Log all bulk export operations |
+| Control              | Implementation                                                        |
+| -------------------- | --------------------------------------------------------------------- |
+| Tenant isolation     | `workspace_id` on every row; enforced in service layer + optional RLS |
+| Row-level security   | `CREATE POLICY workspace_isolation ON document_chunks`                |
+| No raw vector in API | Return chunk content + metadata only                                  |
+| Encryption at rest   | Neon default AES-256                                                  |
+| Access audit         | Log all bulk export operations                                        |
 
 ---
 
 ## 11. Cost Model
 
-| Component | MVP Cost | At Scale |
-|-----------|----------|----------|
-| Neon storage (5GB vectors) | ~$5/mo included | ~$50/mo at 50GB |
-| Embedding API | ~$0.02/1M tokens | ~$200/mo at 10M chunks |
-| Compute (ANN queries) | Included in Neon | Read replica ~$30/mo |
-| Pinecone (if migrated) | N/A | ~$70–500/mo |
+| Component                  | MVP Cost         | At Scale               |
+| -------------------------- | ---------------- | ---------------------- |
+| Neon storage (5GB vectors) | ~$5/mo included  | ~$50/mo at 50GB        |
+| Embedding API              | ~$0.02/1M tokens | ~$200/mo at 10M chunks |
+| Compute (ANN queries)      | Included in Neon | Read replica ~$30/mo   |
+| Pinecone (if migrated)     | N/A              | ~$70–500/mo            |
 
 **pgvector MVP saves ~$840/year** vs minimum Pinecone tier for early stage.
 
@@ -349,10 +350,10 @@ See [embedding-flow.md](./embedding-flow.md) for detailed flows.
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial vector DB design; pgvector selected |
-| 1.1 | 2026-06-20 | Added `RISK` source type; filter validation; reindex job |
+| Version | Date       | Changes                                                  |
+| ------- | ---------- | -------------------------------------------------------- |
+| 1.0     | 2026-06-18 | Initial vector DB design; pgvector selected              |
+| 1.1     | 2026-06-20 | Added `RISK` source type; filter validation; reindex job |
 
 ---
 

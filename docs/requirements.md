@@ -179,11 +179,9 @@ Post-process: fuzzy-match `suggestedAssignee` to workspace member display names.
 
 ## 6. Architecture References
 
-| Topic         | Document                                                   |
-| ------------- | ---------------------------------------------------------- |
-| System design | [system-architecture.md](./system-architecture.md)         |
-| Security      | [security-architecture.md](./security-architecture.md)     |
-| Database      | [database-architecture.md](./database-architecture.md)     |
-| API review    | [api-architecture-review.md](./api-architecture-review.md) |
-| Scalability   | [scalability-design.md](./scalability-design.md)           |
-| Risks         | [risk-assessment.md](./risk-assessment.md)                 |
+| Topic         | Document                                               |
+| ------------- | ------------------------------------------------------ |
+| System design | [system-architecture.md](./system-architecture.md)     |
+| Security      | [security-architecture.md](./security-architecture.md) |
+| Database      | [database-architecture.md](./database-architecture.md) |
+| API           | [api-design.md](./api-design.md)                       |

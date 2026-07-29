@@ -111,12 +111,12 @@ flowchart LR
     Store --> Vector
 ```
 
-| Parameter | Value |
-|-----------|-------|
-| Model | `text-embedding-3-small` |
-| Dimensions | 1536 |
-| Cache TTL | 1 hour |
-| Cache key | `rag:emb:{sha256(normalized_query)}` |
+| Parameter  | Value                                |
+| ---------- | ------------------------------------ |
+| Model      | `text-embedding-3-small`             |
+| Dimensions | 1536                                 |
+| Cache TTL  | 1 hour                               |
+| Cache key  | `rag:emb:{sha256(normalized_query)}` |
 
 ---
 
@@ -134,11 +134,11 @@ ORDER BY embedding <=> $1::vector
 LIMIT 50;
 ```
 
-| Parameter | Default | Chat | Search |
-|-----------|---------|------|--------|
-| Top-K (ANN) | 50 | 50 | 20 |
-| Min similarity | 0.65 | 0.70 | 0.65 |
-| `ef_search` | 40 | 40 | 40 |
+| Parameter      | Default | Chat | Search |
+| -------------- | ------- | ---- | ------ |
+| Top-K (ANN)    | 50      | 50   | 20     |
+| Min similarity | 0.65    | 0.70 | 0.65   |
+| `ef_search`    | 40      | 40   | 40     |
 
 ---
 
@@ -162,11 +162,11 @@ For each document d:
   rrf_score(d) = Σ 1/(60 + rank_in_list_i(d))
 ```
 
-| List | Weight |
-|------|--------|
-| Vector ANN | 1.0 |
-| FTS | 1.0 |
-| Future: BM25 sparse | 0.5 |
+| List                | Weight |
+| ------------------- | ------ |
+| Vector ANN          | 1.0    |
+| FTS                 | 1.0    |
+| Future: BM25 sparse | 0.5    |
 
 ---
 
@@ -182,13 +182,13 @@ flowchart LR
     Speaker --> Final[Filtered Chunks]
 ```
 
-| Filter | Required | Applied At |
-|--------|----------|------------|
-| `workspace_id` | ✅ Always | SQL WHERE |
-| `meeting_id` | Meeting chat only | SQL WHERE |
-| `source_type` | Optional | SQL WHERE |
-| `date_range` | Weekly report | JOIN meetings |
-| `speaker` | Optional | JSONB filter |
+| Filter         | Required          | Applied At    |
+| -------------- | ----------------- | ------------- |
+| `workspace_id` | ✅ Always         | SQL WHERE     |
+| `meeting_id`   | Meeting chat only | SQL WHERE     |
+| `source_type`  | Optional          | SQL WHERE     |
+| `date_range`   | Weekly report     | JOIN meetings |
+| `speaker`      | Optional          | JSONB filter  |
 
 ---
 
@@ -205,10 +205,10 @@ sequenceDiagram
     Ret->>CB: buildContext(top10)
 ```
 
-| Phase | Re-ranker | Latency Added |
-|-------|-----------|---------------|
-| MVP | None (RRF only) | 0ms |
-| v2 | Cohere Rerank v3 | +100–300ms |
+| Phase | Re-ranker        | Latency Added |
+| ----- | ---------------- | ------------- |
+| MVP   | None (RRF only)  | 0ms           |
+| v2    | Cohere Rerank v3 | +100–300ms    |
 
 ---
 
@@ -227,6 +227,7 @@ flowchart TB
 ```
 
 **Token budget allocation:**
+
 - Retrieved context: 24,000 tokens max
 - Reserve per chunk header: 50 tokens
 - Minimum chunks included: 1 (if any pass threshold)
@@ -270,11 +271,11 @@ flowchart TB
     I1 & I2 & I3 --> E2
 ```
 
-| Cache Layer | Hit Rate Target | Savings |
-|-------------|-----------------|---------|
-| Query embedding | 30% | Embedding API cost |
-| Retrieval results | 20% | DB query load |
-| Combined | — | ~25% latency reduction on repeats |
+| Cache Layer       | Hit Rate Target | Savings                           |
+| ----------------- | --------------- | --------------------------------- |
+| Query embedding   | 30%             | Embedding API cost                |
+| Retrieval results | 20%             | DB query load                     |
+| Combined          | —               | ~25% latency reduction on repeats |
 
 ---
 
@@ -296,25 +297,25 @@ stateDiagram-v2
     NoContextResponse --> [*]
 ```
 
-| Failure | Fallback | User Impact |
-|---------|----------|-------------|
-| pgvector extension error | FTS-only | Reduced semantic quality |
-| Embedding API down | FTS-only | Keyword matching only |
-| Zero results | Skip LLM; canned response | "Not found" message |
-| LLM down | Return raw search results | Search-only mode |
+| Failure                  | Fallback                  | User Impact              |
+| ------------------------ | ------------------------- | ------------------------ |
+| pgvector extension error | FTS-only                  | Reduced semantic quality |
+| Embedding API down       | FTS-only                  | Keyword matching only    |
+| Zero results             | Skip LLM; canned response | "Not found" message      |
+| LLM down                 | Return raw search results | Search-only mode         |
 
 ---
 
 ## 12. Error Handling
 
-| Stage | Error | Handling |
-|-------|-------|----------|
-| Embed query | 429/5xx | Retry 3x; FTS fallback |
-| ANN search | Timeout | Retry once; reduce ef_search |
-| FTS search | Error | Vector-only results |
-| Re-ranker | Error | Skip; use RRF order |
-| Context build | Zero chunks | Return "not found" |
-| LLM | Error | SSE error event; partial save |
+| Stage         | Error       | Handling                      |
+| ------------- | ----------- | ----------------------------- |
+| Embed query   | 429/5xx     | Retry 3x; FTS fallback        |
+| ANN search    | Timeout     | Retry once; reduce ef_search  |
+| FTS search    | Error       | Vector-only results           |
+| Re-ranker     | Error       | Skip; use RRF order           |
+| Context build | Zero chunks | Return "not found"            |
+| LLM           | Error       | SSE error event; partial save |
 
 All errors logged with `correlationId`, `workspaceId`, `queryHash` (not raw query in prod logs).
 
@@ -322,15 +323,15 @@ All errors logged with `correlationId`, `workspaceId`, `queryHash` (not raw quer
 
 ## 13. Performance Targets
 
-| Stage | p50 | p95 |
-|-------|-----|-----|
-| Query embed (uncached) | 100ms | 300ms |
-| ANN search | 30ms | 100ms |
-| FTS search | 10ms | 50ms |
-| RRF + filter | 5ms | 20ms |
-| Re-rank (v2) | 150ms | 400ms |
-| Context build | 5ms | 15ms |
-| **Total retrieval** | **150ms** | **500ms** |
+| Stage                  | p50       | p95       |
+| ---------------------- | --------- | --------- |
+| Query embed (uncached) | 100ms     | 300ms     |
+| ANN search             | 30ms      | 100ms     |
+| FTS search             | 10ms      | 50ms      |
+| RRF + filter           | 5ms       | 20ms      |
+| Re-rank (v2)           | 150ms     | 400ms     |
+| Context build          | 5ms       | 15ms      |
+| **Total retrieval**    | **150ms** | **500ms** |
 
 ---
 
@@ -346,7 +347,6 @@ All errors logged with `correlationId`, `workspaceId`, `queryHash` (not raw quer
 
 ## Related Documents
 
-- [query-flow.md](./query-flow.md)
 - [rag-architecture.md](./rag-architecture.md)
 - [vector-db-design.md](./vector-db-design.md)
 - [agent-architecture.md](./agent-architecture.md)
@@ -355,6 +355,6 @@ All errors logged with `correlationId`, `workspaceId`, `queryHash` (not raw quer
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial retrieval flow |
+| Version | Date       | Changes                |
+| ------- | ---------- | ---------------------- |
+| 1.0     | 2026-06-18 | Initial retrieval flow |

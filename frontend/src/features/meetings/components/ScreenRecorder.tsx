@@ -38,6 +38,25 @@ function formatDuration(seconds: number): string {
   return `${m}:${s}`;
 }
 
+/**
+ * Mix tab/system audio with microphone into one MediaStreamTrack.
+ * Meet tab audio usually excludes the local speaker; mic fills that gap.
+ */
+function mixAudioTracks(
+  audioTracks: MediaStreamTrack[],
+  audioContext: AudioContext,
+): MediaStreamTrack | null {
+  if (audioTracks.length === 0) return null;
+
+  const destination = audioContext.createMediaStreamDestination();
+  for (const track of audioTracks) {
+    const source = audioContext.createMediaStreamSource(new MediaStream([track]));
+    source.connect(destination);
+  }
+
+  return destination.stream.getAudioTracks()[0] ?? null;
+}
+
 export function ScreenRecorder({
   workspaceId,
   meetingId,
@@ -53,15 +72,28 @@ export function ScreenRecorder({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+  /** Stream passed to MediaRecorder (video + mixed audio). */
+  const recordStreamRef = useRef<MediaStream | null>(null);
+  const displayStreamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<number | null>(null);
   const startedAtRef = useRef<number>(0);
 
   const busy = meetingStatus === 'TRANSCRIBING' || meetingStatus === 'PROCESSING';
 
   const cleanupStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    mediaRecorderRef.current = null;
+    recordStreamRef.current?.getTracks().forEach((t) => t.stop());
+    recordStreamRef.current = null;
+    displayStreamRef.current?.getTracks().forEach((t) => t.stop());
+    displayStreamRef.current = null;
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => undefined);
+      audioContextRef.current = null;
+    }
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
@@ -98,11 +130,60 @@ export function ScreenRecorder({
         video: { displaySurface: 'browser' } as MediaTrackConstraints,
         audio: true,
       });
+      displayStreamRef.current = displayStream;
 
-      streamRef.current = displayStream;
+      let micStream: MediaStream | null = null;
+      let micDenied = false;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+        micStreamRef.current = micStream;
+      } catch {
+        micDenied = true;
+        micStream = null;
+      }
+
+      const tabAudioTracks = displayStream.getAudioTracks();
+      const micAudioTracks = micStream?.getAudioTracks() ?? [];
+      const audioSources = [...tabAudioTracks, ...micAudioTracks];
+
+      let mixedAudioTrack: MediaStreamTrack | null = null;
+      if (audioSources.length > 0) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          const audioContext = new AudioCtx();
+          audioContextRef.current = audioContext;
+          if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+          }
+          mixedAudioTrack = mixAudioTracks(audioSources, audioContext);
+        }
+      }
+
+      const videoTracks = displayStream.getVideoTracks();
+      const recordTracks: MediaStreamTrack[] = [...videoTracks];
+      if (mixedAudioTrack) {
+        recordTracks.push(mixedAudioTrack);
+      } else if (tabAudioTracks[0]) {
+        recordTracks.push(tabAudioTracks[0]);
+      } else if (micAudioTracks[0]) {
+        recordTracks.push(micAudioTracks[0]);
+      }
+
+      const recordStream = new MediaStream(recordTracks);
+      recordStreamRef.current = recordStream;
+
       chunksRef.current = [];
       const mimeType = pickMimeType();
-      const recorder = new MediaRecorder(displayStream, { mimeType });
+      const recorder = new MediaRecorder(recordStream, { mimeType });
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
@@ -124,7 +205,7 @@ export function ScreenRecorder({
         void reportEvent('stopped');
       };
 
-      displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
+      videoTracks[0]?.addEventListener('ended', () => {
         if (mediaRecorderRef.current?.state === 'recording') {
           mediaRecorderRef.current.stop();
         }
@@ -139,11 +220,21 @@ export function ScreenRecorder({
       }, 500);
       void reportEvent('started');
 
-      const hasAudio = displayStream.getAudioTracks().length > 0;
-      if (!hasAudio) {
-        setError(
+      const warnings: string[] = [];
+      if (tabAudioTracks.length === 0) {
+        warnings.push(
           'No tab audio captured. When sharing, select the Google Meet tab and enable “Share tab audio”.',
         );
+      }
+      if (micDenied) {
+        warnings.push(
+          'Microphone permission denied — your voice will not be included. Allow the mic and start again, or use headphones and retry.',
+        );
+      } else if (micAudioTracks.length === 0 && tabAudioTracks.length > 0) {
+        warnings.push('Microphone was not added. Your voice may be missing from the recording.');
+      }
+      if (warnings.length > 0) {
+        setError(warnings.join(' '));
       }
     } catch (err) {
       const name = err instanceof DOMException ? err.name : '';
@@ -225,8 +316,10 @@ export function ScreenRecorder({
       <div>
         <h4 className="text-sm font-medium">Record meeting screen/tab</h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Select the Google Meet tab and enable sharing tab audio. Upload stores the file only — use
-          Translate &amp; Transcribe in Upload recording to process.
+          Select the Google Meet tab and enable <strong>Share tab audio</strong> (other people).
+          Allow the <strong>microphone</strong> when prompted (your voice). Prefer headphones to
+          reduce echo. Upload stores the file only — use Translate &amp; Transcribe in Upload
+          recording to process.
         </p>
       </div>
 
