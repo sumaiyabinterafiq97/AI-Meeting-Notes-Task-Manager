@@ -2,7 +2,7 @@
 
 **Product:** MeetingMind AI  
 **Version:** 1.3  
-**Original target:** Week 16–18 · **Current product:** v0.7.2 (2026-07)
+**Original target:** Week 16–18 · **Current product:** v0.7.3 (2026-07)
 
 > **Status model:** `DRAFT | TRANSCRIBING | PROCESSING | READY | FAILED`.  
 > Recording upload alone stays `DRAFT`. **Translate & Transcribe** starts Whisper → AI. Paste transcript still goes `DRAFT → PROCESSING`. Concurrent busy jobs return 409.

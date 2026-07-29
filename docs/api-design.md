@@ -1,7 +1,7 @@
 # API Design
 
 **Product:** MeetingMind AI  
-**Version:** 0.7.2  
+**Version:** 0.7.3  
 **Base URL (local):** `http://localhost:3001/api/v1`  
 **Synced:** 2026-07-29 to Express routes under `backend/src/`
 

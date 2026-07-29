@@ -2,7 +2,7 @@
 
 **Product:** MeetingMind AI  
 **Version:** 1.2  
-**Status:** Approved for Implementation · **Current UX:** Meetings + Settings (v0.7.2)
+**Status:** Approved for Implementation · **Current UX:** Meetings + Settings (v0.7.3)
 
 > **Note:** Functional and non-functional requirements have been split into dedicated documents for maintainability. See [functional-requirements.md](./functional-requirements.md) and [non-functional-requirements.md](./non-functional-requirements.md).
 

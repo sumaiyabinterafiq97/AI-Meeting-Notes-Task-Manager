@@ -1,7 +1,7 @@
-# Feature Inventory — MeetingMind AI v0.7.2
+# Feature Inventory — MeetingMind AI v0.7.3
 
 **Product:** MeetingMind AI  
-**Version:** v0.7.2  
+**Version:** v0.7.3  
 **Audit date:** 2026-07-29  
 **Source of truth:** Implementation (codebase), not prior product docs
 

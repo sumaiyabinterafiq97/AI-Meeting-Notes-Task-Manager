@@ -8,7 +8,7 @@ LLM-powered meeting intelligence: capture meetings, produce an **English transcr
 
 Primary navigation: **Meetings** + **Settings**. Tasks, dashboard, insights, reports, knowledge, workspace chat, and search remain as **backend APIs** with frontend routes that soft-redirect to Meetings.
 
-**Version:** v0.7.2 · **License:** Private
+**Version:** v0.7.3 · **License:** Private
 
 ---
 

@@ -1,4 +1,4 @@
-# Documentation Audit — MeetingMind AI v0.7.2
+# Documentation Audit — MeetingMind AI v0.7.3
 
 **Audit date:** 2026-07-29  
 **Source of truth:** Implementation  

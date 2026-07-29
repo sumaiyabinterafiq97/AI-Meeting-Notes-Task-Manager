@@ -2,7 +2,7 @@
 
 Use this flow for LinkedIn Featured images, demo GIFs, and resume portfolio.
 
-**Current product UI (v0.7.2):** Meetings + Settings. Meeting detail tabs: **Record & upload · Transcript · Chat · Details**. Soft-hidden routes (Dashboard, Tasks, Insights, Search, Workspace chat, Reports, Knowledge) **redirect to Meetings** — do not plan screenshots of those pages unless you temporarily restore routes.
+**Current product UI (v0.7.3):** Meetings + Settings. Meeting detail tabs: **Record & upload · Transcript · Chat · Details**. Soft-hidden routes (Dashboard, Tasks, Insights, Search, Workspace chat, Reports, Knowledge) **redirect to Meetings** — do not plan screenshots of those pages unless you temporarily restore routes.
 
 ## Prerequisites
 

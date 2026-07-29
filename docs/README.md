@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Product:** MeetingMind AI v0.7.2  
+**Product:** MeetingMind AI v0.7.3  
 **Current capture flow:** Upload/record → **Translate & Transcribe** → English transcript → meeting chat  
 **Primary nav:** Meetings + Settings (other surfaces soft-hidden)
 
