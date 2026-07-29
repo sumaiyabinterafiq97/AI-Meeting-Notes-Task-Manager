@@ -4,7 +4,7 @@ React SPA for MeetingMind AI — Google Meet meetings, screen recording, transcr
 
 ## MeetingMind AI (current product loop)
 
-**Primary journey:** sign in → workspace → create meeting (Calendar + Meet) → join Meet → record/upload → **Translate & Transcribe** → English transcript → meeting chat / insights.
+**Primary journey:** sign in → workspace → create meeting (Calendar + Meet) → join Meet → record/upload → **Translate & Transcribe** → English transcript → meeting chat.
 
 ### Active workspace routes
 
