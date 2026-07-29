@@ -1,8 +1,9 @@
 # Vector Database Design — MeetingMind AI
 
 **Product:** MeetingMind AI  
-**Version:** 1.0  
-**Status:** Architecture — Documentation Only  
+**Version:** 1.1  
+**Synced:** 2026-07-29  
+**Status:** Design — **current implementation uses Docker `pgvector/pgvector:pg16`** (local Compose). Managed Neon/Pinecone comparisons below are options, not the current default host.  
 **Requirements:** [rag-requirements.md](./rag-requirements.md)
 
 ---
@@ -26,7 +27,7 @@
 
 ### 1.2 Decision
 
-**Primary: pgvector on Neon PostgreSQL**
+**Primary (current): pgvector on PostgreSQL 16** via Docker Compose image `pgvector/pgvector:pg16`. Managed Neon remains a valid production option.
 
 **Justification:**
 
@@ -41,7 +42,7 @@
 ```mermaid
 flowchart LR
     subgraph MVP["MVP — pgvector"]
-        App[MeetingMind AI] --> Neon[(Neon PostgreSQL + pgvector)]
+        App[MeetingMind AI] --> PG[(PostgreSQL + pgvector — Docker or managed)]
     end
 
     subgraph Scale["Scale — Hybrid"]

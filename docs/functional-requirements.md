@@ -1,9 +1,11 @@
 # Functional Requirements
 
 **Product:** MeetingMind AI  
-**Version:** 1.2  
-**Status:** Living — updated for capture + Translate & Transcribe (2026-07)  
-**Related:** [non-functional-requirements.md](./non-functional-requirements.md) · [user-stories.md](./user-stories.md) · [transcription-flow.md](./transcription-flow.md)
+**Version:** 1.3  
+**Status:** Living — synced to implementation UX (2026-07-29)  
+**Related:** [non-functional-requirements.md](./non-functional-requirements.md) · [user-stories.md](./user-stories.md) · [transcription-flow.md](./transcription-flow.md) · [feature-inventory.md](./feature-inventory.md)
+
+> **Current UX:** Primary nav is **Meetings + Settings**. Capture → Translate & Transcribe → transcript → meeting chat is the shipped loop. Requirements for Tasks, Dashboard, Search, Insights, Reports, Knowledge, and Workspace chat describe **backend capabilities that still exist**; their UIs are **soft-hidden** (`RedirectToMeetings`) unless noted otherwise.
 
 ---
 

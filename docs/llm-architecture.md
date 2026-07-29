@@ -1,10 +1,12 @@
 # LLM Architecture — MeetingMind AI
 
 **Product:** MeetingMind AI  
-**Version:** 1.0  
-**Status:** Architecture — Documentation Only  
-**Baseline:** v0.3.0 OpenAI direct integration → LLM Service Layer  
+**Version:** 1.1  
+**Status:** Architecture — synced to `backend/src/modules/llm` (2026-07-29)  
+**Baseline:** Multi-provider LLM service + optional LangGraph agents  
 **Requirements:** [llm-requirements.md](./llm-requirements.md)
+
+> **Hosts:** Diagrams may mention Redis/Postgres generically. Current local stack is Docker Compose (`postgres`, `redis`), not necessarily Neon/Upstash/Vercel.
 
 ---
 
@@ -12,7 +14,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph Frontend["Frontend — React / Vercel"]
+    subgraph Frontend["Frontend — React SPA"]
         UI[MeetingMind UI]
         ChatUI[Chat SSE Client]
         RQ[React Query]
@@ -63,15 +65,15 @@ flowchart TB
 
 ### Layer Responsibilities
 
-| Layer | Responsibility |
-|-------|----------------|
-| **Frontend** | User interaction; SSE consumer for chat; no direct LLM access |
-| **API Controllers** | Auth, validation, enqueue jobs, stream proxy |
-| **Domain Services** | Business rules; never call providers directly |
-| **LLM Service Layer** | Provider routing, retries, caching, token accounting |
-| **Prompt Registry** | Versioned templates; variable interpolation |
-| **Workers** | Long-running LLM workflows off request path |
-| **Providers** | External model APIs |
+| Layer                 | Responsibility                                                |
+| --------------------- | ------------------------------------------------------------- |
+| **Frontend**          | User interaction; SSE consumer for chat; no direct LLM access |
+| **API Controllers**   | Auth, validation, enqueue jobs, stream proxy                  |
+| **Domain Services**   | Business rules; never call providers directly                 |
+| **LLM Service Layer** | Provider routing, retries, caching, token accounting          |
+| **Prompt Registry**   | Versioned templates; variable interpolation                   |
+| **Workers**           | Long-running LLM workflows off request path                   |
+| **Providers**         | External model APIs                                           |
 
 ---
 
@@ -122,15 +124,16 @@ LLMProvider
 
 ### 2.3 Provider Registry
 
-| Provider ID | Adapter | Capabilities |
-|-------------|---------|--------------|
-| `openai` | OpenAIAdapter | complete, stream, embed, json_schema |
-| `anthropic` | ClaudeAdapter | complete, stream |
-| `google` | GeminiAdapter | complete, stream, embed |
-| `local` | OpenAICompatAdapter | complete (OpenAI-compatible endpoint) |
-| `mock` | MockAdapter | complete, embed (deterministic fixtures) |
+| Provider ID | Adapter             | Capabilities                             |
+| ----------- | ------------------- | ---------------------------------------- |
+| `openai`    | OpenAIAdapter       | complete, stream, embed, json_schema     |
+| `anthropic` | ClaudeAdapter       | complete, stream                         |
+| `google`    | GeminiAdapter       | complete, stream, embed                  |
+| `local`     | OpenAICompatAdapter | complete (OpenAI-compatible endpoint)    |
+| `mock`      | MockAdapter         | complete, embed (deterministic fixtures) |
 
 **Selection logic:**
+
 1. Read `workflow` + `workspace.llm_config` override
 2. Resolve primary provider + model
 3. On failure → fallback chain from `LLM_FALLBACK_CHAIN`
@@ -153,7 +156,7 @@ flowchart LR
 
 ```yaml
 id: summarizer
-version: "2.1.0"
+version: '2.1.0'
 workflow: process-meeting
 model_hint: gpt-4o
 system: |
@@ -196,12 +199,12 @@ sequenceDiagram
     end
 ```
 
-| Workflow | Schema | Storage |
-|----------|--------|---------|
-| process-meeting | `MeetingExtractionSchema` | `meeting_ai_outputs` |
-| weekly-report | `WeeklyReportSchema` | `workspace_reports` |
-| knowledge-extract | `KnowledgeEntitySchema` | `knowledge_entries` |
-| chat | free text + `CitationSchema[]` | `chat_messages` |
+| Workflow          | Schema                         | Storage              |
+| ----------------- | ------------------------------ | -------------------- |
+| process-meeting   | `MeetingExtractionSchema`      | `meeting_ai_outputs` |
+| weekly-report     | `WeeklyReportSchema`           | `workspace_reports`  |
+| knowledge-extract | `KnowledgeEntitySchema`        | `knowledge_entries`  |
+| chat              | free text + `CitationSchema[]` | `chat_messages`      |
 
 **Backward compatibility:** Multi-agent merge produces identical `meeting_ai_outputs` shape as v0.3.0.
 
@@ -231,12 +234,12 @@ sequenceDiagram
     API->>API: persist message
 ```
 
-| Event | Payload |
-|-------|---------|
-| `token` | `{ content: "..." }` |
+| Event      | Payload                         |
+| ---------- | ------------------------------- |
+| `token`    | `{ content: "..." }`            |
 | `citation` | `{ index, meetingId, excerpt }` |
-| `done` | `{ messageId, tokenUsage }` |
-| `error` | `{ code, message }` |
+| `done`     | `{ messageId, tokenUsage }`     |
+| `error`    | `{ code, message }`             |
 
 **Client disconnect:** AbortController cancels provider stream within 5s.
 
@@ -257,23 +260,23 @@ stateDiagram-v2
     Degraded --> [*]: queue retry / user error
 ```
 
-| Failure | Action |
-|---------|--------|
-| 429 Rate limit | Backoff 2s/4s/8s; same provider |
-| 5xx Server error | Retry 2x; then fallback provider |
-| Timeout (>120s) | Fail job; user retry |
-| Invalid JSON | Repair prompt once |
-| All providers down | `FAILED` status; alert ops |
+| Failure            | Action                           |
+| ------------------ | -------------------------------- |
+| 429 Rate limit     | Backoff 2s/4s/8s; same provider  |
+| 5xx Server error   | Retry 2x; then fallback provider |
+| Timeout (>120s)    | Fail job; user retry             |
+| Invalid JSON       | Repair prompt once               |
+| All providers down | `FAILED` status; alert ops       |
 
 ---
 
 ## 7. Caching
 
-| Cache Layer | Key | TTL | Scope |
-|-------------|-----|-----|-------|
-| LLM completion | `llm:cmp:{hash(prompt+model+schema)}` | 24h | Per workspace |
-| Embedding | `llm:emb:{hash(text)}` | 7d | Global |
-| Prompt render | `llm:prm:{templateVersion}:{hash(vars)}` | 1h | Per workspace |
+| Cache Layer    | Key                                      | TTL | Scope         |
+| -------------- | ---------------------------------------- | --- | ------------- |
+| LLM completion | `llm:cmp:{hash(prompt+model+schema)}`    | 24h | Per workspace |
+| Embedding      | `llm:emb:{hash(text)}`                   | 7d  | Global        |
+| Prompt render  | `llm:prm:{templateVersion}:{hash(vars)}` | 1h  | Per workspace |
 
 ```mermaid
 flowchart LR
@@ -302,25 +305,25 @@ flowchart TB
     Log --> Aggregate[Aggregate llm_usage_daily]
 ```
 
-| Control | Value |
-|---------|-------|
-| Max extraction input | 120k tokens |
-| Max chat context | 32k tokens |
-| Max completion | 4,096 tokens |
-| Workspace daily budget | 500k tokens (configurable) |
-| Platform alert threshold | 80% of monthly budget |
+| Control                  | Value                      |
+| ------------------------ | -------------------------- |
+| Max extraction input     | 120k tokens                |
+| Max chat context         | 32k tokens                 |
+| Max completion           | 4,096 tokens               |
+| Workspace daily budget   | 500k tokens (configurable) |
+| Platform alert threshold | 80% of monthly budget      |
 
 ---
 
 ## 9. Error Handling
 
-| Error Class | HTTP/Job Status | User Message |
-|-------------|-----------------|--------------|
-| `ProviderUnavailable` | 503 / FAILED | "AI temporarily unavailable" |
-| `TokenBudgetExceeded` | 429 | "Workspace AI limit reached" |
-| `ValidationError` | 500 / FAILED | "Processing failed — retry" |
-| `TimeoutError` | 504 / FAILED | "Processing timed out" |
-| `RateLimited` | 429 | "Too many requests" |
+| Error Class           | HTTP/Job Status | User Message                 |
+| --------------------- | --------------- | ---------------------------- |
+| `ProviderUnavailable` | 503 / FAILED    | "AI temporarily unavailable" |
+| `TokenBudgetExceeded` | 429             | "Workspace AI limit reached" |
+| `ValidationError`     | 500 / FAILED    | "Processing failed — retry"  |
+| `TimeoutError`        | 504 / FAILED    | "Processing timed out"       |
+| `RateLimited`         | 429             | "Too many requests"          |
 
 All errors: log `requestId`, `provider`, `model`, `workflow`; never expose provider internals.
 
@@ -328,14 +331,14 @@ All errors: log `requestId`, `provider`, `model`, `workflow`; never expose provi
 
 ## 10. Cost Optimization
 
-| Strategy | Savings | Implementation |
-|----------|---------|----------------|
-| Model routing | 40–60% on chat | `gpt-4o-mini` for chat; `gpt-4o` for extraction |
-| Response caching | 10–30% on reprocess | Redis hash cache |
-| Embedding batching | 50% API calls | Batch 100 chunks |
-| Prompt compression | 10–20% tokens | Strip VTT timestamps; member names only |
-| Chunk-only RAG in chat | 70% vs full transcript | Retrieval vs dump |
-| Mock in CI | 100% dev cost | `AI_USE_MOCK=true` |
+| Strategy               | Savings                | Implementation                                  |
+| ---------------------- | ---------------------- | ----------------------------------------------- |
+| Model routing          | 40–60% on chat         | `gpt-4o-mini` for chat; `gpt-4o` for extraction |
+| Response caching       | 10–30% on reprocess    | Redis hash cache                                |
+| Embedding batching     | 50% API calls          | Batch 100 chunks                                |
+| Prompt compression     | 10–20% tokens          | Strip VTT timestamps; member names only         |
+| Chunk-only RAG in chat | 70% vs full transcript | Retrieval vs dump                               |
+| Mock in CI             | 100% dev cost          | `AI_USE_MOCK=true`                              |
 
 **Cost estimation:** `estimated_cost_usd = (prompt_tokens × input_rate) + (completion_tokens × output_rate)` per model price table in config.
 
@@ -343,12 +346,12 @@ All errors: log `requestId`, `provider`, `model`, `workflow`; never expose provi
 
 ## 11. Rate Limiting
 
-| Layer | Limit | Scope |
-|-------|-------|-------|
-| HTTP | 30 chat msg/min | Per user |
-| LLM Service | 20 AI triggers/hour | Per workspace |
-| Provider | Respect 429 + backoff | Per API key |
-| Token budget | Daily workspace cap | Per workspace |
+| Layer        | Limit                 | Scope         |
+| ------------ | --------------------- | ------------- |
+| HTTP         | 30 chat msg/min       | Per user      |
+| LLM Service  | 20 AI triggers/hour   | Per workspace |
+| Provider     | Respect 429 + backoff | Per API key   |
+| Token budget | Daily workspace cap   | Per workspace |
 
 Rate limiter: Redis sliding window; returns `Retry-After` header.
 
@@ -381,6 +384,7 @@ flowchart LR
 ```
 
 **Migration path:**
+
 1. Wrap existing `openai.ts` → `OpenAIAdapter` implementing `LLMProvider`
 2. Route `process-meeting` through `LLMService.complete()`
 3. Add observability without changing output schema
@@ -390,16 +394,16 @@ flowchart LR
 
 ## 13. Future Extensibility
 
-| Extension | Mechanism |
-|-----------|-----------|
-| New provider | Implement `LLMProvider`; register in registry |
-| New model | Config entry; no code change |
-| Fine-tuned models | `model` override per workspace |
-| BYOK | Workspace-specific API key in `llm_config` |
-| Multimodal | Extend `CompletionRequest` with `attachments[]` |
-| Function calling | `tools[]` in request; agent tool-use loop |
-| LangGraph | Agents as graph nodes; LLM Service as tool |
-| Eval pipeline | Hook post-complete for golden set comparison |
+| Extension         | Mechanism                                       |
+| ----------------- | ----------------------------------------------- |
+| New provider      | Implement `LLMProvider`; register in registry   |
+| New model         | Config entry; no code change                    |
+| Fine-tuned models | `model` override per workspace                  |
+| BYOK              | Workspace-specific API key in `llm_config`      |
+| Multimodal        | Extend `CompletionRequest` with `attachments[]` |
+| Function calling  | `tools[]` in request; agent tool-use loop       |
+| LangGraph         | Agents as graph nodes; LLM Service as tool      |
+| Eval pipeline     | Hook post-complete for golden set comparison    |
 
 ---
 
@@ -416,13 +420,13 @@ flowchart LR
 
 ## 15. Deployment Topology
 
-| Component | Platform | Scaling |
-|-----------|----------|---------|
-| API + LLM Service | Railway | Horizontal |
-| Workers | Railway (separate process) | Horizontal |
-| Redis cache | Upstash | Serverless |
-| llm_invocations | Neon PostgreSQL | Vertical |
-| Providers | External SaaS | N/A |
+| Component         | Platform                                     | Scaling        |
+| ----------------- | -------------------------------------------- | -------------- |
+| API + LLM Service | Railway                                      | Horizontal     |
+| Workers           | Railway (separate process)                   | Horizontal     |
+| Redis cache       | Redis 7 (Compose) / optional Upstash in prod | Cache / queues |
+| llm_invocations   | PostgreSQL (local pgvector image or managed) | Vertical       |
+| Providers         | External SaaS                                | N/A            |
 
 ---
 
@@ -437,6 +441,6 @@ flowchart LR
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial LLM architecture |
+| Version | Date       | Changes                  |
+| ------- | ---------- | ------------------------ |
+| 1.0     | 2026-06-18 | Initial LLM architecture |

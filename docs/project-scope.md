@@ -1,44 +1,51 @@
 # Project Scope
 
 **Product:** MeetingMind AI  
-**Version:** 1.2  
-**Last Updated:** 2026-07-21
+**Version:** 1.3  
+**Last Updated:** 2026-07-29
 
 ---
 
 ## 1. Project Summary
 
-MeetingMind AI is a B2B SaaS application that helps teams capture meetings (paste transcript **or** record/upload audio/video → **Translate & Transcribe**), produce AI-generated summaries, decisions, action items, and risks, and track follow-up work in workspace-scoped multi-tenant environments.
+MeetingMind AI is a B2B SaaS application that helps teams **capture meetings**, run **Translate & Transcribe** to an English transcript, and use **meeting-scoped chat** — all inside workspace-scoped multi-tenant environments. Primary UI: **Meetings** + **Settings**. Structured AI outputs (summary, decisions, risks, action items) and task APIs still run server-side; task/dashboard/search UIs are soft-hidden.
 
 ---
 
 ## 2. In Scope
 
-### Product Features
+### Product Features (primary UX)
 
-| Area             | Scope                                                                         |
-| ---------------- | ----------------------------------------------------------------------------- |
-| Authentication   | Email/password, Google Sign-In, JWT, refresh tokens, password reset           |
-| Workspaces       | Multi-tenant workspaces with Owner/Member roles, invitations                  |
-| Meetings         | CRUD, paste/text transcript, **recording upload**, screen recorder, history   |
-| Capture pipeline | Upload stores only; user **Translate & Transcribe** → English transcript → AI |
-| AI Processing    | Summary, decisions, risks, action items (mock or live LLM)                    |
-| Tasks            | Kanban, assignment, status, comments, meeting linkage                         |
-| Calendar / Meet  | Google Calendar sync, create event with Meet link, start reminders            |
-| Chat / RAG       | Meeting-scoped chat with citations (product surfaces may vary by nav)         |
-| Notifications    | In-app (assignments, mentions, meeting starting soon)                         |
-| Search           | Keyword + semantic/hybrid (when enabled)                                      |
+| Area             | Scope                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Authentication   | Email/password, Google Sign-In, JWT, refresh tokens, password reset                               |
+| Workspaces       | Multi-tenant workspaces with Owner/Member roles, invitations                                      |
+| Meetings         | CRUD, paste/text transcript, recording upload, screen recorder (mic + tab mix), transcript        |
+| Capture pipeline | Upload stores only; user **Translate & Transcribe** → **Bengali/mixed → English** transcript → AI |
+| Calendar / Meet  | Google Calendar sync, create event with Meet link, start reminders (Settings)                     |
+| Meeting chat     | Meeting-scoped RAG chat with citations / corpus fallback                                          |
+| Settings         | Workspace + Connect Google Calendar/Meet                                                          |
+
+### Backend / soft-hidden (APIs kept; not primary nav)
+
+| Area          | Scope                                                       |
+| ------------- | ----------------------------------------------------------- |
+| AI Processing | Summary, decisions, risks, action items (mock or live LLM)  |
+| Tasks         | Kanban APIs; UI soft-redirects to Meetings                  |
+| Search        | Keyword + semantic/hybrid APIs                              |
+| Insights etc. | Insights / reports / knowledge / workspace chat / dashboard |
+| Notifications | In-app (meeting starting soon, etc.)                        |
 
 ### Technical Scope
 
-| Layer       | Technologies                                                          |
-| ----------- | --------------------------------------------------------------------- |
-| Frontend    | React, TypeScript, Tailwind CSS, Shadcn UI, React Query, React Router |
-| Backend     | Node.js, Express, TypeScript, Prisma ORM                              |
-| Database    | PostgreSQL + pgvector                                                 |
-| AI / speech | Multi-provider LLM; Whisper translations (default English)            |
-| Jobs        | BullMQ + Redis (optional with `AI_USE_MOCK`)                          |
-| DevOps      | Docker Compose, GitHub Actions                                        |
+| Layer       | Technologies                                                            |
+| ----------- | ----------------------------------------------------------------------- |
+| Frontend    | React, TypeScript, Tailwind CSS, Shadcn UI, React Query, React Router   |
+| Backend     | Node.js, Express, TypeScript, Prisma ORM                                |
+| Database    | PostgreSQL + pgvector                                                   |
+| AI / speech | Multi-provider LLM; Whisper translations (default English); mic+tab mix |
+| Jobs        | BullMQ + Redis (optional with `AI_USE_MOCK`)                            |
+| DevOps      | Docker Compose, GitHub Actions                                          |
 
 ---
 
@@ -88,27 +95,26 @@ MeetingMind AI is a B2B SaaS application that helps teams capture meetings (past
 
 ### External Services
 
-| Service         | Purpose                     | Required By |
-| --------------- | --------------------------- | ----------- |
-| Neon PostgreSQL | Primary database            | Phase 1     |
-| OpenAI API      | AI processing               | Phase 4     |
-| Email provider  | Password reset, invitations | Phase 1–2   |
-| Vercel          | Frontend hosting            | Phase 7     |
-| Railway/Render  | API hosting                 | Phase 7     |
-| Upstash Redis   | Job queue (recommended)     | Phase 4     |
-| Sentry          | Error monitoring            | Phase 7     |
+| Service                           | Purpose                                            | Required today?                      |
+| --------------------------------- | -------------------------------------------------- | ------------------------------------ |
+| PostgreSQL 16 + pgvector          | Primary DB (Docker image `pgvector/pgvector:pg16`) | Yes (local)                          |
+| OpenAI API (or mock)              | LLM + Whisper translate                            | Optional with `AI_USE_MOCK`          |
+| Redis                             | BullMQ jobs / chat memory                          | Optional with mock / inline          |
+| Email provider (Resend)           | Password reset, invitations                        | Optional (`EMAIL_API_KEY`)           |
+| Google OAuth / Calendar           | Sign-In + Meet links                               | Optional with mock flags             |
+| Vercel / Railway / Neon / Upstash | Production hosting                                 | **Planned** — not configured in-repo |
+| Sentry                            | Error monitoring                                   | **Planned**                          |
 
 ### Internal Dependencies
 
 ```
-Phase 1 (Auth)
-  └── Phase 2 (Workspaces)
-        └── Phase 3 (Meetings + paste transcript)
-              └── Phase 4 (AI)
-                    └── Phase 5 (Tasks)
-                          └── Phase 6 (Dashboard)
-                                └── Phase 7 (Deploy)
-                                      └── Phase 8 (Capture + Translate & Transcribe) [shipped]
+Phase 1 (Auth) ✓
+  └── Phase 2 (Workspaces) ✓
+        └── Phase 3 (Meetings + paste transcript) ✓
+              └── Phase 4 (AI + RAG + meeting chat) ✓
+                    └── Phase 5–6 (Tasks / Dashboard) ✓ APIs; UI soft-hidden
+                          └── Phase 7 (Cloud deploy + CI) planned
+                                └── Phase 8 (Capture + Translate & Transcribe) ✓ shipped
 ```
 
 ---
@@ -130,7 +136,7 @@ Phase 1 (Auth)
 
 - All MVP must-have features implemented and tested
 - Production deployment live and stable
-- Core user flow works: register → workspace → meeting → AI → tasks → dashboard
+- Core user flow works: register → workspace → meeting → Translate & Transcribe → transcript → meeting chat
 - API uptime ≥ 99% during soft launch week
 - No P0 security vulnerabilities
 
