@@ -1,14 +1,16 @@
 # User Stories
 
 **Product:** MeetingMind AI  
-**Version:** 1.2  
-**Updated:** 2026-07 — capture + Translate & Transcribe
+**Version:** 1.3  
+**Updated:** 2026-07-29 — capture loop + Meetings/Settings UX
 
 This document contains user stories organized by feature area. Each story follows the format:
 
 > As a **[role]**, I want **[goal]**, so that **[benefit]**.
 
-Priority legend: **P0** = must ship, **P1** = near-term, **P2** = later
+Priority legend: **P0** = must ship (primary UX), **P1** = near-term / soft-hidden re-surface, **P2** = later
+
+> **UX note:** Stories for Tasks, Dashboard, Search, Insights, Reports, Knowledge, and Workspace chat remain valid against **backend + retained UI code**, but those pages currently soft-redirect to Meetings. Primary P0 journey: auth → workspace → meeting capture → Translate & Transcribe → transcript → meeting chat → Settings (Calendar).
 
 ---
 

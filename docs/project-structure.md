@@ -1,419 +1,175 @@
-# Project Structure
+# Project Structure — MeetingMind AI
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.0  
-**Pattern:** Monorepo with feature-based architecture
+**Product:** MeetingMind AI  
+**Version:** 0.7.2  
+**Synced:** 2026-07-29 (implementation)  
+**Pattern:** Two-package monorepo (`frontend/` + `backend/`) with root npm scripts — **not** Turborepo / npm workspaces / `apps/` layout
 
 ---
 
-## 1. Repository Layout
+## 1. Repository layout
 
 ```
-ai-meeting-notes-manager/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                 # Lint, typecheck, test on PR
-│       ├── deploy-api.yml         # Deploy API to Railway
-│       └── deploy-web.yml         # Deploy frontend to Vercel
-├── apps/
-│   ├── web/                       # React frontend
-│   └── api/                         # Express backend
-├── packages/
-│   ├── shared-types/                # Shared Zod schemas + TS types
-│   ├── eslint-config/               # Shared ESLint config
-│   └── tsconfig/                    # Shared TypeScript configs
-├── docker/
-│   ├── docker-compose.yml           # Local dev: API, PG, Redis
-│   ├── docker-compose.test.yml      # Integration test environment
-│   └── api.Dockerfile               # Production API image
-├── docs/                            # Documentation
-├── scripts/
-│   ├── seed.sh                      # Dev database seed
-│   └── migrate.sh                   # Run Prisma migrations
-├── .env.example
-├── package.json                     # npm workspaces root
-├── turbo.json                       # Turborepo pipeline config
+meetingmind-ai/
+├── frontend/                 # React 19 + Vite SPA
+├── backend/                  # Express 5 + Prisma API
+├── docs/                     # Architecture & product docs
+├── career/                   # Portfolio / interview notes (not runtime)
+├── docker-compose.yml        # postgres, redis, backend, frontend
+├── .env.example              # Canonical env template
+├── package.json              # Root scripts (concurrently, husky)
+├── .husky/                   # pre-commit → lint-staged
+├── CHANGELOG.md
 └── README.md
 ```
 
+**Not present:** `.github/workflows/`, `turbo.json`, `apps/`, `packages/shared-types/`.
+
 ---
 
-## 2. Frontend (`apps/web`)
+## 2. Frontend (`frontend/`)
 
-**Stack:** React 18, TypeScript, Vite, Tailwind CSS, Shadcn UI, React Query, React Router
+**Stack:** React 19, TypeScript, Vite, Tailwind, Shadcn UI, TanStack Query, React Router, Axios, Zod, RHF
 
 ```
-apps/web/
+frontend/
 ├── public/
-│   ├── favicon.ico
-│   └── robots.txt
 ├── src/
-│   ├── app/
-│   │   ├── App.tsx                  # Root component
-│   │   ├── router.tsx               # Route definitions + guards
-│   │   └── providers.tsx            # QueryClient, Theme, Auth providers
-│   ├── components/
-│   │   ├── ui/                      # Shadcn primitives (button, input, dialog...)
-│   │   └── common/
-│   │       ├── AppLayout.tsx        # Sidebar + header shell
-│   │       ├── Sidebar.tsx
-│   │       ├── Header.tsx
-│   │       ├── ErrorBoundary.tsx
-│   │       ├── LoadingSpinner.tsx
-│   │       └── EmptyState.tsx
+│   ├── app/                  # App shell, providers
+│   ├── components/           # ui/ (Shadcn) + common + ai/
 │   ├── features/
-│   │   ├── auth/
-│   │   │   ├── api/
-│   │   │   │   └── auth-api.ts
-│   │   │   ├── components/
-│   │   │   │   ├── LoginForm.tsx
-│   │   │   │   ├── RegisterForm.tsx
-│   │   │   │   └── ForgotPasswordForm.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useAuth.ts
-│   │   │   │   └── useLogin.ts
-│   │   │   ├── pages/
-│   │   │   │   ├── LoginPage.tsx
-│   │   │   │   ├── RegisterPage.tsx
-│   │   │   │   └── ResetPasswordPage.tsx
-│   │   │   └── context/
-│   │   │       └── AuthProvider.tsx
-│   │   ├── workspaces/
-│   │   │   ├── api/
-│   │   │   ├── components/
-│   │   │   │   ├── WorkspaceSwitcher.tsx
-│   │   │   │   ├── WorkspaceCard.tsx
-│   │   │   │   ├── InviteMemberForm.tsx
-│   │   │   │   └── MemberList.tsx
-│   │   │   ├── hooks/
-│   │   │   └── pages/
-│   │   │       ├── WorkspaceListPage.tsx
-│   │   │       └── WorkspaceSettingsPage.tsx
-│   │   ├── meetings/
-│   │   │   ├── api/
-│   │   │   ├── components/
-│   │   │   │   ├── MeetingCard.tsx
-│   │   │   │   ├── MeetingForm.tsx
-│   │   │   │   ├── TranscriptUpload.tsx
-│   │   │   │   ├── AIOutputPanel.tsx
-│   │   │   │   ├── ActionItemReview.tsx
-│   │   │   │   └── ProcessingStatusBadge.tsx
-│   │   │   ├── hooks/
-│   │   │   │   └── useMeetingPolling.ts
-│   │   │   └── pages/
-│   │   │       ├── MeetingListPage.tsx
-│   │   │       └── MeetingDetailPage.tsx
-│   │   ├── tasks/
-│   │   │   ├── api/
-│   │   │   ├── components/
-│   │   │   │   ├── KanbanBoard.tsx
-│   │   │   │   ├── KanbanColumn.tsx
-│   │   │   │   ├── TaskCard.tsx
-│   │   │   │   ├── TaskDetailDrawer.tsx
-│   │   │   │   ├── TaskForm.tsx
-│   │   │   │   └── CommentThread.tsx
-│   │   │   ├── hooks/
-│   │   │   └── pages/
-│   │   │       └── TaskBoardPage.tsx
-│   │   ├── dashboard/
-│   │   │   ├── api/
-│   │   │   ├── components/
-│   │   │   │   ├── StatCards.tsx
-│   │   │   │   ├── ActivityFeed.tsx
-│   │   │   │   └── ProductivityChart.tsx
-│   │   │   └── pages/
-│   │   │       └── DashboardPage.tsx
-│   │   ├── notifications/
-│   │   │   ├── api/
-│   │   │   ├── components/
-│   │   │   │   ├── NotificationBell.tsx
-│   │   │   │   └── NotificationDropdown.tsx
-│   │   │   └── hooks/
-│   │   └── search/
-│   │       ├── api/
-│   │       ├── components/
-│   │       │   ├── SearchBar.tsx
-│   │       │   └── SearchResults.tsx
-│   │       └── pages/
-│   │           └── SearchPage.tsx
-│   ├── hooks/
-│   │   ├── useDebounce.ts
-│   │   └── useWorkspace.ts
-│   ├── lib/
-│   │   ├── api-client.ts            # Axios instance + interceptors
-│   │   ├── query-client.ts          # React Query config
-│   │   ├── utils.ts                 # cn(), formatDate(), etc.
-│   │   └── constants.ts
+│   │   ├── auth/             # Live
+│   │   ├── workspaces/       # Live (+ CalendarConnectCard)
+│   │   ├── meetings/         # Live — capture, transcript, Meet
+│   │   ├── chat/             # Meeting chat live; ChatPage soft-hidden
+│   │   ├── notifications/    # Live (bell + preferences)
+│   │   ├── tasks/            # Soft-hidden (full UI retained)
+│   │   ├── dashboard/        # Soft-hidden
+│   │   ├── insights/         # Soft-hidden
+│   │   ├── search/           # Soft-hidden
+│   │   ├── reports/          # Soft-hidden
+│   │   └── knowledge/        # Soft-hidden
+│   ├── hooks/                # e.g. useDebounce
+│   ├── layouts/              # AppLayout, AuthLayout, nav-items (Meetings + Settings)
+│   ├── lib/                  # api-client, constants, query-client
+│   ├── routes/               # index.tsx, RedirectToMeetings, guards
+│   ├── services/api/         # SSE stream client
+│   ├── store/                # Unused placeholder
 │   ├── types/
-│   │   └── index.ts                 # Re-export from shared-types
-│   ├── main.tsx
-│   └── index.css                    # Tailwind imports
-├── index.html
-├── components.json                  # Shadcn config
-├── tailwind.config.ts
-├── tsconfig.json
-├── tsconfig.app.json
-├── vite.config.ts
-├── postcss.config.js
+│   └── utils/
+├── Dockerfile
+├── .env.example              # VITE_API_URL only
 └── package.json
 ```
 
-### Frontend Conventions
+### Live routes
 
-| Rule               | Detail                                                     |
-| ------------------ | ---------------------------------------------------------- |
-| Feature colocation | API calls, hooks, components, pages in same feature folder |
-| Pages are thin     | Compose feature components; minimal logic                  |
-| Server state       | React Query only; no Redux                                 |
-| Auth token         | Memory via AuthProvider ref; never localStorage            |
-| Forms              | React Hook Form + Zod resolver from shared-types           |
-| Imports            | `@/` alias → `src/`; `@shared/` → `packages/shared-types`  |
+| Path                                                         | Page                     |
+| ------------------------------------------------------------ | ------------------------ |
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | Auth                     |
+| `/auth/google/callback`                                      | Google OAuth return      |
+| `/workspaces`                                                | Workspace list           |
+| `/workspaces/:id/meetings`                                   | Meeting list             |
+| `/workspaces/:id/meetings/:meetingId`                        | Meeting detail (lazy)    |
+| `/workspaces/:id/settings`                                   | Settings + Calendar      |
+| `/account/notifications`                                     | Notification preferences |
+| `/invitations/:token/accept`                                 | Accept invite            |
+
+Soft-hidden paths redirect to Meetings — see [feature-inventory.md](./feature-inventory.md).
 
 ---
 
-## 3. Backend (`apps/api`)
+## 3. Backend (`backend/`)
 
-**Stack:** Node.js, Express, TypeScript, Prisma, Zod, BullMQ
+**Stack:** Node.js, Express 5, TypeScript, Prisma, BullMQ, LangGraph/LangChain, Jest
 
 ```
-apps/api/
+backend/
 ├── prisma/
 │   ├── schema.prisma
-│   ├── migrations/
-│   └── seed.ts
+│   └── migrations/           # 14 migrations through google_auth_meet
+├── prompts/                  # Versioned *.prompt.md + evaluations/
 ├── src/
-│   ├── index.ts                     # Entry point
-│   ├── app.ts                       # Express app setup
-│   ├── server.ts                    # HTTP server + graceful shutdown
-│   ├── config/
-│   │   ├── env.ts                   # Zod-validated env vars
-│   │   ├── database.ts              # Prisma client singleton
-│   │   └── cors.ts
-│   ├── middleware/
-│   │   ├── authenticate.ts          # JWT validation
-│   │   ├── require-workspace-member.ts
-│   │   ├── require-role.ts
-│   │   ├── validate.ts              # Zod request validation
-│   │   ├── rate-limit.ts
-│   │   ├── request-id.ts            # X-Request-Id
-│   │   ├── error-handler.ts
-│   │   └── not-found.ts
-│   ├── modules/
-│   │   ├── auth/
-│   │   │   ├── auth.routes.ts
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.service.ts
-│   │   │   ├── auth.schema.ts
-│   │   │   └── auth.test.ts
-│   │   ├── users/
-│   │   │   ├── users.routes.ts
-│   │   │   ├── users.controller.ts
-│   │   │   ├── users.service.ts
-│   │   │   └── users.schema.ts
-│   │   ├── workspaces/
-│   │   │   ├── workspaces.routes.ts
-│   │   │   ├── workspaces.controller.ts
-│   │   │   ├── workspaces.service.ts
-│   │   │   └── workspaces.schema.ts
-│   │   ├── meetings/
-│   │   │   ├── meetings.routes.ts
-│   │   │   ├── meetings.controller.ts
-│   │   │   ├── meetings.service.ts
-│   │   │   └── meetings.schema.ts
-│   │   ├── ai/
-│   │   │   ├── ai.routes.ts
-│   │   │   ├── ai.controller.ts
-│   │   │   ├── ai.service.ts
-│   │   │   ├── ai.prompts.ts
-│   │   │   └── ai.schema.ts
-│   │   ├── tasks/
-│   │   │   ├── tasks.routes.ts
-│   │   │   ├── tasks.controller.ts
-│   │   │   ├── tasks.service.ts
-│   │   │   └── tasks.schema.ts
-│   │   ├── comments/
-│   │   │   ├── comments.routes.ts
-│   │   │   ├── comments.controller.ts
-│   │   │   ├── comments.service.ts
-│   │   │   └── comments.schema.ts
-│   │   ├── notifications/
-│   │   │   ├── notifications.routes.ts
-│   │   │   ├── notifications.controller.ts
-│   │   │   ├── notifications.service.ts
-│   │   │   └── notifications.schema.ts
-│   │   ├── dashboard/
-│   │   │   ├── dashboard.routes.ts
-│   │   │   ├── dashboard.controller.ts
-│   │   │   └── dashboard.service.ts
-│   │   └── search/
-│   │       ├── search.routes.ts
-│   │       ├── search.controller.ts
-│   │       └── search.service.ts
-│   ├── jobs/
-│   │   ├── queue.ts                 # BullMQ setup
-│   │   ├── worker.ts                # Worker entry point
-│   │   ├── process-meeting.job.ts
-│   │   └── cleanup-tokens.job.ts
-│   ├── lib/
-│   │   ├── jwt.ts
-│   │   ├── bcrypt.ts
-│   │   ├── openai.ts
-│   │   ├── email.ts
-│   │   ├── fuzzy-match.ts           # Assignee name matching
-│   │   └── mention-parser.ts
-│   ├── repositories/                # Optional: Prisma query abstraction
-│   │   ├── base.repository.ts       # Workspace-scoped query helper
-│   │   ├── meeting.repository.ts
-│   │   └── task.repository.ts
-│   ├── types/
-│   │   └── express.d.ts             # Augment Request with user, workspace
-│   └── utils/
-│       ├── errors.ts                # AppError class
-│       ├── pagination.ts
-│       └── slug.ts
-├── tests/
-│   ├── setup.ts
-│   ├── helpers/
-│   │   ├── factory.ts               # Test data factories
-│   │   └── auth-helper.ts
-│   ├── unit/
-│   │   ├── auth.service.test.ts
-│   │   ├── ai.service.test.ts
-│   │   └── fuzzy-match.test.ts
-│   └── integration/
-│       ├── auth.test.ts
-│       ├── workspaces.test.ts
-│       ├── meetings.test.ts
-│       ├── tasks.test.ts
-│       └── tenant-isolation.test.ts
-├── tsconfig.json
-├── vitest.config.ts
+│   ├── app.ts                # /health, /observability, /api/v1
+│   ├── server.ts
+│   ├── config/               # env, db, cors, redis
+│   ├── middlewares/          # auth, RBAC, validation, rate limits
+│   ├── routes/               # health, observability, api aggregator
+│   ├── jobs/                 # Worker processors / entry
+│   ├── lib/                  # jwt, cookies, email, openai helpers
+│   └── modules/
+│       ├── auth/
+│       ├── users/
+│       ├── workspaces/
+│       ├── meetings/
+│       ├── transcription/
+│       ├── capture/          # imports + bot stubs
+│       ├── ai/               # ai-output, action items
+│       ├── calendar/
+│       ├── chat/
+│       ├── tasks/            # API retained
+│       ├── dashboard/
+│       ├── search/
+│       ├── insights/
+│       ├── reports/
+│       ├── knowledge/
+│       ├── notifications/
+│       ├── llm/
+│       ├── agents/
+│       ├── orchestrator/
+│       ├── rag/
+│       ├── embeddings/
+│       ├── vector/
+│       ├── chunking/
+│       ├── retrievers/
+│       ├── prompts/
+│       ├── jobs/
+│       └── observability/
+├── tests/                    # unit / integration / security / eval
+├── Dockerfile
 └── package.json
 ```
 
-### Backend Conventions
+---
 
-| Rule                  | Detail                                                                        |
-| --------------------- | ----------------------------------------------------------------------------- |
-| Thin controllers      | Parse request → call service → format response                                |
-| Fat services          | Business logic, authorization, transactions                                   |
-| One module per domain | routes + controller + service + schema                                        |
-| Validation            | Zod schemas in `.schema.ts`; shared with frontend via `packages/shared-types` |
-| Errors                | Throw `AppError` with code; caught by error handler                           |
-| Transactions          | `prisma.$transaction` for multi-table mutations                               |
-| Workspace scope       | Every service method receives `workspaceId`                                   |
+## 4. Root tooling
+
+| Script                            | Behavior                        |
+| --------------------------------- | ------------------------------- |
+| `npm run dev`                     | Concurrently frontend + backend |
+| `npm run build` / `lint` / `test` | Both packages via `--prefix`    |
+| `npm run eval:prompts`            | Backend prompt fixtures         |
+| `npm run seed:portfolio-demo`     | Demo seed                       |
+| `prepare`                         | Husky                           |
+
+Lint-staged: ESLint + Prettier on FE/BE TS; Prettier on md/json/css.
 
 ---
 
-## 4. Shared Package (`packages/shared-types`)
+## 5. Docker
 
-```
-packages/shared-types/
-├── src/
-│   ├── auth.ts                      # LoginSchema, RegisterSchema
-│   ├── workspace.ts
-│   ├── meeting.ts
-│   ├── task.ts
-│   ├── notification.ts
-│   ├── pagination.ts
-│   └── index.ts
-├── package.json
-└── tsconfig.json
-```
+| Service    | Image / build                     | Port |
+| ---------- | --------------------------------- | ---- |
+| `postgres` | `pgvector/pgvector:pg16`          | 5432 |
+| `redis`    | `redis:7-alpine`                  | 6379 |
+| `backend`  | `./backend` target `development`  | 3001 |
+| `frontend` | `./frontend` target `development` | 5173 |
 
-Purpose: Single source of truth for Zod validation schemas and TypeScript types used by both frontend and backend.
+Production multi-stage targets exist in each Dockerfile (frontend serves via nginx).
 
 ---
 
-## 5. Module Dependency Graph
+## 6. Documentation (`docs/`)
 
-```mermaid
-flowchart TB
-    subgraph FE["apps/web"]
-        AuthF[auth]
-        WsF[workspaces]
-        MeetF[meetings]
-        TaskF[tasks]
-        DashF[dashboard]
-        NotifF[notifications]
-    end
+Index: [README.md](./README.md). Audit artifacts: [feature-inventory.md](./feature-inventory.md), [documentation-audit.md](./documentation-audit.md), [documentation-validation.md](./documentation-validation.md), [document-cleanup-report.md](./document-cleanup-report.md).
 
-    subgraph BE["apps/api"]
-        AuthB[auth]
-        WsB[workspaces]
-        MeetB[meetings]
-        AIB[ai]
-        TaskB[tasks]
-        CommentB[comments]
-        NotifB[notifications]
-        DashB[dashboard]
-    end
-
-    subgraph Shared["packages/shared-types"]
-        Schemas[Zod Schemas]
-    end
-
-    FE --> Shared
-    BE --> Shared
-    MeetB --> AIB
-    TaskB --> NotifB
-    CommentB --> NotifB
-    MeetB --> TaskB
-```
+`career/` is for portfolio writing — keep version-aligned with product, but it is not runtime documentation.
 
 ---
 
-## 6. Environment Files
+## 7. Conventions
 
-```
-.env.example          # Template (committed)
-.env                  # Local dev (gitignored)
-.env.test             # Test environment (gitignored)
-```
-
-### Required Variables
-
-```bash
-# Database
-DATABASE_URL=
-DATABASE_URL_DIRECT=        # Non-pooled for migrations
-
-# Auth
-JWT_ACCESS_SECRET=
-JWT_REFRESH_SECRET=
-
-# OpenAI
-OPENAI_API_KEY=
-
-# Email
-EMAIL_API_KEY=
-EMAIL_FROM=
-
-# Redis
-REDIS_URL=
-
-# App
-NODE_ENV=development
-API_PORT=3001
-FRONTEND_URL=http://localhost:5173
-CORS_ORIGIN=http://localhost:5173
-```
-
----
-
-## 7. Testing Strategy
-
-| Layer            | Tool                     | Location                      |
-| ---------------- | ------------------------ | ----------------------------- |
-| Unit (BE)        | Vitest                   | `apps/api/tests/unit/`        |
-| Integration (BE) | Vitest + Supertest       | `apps/api/tests/integration/` |
-| Tenant isolation | Integration              | `tenant-isolation.test.ts`    |
-| Unit (FE)        | Vitest + Testing Library | Co-located `*.test.tsx`       |
-| E2E              | Playwright (MVP+1)       | `apps/web/e2e/`               |
-
----
-
-## Related Documents
-
-- [system-architecture.md](./system-architecture.md)
-- [mvp-definition.md](./mvp-definition.md)
+- Feature folders own pages, components, hooks, services, schemas
+- Workspace membership enforced in backend middleware
+- Soft-hide non-core UI via router redirect rather than deleting modules
+- Env validated in `backend/src/config/env.ts`; template at repo `.env.example`

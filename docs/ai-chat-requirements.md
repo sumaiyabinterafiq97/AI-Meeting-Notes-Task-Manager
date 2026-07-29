@@ -1,28 +1,28 @@
 # AI Chat Requirements — MeetingMind AI
 
 **Product:** MeetingMind AI  
-**Version:** 1.0  
-**Status:** Requirements — Documentation Only  
-**Baseline:** FR-AI-010 – FR-AI-012 (per-meeting chat, MVP+1); platform v0.3.0 backend chat endpoints  
-**Related:** [rag-requirements.md](./rag-requirements.md) · [llm-requirements.md](./llm-requirements.md) · [multi-agent-requirements.md](./multi-agent-requirements.md)
+**Version:** 1.1  
+**Status:** Requirements — synced to implementation (2026-07-29)  
+**Baseline:** Meeting chat live in v0.7.x; workspace chat API implemented, UI soft-hidden  
+**Related:** [rag-requirements.md](./rag-requirements.md) · [llm-requirements.md](./llm-requirements.md) · [feature-inventory.md](./feature-inventory.md)
+
+> **UX:** Meeting-scoped chat is on the meeting detail **Chat** tab (SSE + RAG). Workspace-wide chat routes exist but soft-redirect to Meetings in the SPA.
 
 ---
 
 ## 1. Purpose
 
-MeetingMind AI Chat transforms the platform from static meeting outputs into a **conversational intelligence layer** where users ask natural language questions about meetings, tasks, decisions, and risks — with **grounded, cited answers** from workspace data.
+MeetingMind AI Chat provides a **conversational intelligence layer** over meeting transcripts and indexed outputs — with **grounded, cited answers**.
 
-### Extension of Existing Chat
+### Current vs soft-hidden
 
-| Capability | Current (v0.3) | MeetingMind AI |
-|------------|----------------|----------------|
-| Scope | Per-meeting | Per-meeting + **workspace-wide** |
-| Context | Transcript + AI output | RAG retrieval across corpus |
-| Streaming | Planned (SSE) | SSE with citations |
-| Memory | Shared meeting thread | Meeting thread + workspace conversation sessions |
-| Agents | Direct LLM | **Chat Agent** + **Context Retrieval Agent** |
-
-**Preservation:** Existing per-meeting chat endpoints and `meeting_chat_messages` table remain; workspace chat adds new routes.
+| Capability | Meeting chat (live)                               | Workspace chat (API; UI soft-hidden) |
+| ---------- | ------------------------------------------------- | ------------------------------------ |
+| Scope      | Single meeting                                    | Workspace-wide sessions              |
+| Context    | Hybrid RAG + meeting corpus fallback              | RAG across workspace corpus          |
+| Streaming  | SSE with citations                                | SSE with citations                   |
+| Memory     | Session messages (+ Redis memory when configured) | Session list + messages              |
+| UI         | Meeting detail → Chat                             | RedirectToMeetings                   |
 
 ---
 
@@ -30,28 +30,28 @@ MeetingMind AI Chat transforms the platform from static meeting outputs into a *
 
 ### 2.1 Natural Language Examples
 
-| Query | Intent | Retrieval Strategy |
-|-------|--------|-------------------|
-| "What decisions did we make last week?" | Temporal + type filter | RAG: `decisions`, date filter 7d |
-| "What tasks are assigned to Sarah?" | Task lookup | SQL tasks by assignee + optional RAG |
-| "What meetings discussed authentication?" | Topic search | Hybrid semantic + keyword |
-| "Show risks for Project Alpha." | Risk + tag filter | RAG: `risks`, tag=`project-alpha` |
-| "Summarize our last sprint planning." | Meeting summary | Direct `meeting_ai_outputs` + RAG |
-| "Did we change the launch date?" | Cross-meeting comparison | Cross-meeting intelligence |
-| "What action items are still pending from retro?" | Action item status | SQL `action_item_suggestions` + RAG |
-| "Who owns the API migration task?" | Task assignment | SQL task query |
+| Query                                             | Intent                   | Retrieval Strategy                   |
+| ------------------------------------------------- | ------------------------ | ------------------------------------ |
+| "What decisions did we make last week?"           | Temporal + type filter   | RAG: `decisions`, date filter 7d     |
+| "What tasks are assigned to Sarah?"               | Task lookup              | SQL tasks by assignee + optional RAG |
+| "What meetings discussed authentication?"         | Topic search             | Hybrid semantic + keyword            |
+| "Show risks for Project Alpha."                   | Risk + tag filter        | RAG: `risks`, tag=`project-alpha`    |
+| "Summarize our last sprint planning."             | Meeting summary          | Direct `meeting_ai_outputs` + RAG    |
+| "Did we change the launch date?"                  | Cross-meeting comparison | Cross-meeting intelligence           |
+| "What action items are still pending from retro?" | Action item status       | SQL `action_item_suggestions` + RAG  |
+| "Who owns the API migration task?"                | Task assignment          | SQL task query                       |
 
 ### 2.2 Query Classification
 
 **FR-CHAT-CLS-001:** Classify intent before retrieval: `factual_lookup | synthesis | comparison | task_query | meeting_query | general`
 
-| Intent | Primary Source | Fallback |
-|--------|----------------|----------|
-| `task_query` | PostgreSQL tasks API | RAG tasks |
-| `meeting_query` | PostgreSQL meetings | RAG transcripts |
-| `synthesis` | RAG multi-chunk | — |
-| `comparison` | RAG cross-meeting | — |
-| `factual_lookup` | Structured AI outputs | RAG |
+| Intent           | Primary Source        | Fallback        |
+| ---------------- | --------------------- | --------------- |
+| `task_query`     | PostgreSQL tasks API  | RAG tasks       |
+| `meeting_query`  | PostgreSQL meetings   | RAG transcripts |
+| `synthesis`      | RAG multi-chunk       | —               |
+| `comparison`     | RAG cross-meeting     | —               |
+| `factual_lookup` | Structured AI outputs | RAG             |
 
 ---
 
@@ -59,28 +59,28 @@ MeetingMind AI Chat transforms the platform from static meeting outputs into a *
 
 ### 3.1 Per-Meeting Chat (Preserved + Enhanced)
 
-| Attribute | Detail |
-|-----------|--------|
-| **Route** | `POST /workspaces/:id/meetings/:meetingId/chat` |
-| **Context** | Full transcript + AI output + meeting-scoped RAG |
-| **Thread** | Shared per meeting (existing FR-AI-012) |
-| **Use case** | Deep dive on single meeting |
+| Attribute    | Detail                                           |
+| ------------ | ------------------------------------------------ |
+| **Route**    | `POST /workspaces/:id/meetings/:meetingId/chat`  |
+| **Context**  | Full transcript + AI output + meeting-scoped RAG |
+| **Thread**   | Shared per meeting (existing FR-AI-012)          |
+| **Use case** | Deep dive on single meeting                      |
 
 ### 3.2 Workspace Chat (New)
 
-| Attribute | Detail |
-|-----------|--------|
-| **Route** | `POST /workspaces/:id/chat` |
-| **Context** | RAG across full workspace corpus |
-| **Thread** | Per-user conversation sessions |
+| Attribute    | Detail                                        |
+| ------------ | --------------------------------------------- |
+| **Route**    | `POST /workspaces/:id/chat`                   |
+| **Context**  | RAG across full workspace corpus              |
+| **Thread**   | Per-user conversation sessions                |
 | **Use case** | Cross-meeting questions, productivity queries |
 
 ### 3.3 Inline Chat (New — Phase 3)
 
-| Attribute | Detail |
-|-----------|--------|
-| **Location** | Dashboard, Kanban, search results |
-| **Context** | Current page context + RAG |
+| Attribute    | Detail                                |
+| ------------ | ------------------------------------- |
+| **Location** | Dashboard, Kanban, search results     |
+| **Context**  | Current page context + RAG            |
 | **Use case** | "Explain this task's meeting context" |
 
 ---
@@ -184,12 +184,12 @@ data: {"code": "LLM_UNAVAILABLE", "message": "..."}
 
 ### 7.1 API
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/workspaces/:id/meetings/:meetingId/chat` | Meeting thread (existing) |
-| GET | `/workspaces/:id/chat/sessions` | List workspace sessions |
-| GET | `/workspaces/:id/chat/sessions/:sessionId` | Session messages |
-| DELETE | `/workspaces/:id/chat/sessions/:sessionId` | Clear session |
+| Method | Route                                      | Description               |
+| ------ | ------------------------------------------ | ------------------------- |
+| GET    | `/workspaces/:id/meetings/:meetingId/chat` | Meeting thread (existing) |
+| GET    | `/workspaces/:id/chat/sessions`            | List workspace sessions   |
+| GET    | `/workspaces/:id/chat/sessions/:sessionId` | Session messages          |
+| DELETE | `/workspaces/:id/chat/sessions/:sessionId` | Clear session             |
 
 ### 7.2 Message Schema
 
@@ -218,13 +218,13 @@ data: {"code": "LLM_UNAVAILABLE", "message": "..."}
 
 ## 8. Token Limits
 
-| Limit | Value |
-|-------|-------|
-| Max user message length | 4,000 characters |
-| Max context (retrieval + history) | 32,000 tokens |
-| Max completion tokens | 2,048 |
-| Max messages per session | 200 |
-| Max sessions per user per workspace | 50 |
+| Limit                               | Value            |
+| ----------------------------------- | ---------------- |
+| Max user message length             | 4,000 characters |
+| Max context (retrieval + history)   | 32,000 tokens    |
+| Max completion tokens               | 2,048            |
+| Max messages per session            | 200              |
+| Max sessions per user per workspace | 50               |
 
 **FR-CHAT-TOK-001:** Reject messages exceeding limits with 400  
 **FR-CHAT-TOK-002:** Warn user at 80% of session message limit  
@@ -244,14 +244,14 @@ data: {"code": "LLM_UNAVAILABLE", "message": "..."}
 
 ## 10. Failure Handling
 
-| Scenario | User Experience | System |
-|----------|-----------------|--------|
-| LLM timeout | "Response timed out. Please try again." | Log; no partial persist unless > 50 tokens |
-| LLM rate limit | "High demand. Retrying..." → auto-retry once | Fallback provider |
-| Empty retrieval | "I couldn't find relevant meetings for that question." | Suggest keyword search |
-| SQL + RAG both empty | Honest "no data" response | No hallucination |
-| Stream disconnect | Partial response saved with `incomplete: true` | Cancel LLM call |
-| Moderation flag | "Unable to process this message." | Log; no content stored |
+| Scenario             | User Experience                                        | System                                     |
+| -------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| LLM timeout          | "Response timed out. Please try again."                | Log; no partial persist unless > 50 tokens |
+| LLM rate limit       | "High demand. Retrying..." → auto-retry once           | Fallback provider                          |
+| Empty retrieval      | "I couldn't find relevant meetings for that question." | Suggest keyword search                     |
+| SQL + RAG both empty | Honest "no data" response                              | No hallucination                           |
+| Stream disconnect    | Partial response saved with `incomplete: true`         | Cancel LLM call                            |
+| Moderation flag      | "Unable to process this message."                      | Log; no content stored                     |
 
 **FR-CHAT-FAIL-001:** Never fabricate meeting content, decisions, or task assignments  
 **FR-CHAT-FAIL-002:** Confidence indicator when avg similarity < 0.75: "Based on limited matches..."
@@ -272,13 +272,13 @@ data: {"code": "LLM_UNAVAILABLE", "message": "..."}
 
 ## 12. Response Quality Requirements
 
-| Metric | Target |
-|--------|--------|
-| Citation accuracy (human eval) | ≥ 90% |
-| Hallucination rate (fabricated facts) | < 5% |
-| User thumbs-up rate | ≥ 75% |
-| Answer relevance (human eval) | ≥ 4/5 |
-| Retrieval precision @5 | ≥ 0.80 |
+| Metric                                | Target |
+| ------------------------------------- | ------ |
+| Citation accuracy (human eval)        | ≥ 90%  |
+| Hallucination rate (fabricated facts) | < 5%   |
+| User thumbs-up rate                   | ≥ 75%  |
+| Answer relevance (human eval)         | ≥ 4/5  |
+| Retrieval precision @5                | ≥ 0.80 |
 
 ### 12.1 Quality Controls
 
@@ -292,34 +292,34 @@ data: {"code": "LLM_UNAVAILABLE", "message": "..."}
 
 ## 13. User Stories
 
-| ID | Story | Priority |
-|----|-------|----------|
-| CHAT-01 | As a **user**, I want to **ask questions about a meeting in natural language**, so that **I don't re-read the transcript** | P0 |
-| CHAT-02 | As a **PM**, I want to **ask workspace-wide questions across meetings**, so that **I find decisions quickly** | P1 |
-| CHAT-03 | As a **user**, I want **streaming responses**, so that **I see answers immediately** | P0 |
-| CHAT-04 | As a **user**, I want **citations to source meetings**, so that **I trust and verify answers** | P0 |
-| CHAT-05 | As a **user**, I want **conversation history**, so that **I can continue prior threads** | P1 |
-| CHAT-06 | As a **user**, I want to **ask about tasks and assignees**, so that **I get status without opening Kanban** | P1 |
-| CHAT-07 | As a **lead**, I want to **compare decisions across meetings**, so that **I spot contradictions** | P2 |
+| ID      | Story                                                                                                                      | Priority |
+| ------- | -------------------------------------------------------------------------------------------------------------------------- | -------- |
+| CHAT-01 | As a **user**, I want to **ask questions about a meeting in natural language**, so that **I don't re-read the transcript** | P0       |
+| CHAT-02 | As a **PM**, I want to **ask workspace-wide questions across meetings**, so that **I find decisions quickly**              | P1       |
+| CHAT-03 | As a **user**, I want **streaming responses**, so that **I see answers immediately**                                       | P0       |
+| CHAT-04 | As a **user**, I want **citations to source meetings**, so that **I trust and verify answers**                             | P0       |
+| CHAT-05 | As a **user**, I want **conversation history**, so that **I can continue prior threads**                                   | P1       |
+| CHAT-06 | As a **user**, I want to **ask about tasks and assignees**, so that **I get status without opening Kanban**                | P1       |
+| CHAT-07 | As a **lead**, I want to **compare decisions across meetings**, so that **I spot contradictions**                          | P2       |
 
 ---
 
 ## 14. API Summary (New + Extended)
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `.../meetings/:id/chat` | POST | Per-meeting chat (enhanced with RAG) |
-| `.../meetings/:id/chat` | GET | Meeting chat history |
-| `.../chat` | POST | Workspace chat (new) |
-| `.../chat/sessions` | GET | List sessions |
-| `.../chat/sessions/:id` | GET | Session messages |
-| `.../chat/sessions/:id` | DELETE | Clear session |
-| `.../chat/feedback` | POST | Thumbs up/down |
+| Endpoint                | Method | Description                          |
+| ----------------------- | ------ | ------------------------------------ |
+| `.../meetings/:id/chat` | POST   | Per-meeting chat (enhanced with RAG) |
+| `.../meetings/:id/chat` | GET    | Meeting chat history                 |
+| `.../chat`              | POST   | Workspace chat (new)                 |
+| `.../chat/sessions`     | GET    | List sessions                        |
+| `.../chat/sessions/:id` | GET    | Session messages                     |
+| `.../chat/sessions/:id` | DELETE | Clear session                        |
+| `.../chat/feedback`     | POST   | Thumbs up/down                       |
 
 ---
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial AI chat requirements |
+| Version | Date       | Changes                      |
+| ------- | ---------- | ---------------------------- |
+| 1.0     | 2026-06-18 | Initial AI chat requirements |

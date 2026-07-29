@@ -1,10 +1,24 @@
 # API Design
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.1  
-**Base URL:** `https://api.example.com/api/v1`
+**Product:** MeetingMind AI  
+**Version:** 0.7.2  
+**Base URL (local):** `http://localhost:3001/api/v1`  
+**Synced:** 2026-07-29 to Express routes under `backend/src/`
 
-Improvements since early drafts: idempotency keys, refresh token rotation, rate limit headers, `X-Request-Id`, standardized error `requestId`.
+Conventions: idempotency keys, refresh token rotation, rate limit headers, `X-Request-Id`, standardized error `requestId`.
+
+> **UI note:** Primary product surfaces are Auth, Workspaces, Meetings (capture + Translate & Transcribe + transcript + meeting chat), Calendar/Settings, and Notifications. **Tasks, Dashboard, Search, Workspace chat, Insights, Reports, and Knowledge APIs are implemented** but the SPA soft-redirects those pages to Meetings. See [feature-inventory.md](./feature-inventory.md).
+
+Also mounted outside `/api/v1`:
+
+| Method | Path                             | Auth                                  |
+| ------ | -------------------------------- | ------------------------------------- |
+| GET    | `/health`                        | None                                  |
+| GET    | `/observability/metrics`         | None (Prometheus text)                |
+| GET    | `/observability/metrics/json`    | `X-Observability-Key` when configured |
+| GET    | `/observability/dashboard`       | same                                  |
+| GET    | `/observability/optimization`    | same                                  |
+| POST   | `/observability/alerts/evaluate` | same                                  |
 
 ---
 
@@ -66,7 +80,7 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 
 ## 2. Authentication
 
-> **Status:** Implemented (v1.0) — register, login, logout, refresh, forgot/reset password, `GET /auth/me`. Refresh token delivered via httpOnly cookie `refreshToken` on register/login; rotated on refresh. Rate limits active in non-test environments.
+> **Status:** Implemented — register, login, logout, refresh, forgot/reset password, `GET /auth/me`, Google OAuth (`GET /auth/google`, `GET /auth/google/callback`), Google mock (`POST /auth/google/mock`). Refresh token via httpOnly cookie `refreshToken`; rotated on refresh. Rate limits active in non-test environments.
 
 ### POST `/auth/register`
 
@@ -135,7 +149,28 @@ Query params: `?page=1&limit=20` (default limit: 20, max: 100)
 | **Auth**         | Required                                                     |
 | **Response 200** | `{ "id", "email", "displayName", "avatarUrl", "createdAt" }` |
 
-> **Status:** Implemented (v1.0) — includes `PATCH /users/me` for profile updates. Password reset emails sent via Resend when `EMAIL_API_KEY` is set.
+### GET `/auth/google`
+
+|              |                                                              |
+| ------------ | ------------------------------------------------------------ |
+| **Auth**     | None (rate limited)                                          |
+| **Behavior** | Redirects to Google OAuth (or mock flow when mock flags set) |
+
+### GET `/auth/google/callback`
+
+|              |                                                                    |
+| ------------ | ------------------------------------------------------------------ |
+| **Auth**     | None (provider callback)                                           |
+| **Behavior** | Sets refresh cookie; redirects to frontend `/auth/google/callback` |
+
+### POST `/auth/google/mock`
+
+|           |                                                                          |
+| --------- | ------------------------------------------------------------------------ |
+| **Auth**  | None (rate limited)                                                      |
+| **Notes** | Local/CI mock Google sign-in when `GOOGLE_AUTH_USE_MOCK` / related flags |
+
+> **Status:** Implemented — includes `PATCH /users/me`. Password reset / invitation emails via Resend when `EMAIL_API_KEY` is set; otherwise logged in development.
 
 ---
 
@@ -323,7 +358,7 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ## 5. AI Outputs
 
-> **Status:** Implemented (v1.0) — BullMQ worker with sync/mock fallback for tests; OpenAI structured JSON output; AI output CRUD, action-item accept/reject → tasks. Chat endpoints deferred (MVP+1). Run worker via `npm run worker` when `REDIS_URL` is set.
+> **Status:** Implemented — BullMQ worker with sync/mock fallback; structured AI output CRUD; action-item accept/reject → tasks. **Meeting chat SSE is implemented** (see §12 and meeting chat routes below). Action-item review UI is soft-hidden; APIs remain. Run worker via `npm run worker` when `REDIS_URL` is set.
 
 ### GET `/workspaces/:workspaceId/meetings/:meetingId/ai-output`
 
@@ -394,7 +429,7 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ## 6. Tasks
 
-> **Status:** Implemented (v1.0) — CRUD, paginated list with filters, Kanban board, comments with @mention notifications, status history logging, soft delete (creator or owner). Task assignment triggers in-app `TASK_ASSIGNED` notifications.
+> **Status:** Implemented (API) — CRUD, Kanban board, comments with @mentions, status history, soft delete. **Frontend soft-hidden** (`RedirectToMeetings`); not in primary nav.
 
 ### POST `/workspaces/:workspaceId/tasks`
 
@@ -463,7 +498,7 @@ See [transcription-flow.md](./transcription-flow.md), [capture-architecture.md](
 
 ## 7. Dashboard & Search
 
-> **Status:** Implemented (v1.0) — workspace dashboard with stats, weekly productivity chart, avg completion time, and recent activity feed. Search across meetings (title, tags), tasks (title, description, assignee, status), and AI summary snippets with `type` filter and pagination.
+> **Status:** Implemented (API) — dashboard stats/activity and keyword + semantic/hybrid search. **Frontend soft-hidden** (`RedirectToMeetings`).
 
 ### GET `/workspaces/:workspaceId/dashboard`
 
@@ -609,13 +644,23 @@ Set `AI_PIPELINE_MODE=multi-agent` to run parallel extraction agents. Default: `
 
 Set `PROMPT_SCHEMA_V2_1=true` to enable extended v2.1 schemas (confidence scores, stakeholders, evidence). Merge layer strips v2.1-only fields for DB compatibility.
 
-### POST `/workspaces/:workspaceId/chat` (SSE)
+### POST `/workspaces/:workspaceId/meetings/:meetingId/chat` (SSE) — **primary UX**
+
+|              |                                                        |
+| ------------ | ------------------------------------------------------ |
+| **Auth**     | Workspace member                                       |
+| **Body**     | `{ "message": "string", "sessionId?": "uuid" }`        |
+| **Response** | `text/event-stream` (also JSON when Accept is not SSE) |
+| **UI**       | Meeting detail → Chat tab                              |
+
+### POST `/workspaces/:workspaceId/chat` (SSE) — soft-hidden UI
 
 |              |                                                 |
 | ------------ | ----------------------------------------------- |
 | **Auth**     | Workspace member                                |
 | **Body**     | `{ "message": "string", "sessionId?": "uuid" }` |
 | **Response** | `text/event-stream`                             |
+| **UI**       | Soft-hidden (redirects to Meetings)             |
 
 | Event      | Payload                                                          |
 | ---------- | ---------------------------------------------------------------- |
@@ -651,12 +696,28 @@ All LLM calls log to `llm_invocations` with `workflow`, `provider`, `model`, tok
 
 ---
 
-## 13. Webhooks (Future)
+## 13. Calendar (implemented)
 
-Planned events for v2:
+| Method | Path                                                          | Notes                                |
+| ------ | ------------------------------------------------------------- | ------------------------------------ |
+| GET    | `/calendar/oauth/:provider/callback`                          | `google` \| `microsoft` \| `outlook` |
+| GET    | `/workspaces/:workspaceId/calendar/connections`               | List                                 |
+| GET    | `/workspaces/:workspaceId/calendar/sync-status`               | Status                               |
+| POST   | `/workspaces/:workspaceId/calendar/connect/:provider`         | OWNER                                |
+| DELETE | `/workspaces/:workspaceId/calendar/connections/:connectionId` | OWNER                                |
+| POST   | `/workspaces/:workspaceId/calendar/sync`                      | Sync                                 |
 
-- `meeting.processed`
-- `task.created`
-- `task.completed`
+See [google-meet-integration.md](./google-meet-integration.md). Microsoft Teams **meeting create** returns 501.
 
-Payload format: JSON with `event`, `timestamp`, `data`, `workspaceId`.
+## 14. Soft-hidden workspace surfaces (API only in primary product)
+
+| Method     | Path                                                              | UI          |
+| ---------- | ----------------------------------------------------------------- | ----------- |
+| GET        | `/workspaces/:id/insights`                                        | Soft-hidden |
+| GET/POST   | `/workspaces/:id/reports`, `/workspaces/:id/reports/:reportId`    | Soft-hidden |
+| GET        | `/workspaces/:id/knowledge`, `/workspaces/:id/knowledge/:entryId` | Soft-hidden |
+| GET/DELETE | `/workspaces/:id/chat/sessions…`                                  | Soft-hidden |
+
+## 15. Webhooks (planned — not implemented)
+
+No webhook delivery subsystem in code. Possible future events: `meeting.processed`, `task.created`, `task.completed`.

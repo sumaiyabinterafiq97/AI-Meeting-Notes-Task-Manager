@@ -38,11 +38,11 @@ Upload **does not** start Whisper/AI. Only `POST …/transcription/start` does. 
 
 ## Phase A media
 
-| Input                          | Path                                                                                     |
-| ------------------------------ | ---------------------------------------------------------------------------------------- |
-| Audio `.mp3` / `.m4a` / `.wav` | Validate → store (`PENDING` / meeting `DRAFT`) → **start** → Whisper translate → AI      |
-| Video `.mp4` / `.webm`         | Validate → store → **start** → extract audio (`IAudioExtractionProvider`) → Whisper → AI |
-| **In-app screen/tab recorder** | Browser `getDisplayMedia` → WebM → same upload endpoint → Translate & Transcribe         |
+| Input                          | Path                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Audio `.mp3` / `.m4a` / `.wav` | Validate → store (`PENDING` / meeting `DRAFT`) → **start** → Whisper translate → AI                                    |
+| Video `.mp4` / `.webm`         | Validate → store → **start** → extract audio (`IAudioExtractionProvider`) → Whisper → AI                               |
+| **In-app screen/tab recorder** | `getDisplayMedia` + mic mix → WebM → same upload → Translate & Transcribe ([screen-recorder.md](./screen-recorder.md)) |
 
 See [screen-recorder.md](./screen-recorder.md). Google Meet link creation: [google-meet-integration.md](./google-meet-integration.md).
 

@@ -1,381 +1,279 @@
-# System Architecture
+# System Architecture — MeetingMind AI
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.0  
-**Status:** Canonical Architecture Reference  
-**Canonical** system architecture for MeetingMind AI.
+**Product:** MeetingMind AI  
+**Version:** 0.7.2  
+**Status:** Canonical — synced to implementation (2026-07-29)  
+**Source of truth:** Code under `frontend/`, `backend/`, `docker-compose.yml`
 
 ---
 
-## 1. High-Level Architecture
+## 1. Product surface (current)
+
+**Primary UX loop:** Sign in → workspace → create meeting (optional Google Meet) → record/upload → Translate & Transcribe → read/download English transcript → meeting chat.
+
+**Primary nav:** Meetings + Settings only (`frontend/src/layouts/nav-items.ts`).
+
+**Soft-hidden:** Tasks, dashboard, insights, search, workspace chat, reports, knowledge — backend APIs + frontend modules exist; routes redirect to Meetings (`RedirectToMeetings`).
+
+---
+
+## 2. High-level architecture
 
 ```mermaid
 flowchart TB
-    subgraph Users["Users"]
+    subgraph Clients["Clients"]
         Browser[Web Browser]
     end
 
-    subgraph Frontend["Frontend — Vercel"]
-        React[React SPA]
-        RQ[React Query]
-        AuthState[Auth State — Memory]
+    subgraph Frontend["Frontend — Vite React SPA"]
+        React[React 19 + React Router]
+        RQ[TanStack Query]
+        AuthMem[Access token in memory]
     end
 
-    subgraph AuthLayer["Authentication Layer"]
-        JWT[JWT Access Tokens]
-        Refresh[Refresh Token Cookie]
-        RBAC[RBAC Middleware]
+    subgraph Backend["Backend — Express API"]
+        Express[Express 5 + TypeScript]
+        MW[Auth / RBAC / validation]
+        Services[Domain services]
+        Agents[Agents + Orchestrator]
+        RAG[RAG / Embeddings / Vector]
+        Jobs[BullMQ jobs or inline mock]
     end
 
-    subgraph Backend["Backend API — Railway/Render"]
-        Express[Express + TypeScript]
-        Services[Domain Services]
-        Worker[Background Worker]
+    subgraph Data["Data & infra (local Docker or host)"]
+        PG[(PostgreSQL 16 + pgvector)]
+        Redis[(Redis 7 — optional)]
+        AudioFS[Local audio/video storage]
     end
 
-    subgraph Queue["Job Queue"]
-        Redis[(Upstash Redis)]
-        BullMQ[BullMQ]
-    end
-
-    subgraph Data["Data Layer"]
-        Prisma[Prisma ORM]
-        PG[(Neon PostgreSQL)]
-    end
-
-    subgraph Storage["Storage Layer"]
-        DBText[Transcript TEXT — MVP]
-        ObjectStore[Object Storage — v2]
-    end
-
-    subgraph AI["OpenAI Services"]
-        GPT[Chat Completions API]
-        Schema[Structured JSON Output]
-    end
-
-    subgraph Notify["Notification Services"]
-        InApp[In-App Notifications DB]
-        Email[Email Provider — Resend/SendGrid]
+    subgraph External["External providers (optional)"]
+        LLM[OpenAI / Anthropic / Gemini]
+        Whisper[OpenAI Whisper translations]
+        Google[Google OAuth + Calendar]
+        Email[Resend email — optional]
     end
 
     Browser --> React
     React --> RQ
-    RQ -->|HTTPS REST /api/v1| Express
-    React --> AuthState
-    AuthState -->|Bearer JWT| JWT
-
-    Express --> RBAC
-    RBAC --> Services
-    Services --> Prisma --> PG
-    Services --> BullMQ
-    BullMQ --> Redis
-    BullMQ --> Worker
-    Worker --> GPT
-    Worker --> Schema
-    Worker --> Prisma
-
-    Services --> DBText
-    DBText -.->|migrate v2| ObjectStore
-
-    Services --> InApp
+    RQ -->|HTTPS REST + SSE /api/v1| Express
+    React --> AuthMem
+    AuthMem -->|Bearer JWT| MW
+    Express --> MW --> Services
+    Services --> PG
+    Services --> Jobs
+    Jobs --> Redis
+    Jobs --> Agents
+    Jobs --> Whisper
+    Agents --> LLM
+    Agents --> RAG
+    RAG --> PG
+    Services --> AudioFS
+    Services --> Google
     Services --> Email
-    Refresh -->|httpOnly cookie| Express
 ```
 
-### Architecture Explanation
+### Runtime notes
 
-The system follows a **classic three-tier SaaS pattern** with async AI processing:
-
-1. **Frontend (React SPA)** — Deployed on Vercel as static assets. Handles UI, routing, client-side state, and API communication via React Query. Access tokens live in memory only; refresh tokens in httpOnly cookies.
-
-2. **Authentication Layer** — Stateless JWT access tokens (15 min) validated on every request. Refresh tokens (7 days) stored hashed in PostgreSQL, delivered via httpOnly `SameSite=Strict` cookies. RBAC middleware enforces workspace membership and roles.
-
-3. **Backend API (Express)** — Thin controllers delegate to domain services. All business logic, authorization, and validation live in services. Stateless and horizontally scalable.
-
-4. **Job Queue (BullMQ + Redis)** — AI processing is never synchronous in the request path. Transcript upload enqueues a job; worker processes OpenAI calls independently. Enables retries, horizontal scaling, and deploy safety.
-
-5. **Database (Neon PostgreSQL)** — Single source of truth. Prisma ORM with workspace-scoped queries. Connection pooling via Neon pooler endpoint.
-
-6. **OpenAI Services** — GPT-4o (or equivalent) with structured JSON schema output. Worker sends transcript + member names; receives summary, decisions, risks, action items.
-
-7. **Notification Services** — In-app notifications persisted in DB (MVP). Email via transactional provider for password reset, invitations, and optional task reminders (MVP+1).
-
-8. **Storage Layer** — MVP stores transcripts as PostgreSQL TEXT (≤ 5 MB). v2 migrates to S3/R2 with `storage_key` reference for cost and backup efficiency.
+| Concern          | Implementation                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Local stack      | `docker compose` → postgres, redis, backend, frontend — or host `npm run dev` + compose for DB/Redis only |
+| AI without keys  | `AI_USE_MOCK=true` → mock LLM + inline jobs (Redis optional)                                              |
+| Pipeline mode    | `AI_PIPELINE_MODE=monolithic` (default) or `multi-agent` (LangGraph)                                      |
+| Transcription    | Upload stores media; `POST …/transcription/start` runs Whisper translate (default) then AI                |
+| Production hosts | **Not configured in-repo** (no Vercel/Railway workflows). Treat cloud deploy as future work.              |
 
 ---
 
-## 2. Component Architecture
-
-### 2.1 Frontend Components
+## 3. Frontend architecture
 
 ```mermaid
 flowchart TB
-    subgraph AppShell["App Shell"]
-        Router[React Router]
-        Providers[Providers — Query, Theme, Auth]
-        Layout[Layout — Sidebar, Header]
+    subgraph Shell["App shell"]
+        Router[createBrowserRouter]
+        Providers[Query + Auth + Workspace providers]
+        Layout[AppLayout — Meetings + Settings nav]
     end
 
-    subgraph Modules["Feature Modules"]
-        AuthMod[Authentication Module]
-        WSMod[Workspace Module]
-        DashMod[Dashboard Module]
-        MeetMod[Meeting Module]
-        TaskMod[Task Module]
-        NotifMod[Notification Module]
-        SearchMod[Search Module]
+    subgraph Live["Live feature modules"]
+        Auth[auth]
+        WS[workspaces + CalendarConnect]
+        Meetings[meetings — capture / transcript]
+        MeetChat[chat — MeetingChatPanel]
+        Notif[notifications]
     end
 
-    subgraph Shared["Shared"]
-        UI[Shadcn UI Components]
-        API[API Client + Interceptors]
-        Hooks[Shared Hooks]
+    subgraph Soft["Soft-hidden modules (code present)"]
+        Tasks[tasks]
+        Dash[dashboard / insights]
+        Search[search]
+        WChat[workspace chat]
+        Reports[reports / knowledge]
     end
 
     Router --> Providers --> Layout
-    Layout --> Modules
-    Modules --> Shared
+    Layout --> Live
+    Router -->|RedirectToMeetings| Soft
 ```
 
-| Module             | Responsibility                                                         | Key Pages / Components                                                                  |
-| ------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Authentication** | Login, register, password reset, session management                    | `LoginPage`, `RegisterPage`, `AuthProvider`, `ProtectedRoute`                           |
-| **Workspace**      | CRUD workspaces, invitations, member management, switcher              | `WorkspaceList`, `WorkspaceSettings`, `InviteMemberForm`, `WorkspaceSwitcher`           |
-| **Dashboard**      | Stats cards, activity feed, productivity charts                        | `DashboardPage`, `StatCards`, `ActivityFeed`, `ProductivityChart`                       |
-| **Meeting**        | Meeting CRUD, transcript upload, AI output display, action item review | `MeetingList`, `MeetingDetail`, `TranscriptUpload`, `AIOutputPanel`, `ActionItemReview` |
-| **Task**           | Kanban board, task CRUD, comments, assignment                          | `KanbanBoard`, `TaskCard`, `TaskDetailDrawer`, `CommentThread`                          |
-| **Notification**   | Bell icon, notification list, read state                               | `NotificationBell`, `NotificationDropdown`, `NotificationItem`                          |
-| **Search**         | Global search bar, results page                                        | `SearchBar`, `SearchResults`                                                            |
+| Area                | Path                                                                   |
+| ------------------- | ---------------------------------------------------------------------- |
+| Routes              | `frontend/src/routes/index.tsx`                                        |
+| Nav                 | `frontend/src/layouts/nav-items.ts`                                    |
+| Meeting detail tabs | Record & upload · Transcript · Chat · Details                          |
+| State               | TanStack Query + Auth/Workspace React context (no active global store) |
 
-### 2.2 Backend Components
+---
+
+## 4. Backend architecture
+
+```mermaid
+flowchart LR
+    subgraph HTTP["HTTP"]
+        Health["/health"]
+        Obs["/observability/*"]
+        API["/api/v1/*"]
+    end
+
+    subgraph Domains["Domain modules"]
+        AuthM[auth / users]
+        WSM[workspaces]
+        MeetM[meetings / capture / transcription]
+        AIM[ai / agents / orchestrator]
+        ChatM[chat]
+        CalM[calendar]
+        SoftM[tasks / dashboard / search / reports / knowledge / insights]
+    end
+
+    API --> AuthM
+    API --> WSM
+    API --> MeetM
+    API --> AIM
+    API --> ChatM
+    API --> CalM
+    API --> SoftM
+    Health --> PG[(Postgres)]
+```
+
+Mount map: `backend/src/app.ts` + `backend/src/routes/index.ts`. Workspace-scoped resources nest under `/api/v1/workspaces/:workspaceId/…` in `workspace.routes.ts`.
+
+---
+
+## 5. Capture → transcript → AI → chat
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Frontend
+    participant API as Backend
+    participant ST as Storage
+    participant W as Whisper / mock
+    participant AI as AI pipeline
+    participant V as pgvector
+
+    U->>FE: Record or upload media
+    FE->>API: POST …/audio
+    API->>ST: Store file (DRAFT / PENDING)
+    API-->>FE: 201 processingStarted=false
+    U->>FE: Translate & Transcribe
+    FE->>API: POST …/transcription/start
+    API->>W: translate_to_english (default)
+    W-->>API: English transcript
+    API->>AI: process-meeting job
+    AI->>V: chunk + embed
+    AI-->>API: summary / decisions / risks / action items
+    U->>FE: Open Transcript / Chat
+    FE->>API: GET transcript / POST chat SSE
+    API->>V: hybrid retrieve (+ corpus fallback)
+    API-->>FE: grounded answer
+```
+
+Details: [transcription-flow.md](./transcription-flow.md), [screen-recorder.md](./screen-recorder.md), [rag-architecture.md](./rag-architecture.md), [agent-flow.md](./agent-flow.md).
+
+---
+
+## 6. Authentication flow
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant FE as SPA
+    participant API as /api/v1/auth
+
+    B->>FE: Login / Register / Google
+    FE->>API: credentials or OAuth
+    API-->>FE: accessToken + Set-Cookie refreshToken
+    FE->>FE: store accessToken in memory
+    FE->>API: Authorization Bearer …
+    Note over FE,API: On 401, POST /auth/refresh with cookie, retry
+```
+
+---
+
+## 7. Data layer
+
+- **ORM:** Prisma (`backend/prisma/schema.prisma`)
+- **DB:** PostgreSQL 16 + pgvector (`DocumentChunk.embedding`)
+- **Migrations:** 14 under `backend/prisma/migrations/`
+- **Audio:** filesystem under `AUDIO_STORAGE_PATH` (default `./storage/audio`)
+- **See:** [database-design.md](./database-design.md), [erd.md](./erd.md), [database-architecture.md](./database-architecture.md)
+
+---
+
+## 8. Multi-agent & RAG (backend)
+
+| Mode          | Behavior                                                                      |
+| ------------- | ----------------------------------------------------------------------------- |
+| `monolithic`  | Single structured analysis of transcript                                      |
+| `multi-agent` | LangGraph parallel summarizer / task / decision / risk (+ optional knowledge) |
+
+Chat uses hybrid retrieval (vector + FTS + RRF), context builder, citations; meeting-scoped summarize/overview may use corpus fallback when retrieval is empty.
+
+Prompts: `backend/prompts/*.prompt.md`.
+
+---
+
+## 9. Observability
+
+| Endpoint                              | Purpose                         |
+| ------------------------------------- | ------------------------------- |
+| `GET /health`                         | Liveness + DB ping              |
+| `GET /observability/metrics`          | Prometheus text                 |
+| `GET /observability/metrics/json`     | JSON snapshot (may require key) |
+| `GET /observability/dashboard`        | Admin metrics                   |
+| `POST /observability/alerts/evaluate` | Alert evaluation                |
+
+Persisted: `LlmInvocation`, `LlmUsageDaily`, `AgentExecution`. Alert Slack/email channels are largely log stubs unless configured.
+
+---
+
+## 10. Deployment architecture (as implemented)
 
 ```mermaid
 flowchart TB
-    subgraph HTTP["HTTP Layer"]
-        Routes[Routes / Controllers]
-        MW[Middleware Stack]
-    end
+    Dev[Developer machine]
+    Compose[docker-compose.yml]
+    PG[(postgres pgvector)]
+    RD[(redis)]
+    BE[backend :3001]
+    FE[frontend :5173]
 
-    subgraph Services["Domain Services"]
-        AuthSvc[Auth Service]
-        UserSvc[User Service]
-        WsSvc[Workspace Service]
-        MeetSvc[Meeting Service]
-        AISvc[AI Service]
-        TaskSvc[Task Service]
-        CommentSvc[Comment Service]
-        NotifSvc[Notification Service]
-        DashSvc[Dashboard Service]
-        SearchSvc[Search Service]
-    end
-
-    subgraph Infra["Infrastructure"]
-        Prisma[Prisma Client]
-        Queue[Queue Producer]
-        OpenAI[OpenAI Client]
-        Email[Email Client]
-    end
-
-    subgraph Worker["Worker Process"]
-        JobWorker[AI Job Worker]
-    end
-
-    Routes --> MW --> Services
-    Services --> Prisma
-    Services --> Queue
-    Queue --> JobWorker
-    JobWorker --> AISvc
-    AISvc --> OpenAI
-    Services --> Email
-    TaskSvc --> NotifSvc
-    CommentSvc --> NotifSvc
+    Dev --> Compose
+    Compose --> PG
+    Compose --> RD
+    Compose --> BE
+    Compose --> FE
+    FE -->|VITE_API_URL| BE
+    BE --> PG
+    BE --> RD
 ```
 
-| Service                  | Responsibility                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------- |
-| **Auth Service**         | Register, login, logout, refresh rotation, password reset, token revocation         |
-| **User Service**         | Profile CRUD, notification preferences                                              |
-| **Workspace Service**    | Workspace CRUD, slug generation, soft delete                                        |
-| **Meeting Service**      | Meeting CRUD, transcript storage, status transitions, enqueue AI jobs               |
-| **AI Service**           | OpenAI prompt construction, response parsing, assignee matching, output persistence |
-| **Task Service**         | Task CRUD, status transitions, history logging, action-item conversion              |
-| **Comment Service**      | Comment CRUD, @mention parsing, mention notifications                               |
-| **Notification Service** | Create, list, mark read notifications; email dispatch (MVP+1)                       |
-| **Dashboard Service**    | Aggregate stats, activity feed queries                                              |
-| **Search Service**       | Full-text and filtered search across meetings/tasks                                 |
+There is **no** in-repo GitHub Actions deploy to Vercel/Railway. Production packaging exists as multi-stage Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile` + nginx) for future use.
 
 ---
 
-## 3. Request Flow Diagrams
+## 11. Related docs
 
-### 3.1 User Login Flow
-
-```mermaid
-sequenceDiagram
-    actor U as User
-    participant FE as React App
-    participant API as Auth Service
-    participant DB as PostgreSQL
-
-    U->>FE: Enter email + password
-    FE->>API: POST /api/v1/auth/login
-    API->>DB: Find user by email
-    API->>API: bcrypt.compare(password)
-    alt Invalid credentials
-        API-->>FE: 401 UNAUTHORIZED
-    else Valid
-        API->>API: Generate access JWT (15m)
-        API->>DB: Store refresh token hash
-        API-->>FE: 200 { user, accessToken }
-        API-->>FE: Set-Cookie refreshToken (httpOnly, Secure, SameSite=Strict)
-        FE->>FE: Store accessToken in memory
-        FE->>FE: Redirect to /workspaces
-    end
-```
-
-**Explanation:** Password verified with bcrypt. Access token returned in JSON body and held in React memory (never localStorage). Refresh token set as httpOnly cookie for silent renewal.
-
----
-
-### 3.2 Meeting Upload Flow
-
-```mermaid
-sequenceDiagram
-    actor U as User
-    participant FE as Meeting Module
-    participant API as Meeting Service
-    participant DB as PostgreSQL
-    participant Q as BullMQ
-
-    U->>FE: Paste/upload transcript
-    FE->>FE: Client-side validation (length, size)
-    FE->>API: PUT /workspaces/:id/meetings/:id/transcript
-    API->>API: Verify workspace membership
-    API->>DB: Check meeting.status != PROCESSING
-    alt Already processing
-        API-->>FE: 409 CONFLICT
-    else OK
-        API->>DB: Upsert transcript, status=PROCESSING
-        API->>DB: Create ai_processing_job (PENDING)
-        API->>Q: Enqueue process-meeting job
-        API-->>FE: 200 { status: PROCESSING }
-        FE->>FE: Start polling meeting status (React Query 3s interval)
-    end
-```
-
-**Explanation:** Transcript upload is atomic. Concurrent uploads rejected. Job record created before enqueue for durability.
-
----
-
-### 3.3 AI Processing Flow
-
-```mermaid
-sequenceDiagram
-    participant Q as BullMQ
-    participant W as AI Worker
-    participant DB as PostgreSQL
-    participant OAI as OpenAI API
-    participant FE as React (polling)
-
-    Q->>W: Dequeue process-meeting job
-    W->>DB: Load job, transcript, workspace members
-    W->>DB: Update job status=PROCESSING
-    W->>OAI: Chat completion (JSON schema)
-    alt OpenAI success
-        OAI-->>W: Structured JSON response
-        W->>W: Parse + validate schema
-        W->>W: Fuzzy-match assignees to member IDs
-        W->>DB: Save meeting_ai_output
-        W->>DB: Create action_item_suggestions
-        W->>DB: meeting.status=READY, job.status=COMPLETED
-    else OpenAI failure (retry < 3)
-        W->>W: Exponential backoff
-        W->>Q: Re-enqueue job
-    else Max retries exceeded
-        W->>DB: meeting.status=FAILED, job.status=FAILED
-    end
-    FE->>DB: GET meeting (poll)
-    DB-->>FE: status READY + AI output
-    FE->>FE: Stop polling, render results
-```
-
-**Explanation:** Worker is idempotent — checks job status before processing. Retries transient OpenAI errors. Frontend polls until terminal state.
-
----
-
-### 3.4 Task Generation Flow
-
-```mermaid
-sequenceDiagram
-    actor U as User
-    participant FE as Action Item Review
-    participant API as Task Service
-    participant DB as PostgreSQL
-    participant NS as Notification Service
-
-    U->>FE: Select action items + click Accept
-    FE->>API: POST .../action-items/accept { actionItemIds, overrides }
-    API->>API: Validate all IDs belong to meeting, status=PENDING
-    API->>DB: BEGIN TRANSACTION
-    loop Each action item
-        API->>DB: INSERT task (action_item_id UNIQUE)
-        API->>DB: UPDATE action_item status=ACCEPTED
-        alt Assignee set
-            API->>NS: Create TASK_ASSIGNED notification
-        end
-    end
-    API->>DB: COMMIT
-    API-->>FE: 201 { tasks: [...] }
-    FE->>FE: Navigate to Kanban / show success toast
-```
-
-**Explanation:** Transaction ensures atomicity. `action_item_id` unique constraint prevents duplicate tasks on retry. Notifications created inside transaction or via outbox (MVP: inline).
-
----
-
-### 3.5 Task Update Flow
-
-```mermaid
-sequenceDiagram
-    actor U as User
-    participant FE as Kanban Board
-    participant API as Task Service
-    participant DB as PostgreSQL
-    participant NS as Notification Service
-
-    U->>FE: Drag task to In Progress
-    FE->>FE: Optimistic UI update (MVP+1)
-    FE->>API: PATCH /workspaces/:id/tasks/:taskId { status: IN_PROGRESS }
-    API->>API: Verify workspace membership
-    API->>DB: Load current task
-    API->>DB: UPDATE task.status
-    API->>DB: INSERT task_status_history
-    alt Assignee changed
-        API->>NS: TASK_ASSIGNED notification
-    end
-    API-->>FE: 200 { updated task }
-    alt Error
-        FE->>FE: Rollback optimistic update
-    end
-```
-
-**Explanation:** Every status change logged in history. Assignee changes trigger notifications. Kanban uses PATCH for MVP; optimistic UI in MVP+1.
-
----
-
-## 4. Deployment View
-
-| Environment | Frontend       | API             | Worker         | DB          | Redis        |
-| ----------- | -------------- | --------------- | -------------- | ----------- | ------------ |
-| Local       | Vite dev :5173 | :3001           | Same process   | Docker PG   | Docker Redis |
-| Staging     | Vercel preview | Railway staging | Railway worker | Neon branch | Upstash      |
-| Production  | Vercel prod    | Railway prod    | Railway worker | Neon prod   | Upstash      |
-
----
-
-## 5. Related Documents
-
-- [security-architecture.md](./security-architecture.md)
-- [database-architecture.md](./database-architecture.md)
-- [api-design.md](./api-design.md)
+- [feature-inventory.md](./feature-inventory.md)
 - [project-structure.md](./project-structure.md)
+- [api-design.md](./api-design.md)
+- [security-architecture.md](./security-architecture.md)

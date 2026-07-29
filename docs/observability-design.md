@@ -1,8 +1,11 @@
 # Observability Design — MeetingMind AI
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** Implemented in `backend/src/modules/observability/`  
+**Synced:** 2026-07-29  
 **Requirements:** [observability-requirements.md](./observability-requirements.md)
+
+> In-process metrics + HTTP `/observability/*`. Slack/email alert channels are largely log stubs unless webhooks are configured. No Grafana deployment in-repo.
 
 ---
 
