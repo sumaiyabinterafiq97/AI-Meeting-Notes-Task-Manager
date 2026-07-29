@@ -51,17 +51,18 @@ flowchart TB
 
 ### 2.1 Password Storage
 
-| Aspect | Implementation |
-|--------|----------------|
-| Algorithm | bcrypt |
-| Cost factor | 12 (adjustable via env) |
-| Salt | Per-password (bcrypt built-in) |
-| Policy | Min 8 chars, 1 letter, 1 number |
-| Reset | Single-use token, 1-hour expiry, hashed in DB |
+| Aspect      | Implementation                                |
+| ----------- | --------------------------------------------- |
+| Algorithm   | bcrypt                                        |
+| Cost factor | 12 (adjustable via env)                       |
+| Salt        | Per-password (bcrypt built-in)                |
+| Policy      | Min 8 chars, 1 letter, 1 number               |
+| Reset       | Single-use token, 1-hour expiry, hashed in DB |
 
 ### 2.2 JWT Strategy
 
 **Access Token:**
+
 ```json
 {
   "sub": "user-uuid",
@@ -72,11 +73,11 @@ flowchart TB
 }
 ```
 
-| Property | Value |
-|----------|-------|
-| Algorithm | HS256 (MVP) → RS256 (v2 multi-service) |
-| Secret | `JWT_ACCESS_SECRET` env var (≥ 256 bits) |
-| Lifetime | 15 minutes |
+| Property         | Value                                                 |
+| ---------------- | ----------------------------------------------------- |
+| Algorithm        | HS256 (MVP) → RS256 (v2 multi-service)                |
+| Secret           | `JWT_ACCESS_SECRET` env var (≥ 256 bits)              |
+| Lifetime         | 15 minutes                                            |
 | Storage (client) | **Memory only** — React state/ref, never localStorage |
 
 **Refresh Token:**
@@ -117,11 +118,13 @@ Layer 5: Database — workspace_id on every query
 ### 3.2 Workspace Isolation
 
 Every query for tenant data MUST include:
+
 ```sql
 WHERE workspace_id = $1 AND deleted_at IS NULL
 ```
 
 Plus membership verification:
+
 ```sql
 EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2)
 ```
@@ -136,21 +139,21 @@ EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2
 
 ## 4. Input Validation
 
-| Layer | Tool | Scope |
-|-------|------|-------|
-| Request body | Zod schemas | All POST/PATCH/PUT |
-| Query params | Zod schemas | Pagination, filters |
-| File upload | Size + extension check | Transcript files |
-| String fields | Max length enforcement | All text inputs |
-| JSONB | Schema validation before save | AI output edits |
+| Layer         | Tool                          | Scope               |
+| ------------- | ----------------------------- | ------------------- |
+| Request body  | Zod schemas                   | All POST/PATCH/PUT  |
+| Query params  | Zod schemas                   | Pagination, filters |
+| File upload   | Size + extension check        | Transcript files    |
+| String fields | Max length enforcement        | All text inputs     |
+| JSONB         | Schema validation before save | AI output edits     |
 
 ### Payload Limits
 
-| Limit | Value |
-|-------|-------|
-| Max JSON body | 10 MB |
-| Max transcript | 5 MB |
-| Max comment | 5,000 chars |
+| Limit            | Value       |
+| ---------------- | ----------- |
+| Max JSON body    | 10 MB       |
+| Max transcript   | 5 MB        |
+| Max comment      | 5,000 chars |
 | Max chat message | 4,000 chars |
 
 ---
@@ -165,12 +168,12 @@ EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2
 
 ## 6. XSS Protection
 
-| Vector | Mitigation |
-|--------|------------|
-| Stored XSS (comments) | React auto-escapes; no `dangerouslySetInnerHTML` |
-| Reflected XSS | Input validation; output encoding |
-| DOM XSS | Avoid `eval`, `innerHTML` |
-| Token theft | Access token in memory only; httpOnly refresh cookie |
+| Vector                | Mitigation                                           |
+| --------------------- | ---------------------------------------------------- |
+| Stored XSS (comments) | React auto-escapes; no `dangerouslySetInnerHTML`     |
+| Reflected XSS         | Input validation; output encoding                    |
+| DOM XSS               | Avoid `eval`, `innerHTML`                            |
+| Token theft           | Access token in memory only; httpOnly refresh cookie |
 
 ### Content Security Policy (Production)
 
@@ -194,12 +197,12 @@ Refresh token in cookie could be exploited via cross-site requests.
 
 ### Mitigations
 
-| Control | Implementation |
-|---------|----------------|
-| SameSite cookie | `SameSite=Strict` on refresh token |
-| Origin validation | Check `Origin` header matches allowed origins on `/auth/refresh` |
-| CORS | Whitelist frontend origin only; no credentials for unknown origins |
-| Access token | In Authorization header (not cookie) — immune to CSRF |
+| Control           | Implementation                                                     |
+| ----------------- | ------------------------------------------------------------------ |
+| SameSite cookie   | `SameSite=Strict` on refresh token                                 |
+| Origin validation | Check `Origin` header matches allowed origins on `/auth/refresh`   |
+| CORS              | Whitelist frontend origin only; no credentials for unknown origins |
+| Access token      | In Authorization header (not cookie) — immune to CSRF              |
 
 ### Double-Submit (MVP+1 optional)
 
@@ -209,9 +212,10 @@ For cookie-based auth endpoints, require `X-CSRF-Token` header matching cookie v
 
 ## 8. Rate Limiting
 
-See [api-architecture-review.md](./api-architecture-review.md) for limits.
+See [api-design.md](./api-design.md) for endpoint rate-limit headers and conventions.
 
 Additional security rate limits:
+
 - Account lockout: 5 failed logins per 15 min → temporary block
 - Invitation brute force: 10 accept attempts per IP per min
 - Password reset: 3 per email per hour
@@ -220,13 +224,13 @@ Additional security rate limits:
 
 ## 9. Secrets Management
 
-| Secret | Storage | Rotation |
-|--------|---------|----------|
-| `JWT_ACCESS_SECRET` | Railway/Vercel env | Quarterly |
-| `JWT_REFRESH_SECRET` | Railway env | Quarterly |
-| `DATABASE_URL` | Railway env | On compromise |
-| `OPENAI_API_KEY` | Railway env | Quarterly |
-| `EMAIL_API_KEY` | Railway env | Quarterly |
+| Secret               | Storage            | Rotation      |
+| -------------------- | ------------------ | ------------- |
+| `JWT_ACCESS_SECRET`  | Railway/Vercel env | Quarterly     |
+| `JWT_REFRESH_SECRET` | Railway env        | Quarterly     |
+| `DATABASE_URL`       | Railway env        | On compromise |
+| `OPENAI_API_KEY`     | Railway env        | Quarterly     |
+| `EMAIL_API_KEY`      | Railway env        | Quarterly     |
 
 ### Rules
 
@@ -260,13 +264,13 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## 12. AI Data Security
 
-| Concern | Mitigation |
-|---------|------------|
-| Transcript sent to OpenAI | Document in privacy policy; user consent on upload |
-| PII in transcripts | Warn users; minimize data in prompts |
-| API key exposure | Server-side only; never in frontend |
-| Prompt injection | System prompt hardening; output schema validation |
-| Data retention (OpenAI) | Use API with zero data retention option if available |
+| Concern                   | Mitigation                                           |
+| ------------------------- | ---------------------------------------------------- |
+| Transcript sent to OpenAI | Document in privacy policy; user consent on upload   |
+| PII in transcripts        | Warn users; minimize data in prompts                 |
+| API key exposure          | Server-side only; never in frontend                  |
+| Prompt injection          | System prompt hardening; output schema validation    |
+| Data retention (OpenAI)   | Use API with zero data retention option if available |
 
 ---
 
@@ -282,6 +286,7 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 ## 14. Logging & Audit
 
 ### What to Log
+
 - Authentication events (login, logout, failed attempts)
 - Authorization failures
 - AI job start/complete/fail
@@ -289,11 +294,13 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 - Password changes
 
 ### What NOT to Log
+
 - Passwords or tokens
 - Full transcripts
 - Refresh token values
 
 ### Log Format
+
 ```json
 {
   "level": "info",
@@ -309,12 +316,12 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## 15. Incident Response
 
-| Severity | Response Time | Action |
-|----------|---------------|--------|
-| Critical (data breach) | < 1 hour | Revoke tokens, rotate secrets, notify |
-| High (auth bypass) | < 4 hours | Patch, deploy, audit logs |
-| Medium (rate limit bypass) | < 24 hours | Fix, monitor |
-| Low (info disclosure) | < 1 week | Fix in next release |
+| Severity                   | Response Time | Action                                |
+| -------------------------- | ------------- | ------------------------------------- |
+| Critical (data breach)     | < 1 hour      | Revoke tokens, rotate secrets, notify |
+| High (auth bypass)         | < 4 hours     | Patch, deploy, audit logs             |
+| Medium (rate limit bypass) | < 24 hours    | Fix, monitor                          |
+| Low (info disclosure)      | < 1 week      | Fix in next release                   |
 
 ---
 
@@ -337,6 +344,5 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## Related Documents
 
-- [api-architecture-review.md](./api-architecture-review.md)
+- [api-design.md](./api-design.md)
 - [non-functional-requirements.md](./non-functional-requirements.md)
-- [risk-assessment.md](./risk-assessment.md)
