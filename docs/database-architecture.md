@@ -396,6 +396,5 @@ All migrations via `prisma migrate deploy` in CI/CD pipeline.
 
 ## 6. Related Documents
 
-- [erd.md](./erd.md) — Visual entity relationship diagram
 - [erd.md](./erd.md) — Entity relationship diagram
-- [scalability-design.md](./scalability-design.md) — Scale strategies
+- [system-architecture.md](./system-architecture.md)

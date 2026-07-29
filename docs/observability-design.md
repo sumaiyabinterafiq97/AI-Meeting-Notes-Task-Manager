@@ -75,29 +75,29 @@ observability/
 
 ## 3. Metrics Catalog
 
-| Metric | Type | Labels |
-|--------|------|--------|
-| `http.request.count` | Counter | workspace, user, route |
-| `llm.embedding.duration` | Histogram | provider, model, workspace |
-| `rag.retrieval.duration` | Histogram | workspace, mode |
-| `agent.execution.duration` | Histogram | agent, workflow |
-| `orchestrator.graph.duration` | Histogram | workflow |
-| `cache.hit` / `cache.miss` | Counter | namespace, workspace |
-| `llm.retries.count` | Counter | provider, workspace |
-| `ratelimit.exceeded` | Counter | user, workspace, provider |
-| `provider.outage` | Counter | provider |
-| `context.tokens` | Gauge | model, workspace |
+| Metric                        | Type      | Labels                     |
+| ----------------------------- | --------- | -------------------------- |
+| `http.request.count`          | Counter   | workspace, user, route     |
+| `llm.embedding.duration`      | Histogram | provider, model, workspace |
+| `rag.retrieval.duration`      | Histogram | workspace, mode            |
+| `agent.execution.duration`    | Histogram | agent, workflow            |
+| `orchestrator.graph.duration` | Histogram | workflow                   |
+| `cache.hit` / `cache.miss`    | Counter   | namespace, workspace       |
+| `llm.retries.count`           | Counter   | provider, workspace        |
+| `ratelimit.exceeded`          | Counter   | user, workspace, provider  |
+| `provider.outage`             | Counter   | provider                   |
+| `context.tokens`              | Gauge     | model, workspace           |
 
 ---
 
 ## 4. Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /observability/metrics` | Prometheus text export |
-| `GET /observability/metrics/json` | JSON metrics snapshot |
-| `GET /observability/dashboard` | Aggregated dashboard data |
-| `GET /observability/optimization` | Performance recommendations |
+| Endpoint                              | Description                    |
+| ------------------------------------- | ------------------------------ |
+| `GET /observability/metrics`          | Prometheus text export         |
+| `GET /observability/metrics/json`     | JSON metrics snapshot          |
+| `GET /observability/dashboard`        | Aggregated dashboard data      |
+| `GET /observability/optimization`     | Performance recommendations    |
 | `POST /observability/alerts/evaluate` | Run alert threshold evaluation |
 
 ---
@@ -113,19 +113,18 @@ observability/
 
 ## 6. Integration Points
 
-| Component | Observability Hook |
-|-----------|-------------------|
-| `LLMService` | TokenUsageService, logLLMInvocation, retry observability |
-| `RAGObservabilityService` | LatencyTracker, MetricsService |
-| `EmbeddingObservabilityService` | LatencyTracker, MetricsService |
-| `OrchestratorObservability` | Graph/agent latency, retry events |
-| `RagCacheObservabilityService` | Delegates to CacheObservabilityService |
+| Component                       | Observability Hook                                       |
+| ------------------------------- | -------------------------------------------------------- |
+| `LLMService`                    | TokenUsageService, logLLMInvocation, retry observability |
+| `RAGObservabilityService`       | LatencyTracker, MetricsService                           |
+| `EmbeddingObservabilityService` | LatencyTracker, MetricsService                           |
+| `OrchestratorObservability`     | Graph/agent latency, retry events                        |
+| `RagCacheObservabilityService`  | Delegates to CacheObservabilityService                   |
 
 ---
 
 ## Related Documents
 
-- [cost-analysis.md](./cost-analysis.md)
-- [cache-strategy.md](./cache-strategy.md)
-- [retry-strategy.md](./retry-strategy.md)
-- [performance-optimization.md](./performance-optimization.md)
+- [observability-requirements.md](./observability-requirements.md)
+- [llm-architecture.md](./llm-architecture.md)
+- [rag-architecture.md](./rag-architecture.md)

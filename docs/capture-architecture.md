@@ -1,7 +1,7 @@
 # Capture Architecture — MeetingMind AI
 
 **Status:** Phase A shipped · Phase B backend shipped · Phase C adapters scaffolded · Phase D bots stubbed  
-**Related:** [transcription-flow.md](./transcription-flow.md) · [meeting-import-strategy.md](./meeting-import-strategy.md) · [zoom-meet-teams-integration.md](./zoom-meet-teams-integration.md)
+**Related:** [transcription-flow.md](./transcription-flow.md) · [google-meet-integration.md](./google-meet-integration.md) · [screen-recorder.md](./screen-recorder.md)
 
 ## Problem
 

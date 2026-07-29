@@ -3,6 +3,20 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.2] - 2026-07-29
+
+### Added
+
+- **Screen recorder mic mix** — tab/system audio + microphone via `AudioContext` so the local speaker’s voice is included (Meet tab audio alone usually excludes you)
+
+### Changed
+
+- Docs trimmed: removed one-shot reviews, stale roadmaps/debt registers, duplicate requirements, and unused ops essays (~19 files); index updated in `docs/README.md`
+
+### Fixed
+
+- Screen/tab recording missing the local speaker’s voice (tab-only capture without microphone mix)
+
 ## [0.7.1] - 2026-07-26
 
 > Ships on `main` together with **[0.7.0]** (Translate & Transcribe deferred start), which was never tagged separately.

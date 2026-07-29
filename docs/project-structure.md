@@ -160,14 +160,14 @@ apps/web/
 
 ### Frontend Conventions
 
-| Rule | Detail |
-|------|--------|
+| Rule               | Detail                                                     |
+| ------------------ | ---------------------------------------------------------- |
 | Feature colocation | API calls, hooks, components, pages in same feature folder |
-| Pages are thin | Compose feature components; minimal logic |
-| Server state | React Query only; no Redux |
-| Auth token | Memory via AuthProvider ref; never localStorage |
-| Forms | React Hook Form + Zod resolver from shared-types |
-| Imports | `@/` alias → `src/`; `@shared/` → `packages/shared-types` |
+| Pages are thin     | Compose feature components; minimal logic                  |
+| Server state       | React Query only; no Redux                                 |
+| Auth token         | Memory via AuthProvider ref; never localStorage            |
+| Forms              | React Hook Form + Zod resolver from shared-types           |
+| Imports            | `@/` alias → `src/`; `@shared/` → `packages/shared-types`  |
 
 ---
 
@@ -293,15 +293,15 @@ apps/api/
 
 ### Backend Conventions
 
-| Rule | Detail |
-|------|--------|
-| Thin controllers | Parse request → call service → format response |
-| Fat services | Business logic, authorization, transactions |
-| One module per domain | routes + controller + service + schema |
-| Validation | Zod schemas in `.schema.ts`; shared with frontend via `packages/shared-types` |
-| Errors | Throw `AppError` with code; caught by error handler |
-| Transactions | `prisma.$transaction` for multi-table mutations |
-| Workspace scope | Every service method receives `workspaceId` |
+| Rule                  | Detail                                                                        |
+| --------------------- | ----------------------------------------------------------------------------- |
+| Thin controllers      | Parse request → call service → format response                                |
+| Fat services          | Business logic, authorization, transactions                                   |
+| One module per domain | routes + controller + service + schema                                        |
+| Validation            | Zod schemas in `.schema.ts`; shared with frontend via `packages/shared-types` |
+| Errors                | Throw `AppError` with code; caught by error handler                           |
+| Transactions          | `prisma.$transaction` for multi-table mutations                               |
+| Workspace scope       | Every service method receives `workspaceId`                                   |
 
 ---
 
@@ -403,17 +403,17 @@ CORS_ORIGIN=http://localhost:5173
 
 ## 7. Testing Strategy
 
-| Layer | Tool | Location |
-|-------|------|----------|
-| Unit (BE) | Vitest | `apps/api/tests/unit/` |
-| Integration (BE) | Vitest + Supertest | `apps/api/tests/integration/` |
-| Tenant isolation | Integration | `tenant-isolation.test.ts` |
-| Unit (FE) | Vitest + Testing Library | Co-located `*.test.tsx` |
-| E2E | Playwright (MVP+1) | `apps/web/e2e/` |
+| Layer            | Tool                     | Location                      |
+| ---------------- | ------------------------ | ----------------------------- |
+| Unit (BE)        | Vitest                   | `apps/api/tests/unit/`        |
+| Integration (BE) | Vitest + Supertest       | `apps/api/tests/integration/` |
+| Tenant isolation | Integration              | `tenant-isolation.test.ts`    |
+| Unit (FE)        | Vitest + Testing Library | Co-located `*.test.tsx`       |
+| E2E              | Playwright (MVP+1)       | `apps/web/e2e/`               |
 
 ---
 
 ## Related Documents
 
 - [system-architecture.md](./system-architecture.md)
-- [development-roadmap.md](./development-roadmap.md)
+- [mvp-definition.md](./mvp-definition.md)

@@ -4,8 +4,7 @@
 **Version:** 1.1  
 **Base URL:** `https://api.example.com/api/v1`
 
-> **Architecture review:** [api-architecture-review.md](./api-architecture-review.md)  
-> Improvements: idempotency keys, refresh token rotation, rate limit headers, `X-Request-Id`, standardized error `requestId`.
+Improvements since early drafts: idempotency keys, refresh token rotation, rate limit headers, `X-Request-Id`, standardized error `requestId`.
 
 ---
 

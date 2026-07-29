@@ -4,7 +4,7 @@
 **Version:** 1.0  
 **Status:** Requirements — Documentation Only  
 **Baseline:** PostgreSQL FTS (MVP+1); OpenAI embeddings via abstraction layer  
-**Related:** [vector-db-requirements.md](./vector-db-requirements.md) · [semantic-search-requirements.md](./semantic-search-requirements.md) · [llm-requirements.md](./llm-requirements.md)
+**Related:** [vector-db-design.md](./vector-db-design.md) · [llm-requirements.md](./llm-requirements.md)
 
 ---
 
@@ -20,15 +20,15 @@ RAG extends — does not replace — existing structured outputs (`meeting_ai_ou
 
 ### In Scope
 
-| Corpus | Indexed Content |
-|--------|----------------|
-| Meeting transcripts | Chunked text with metadata |
-| AI summaries | Full summary + topics |
-| Decisions | Per-decision chunks |
-| Action items | Title + description (accepted and pending) |
-| Risks | Text + severity |
-| Tasks | Title + description + comments |
-| Knowledge entries | Extracted knowledge (Phase 5+) |
+| Corpus              | Indexed Content                            |
+| ------------------- | ------------------------------------------ |
+| Meeting transcripts | Chunked text with metadata                 |
+| AI summaries        | Full summary + topics                      |
+| Decisions           | Per-decision chunks                        |
+| Action items        | Title + description (accepted and pending) |
+| Risks               | Text + severity                            |
+| Tasks               | Title + description + comments             |
+| Knowledge entries   | Extracted knowledge (Phase 5+)             |
 
 ### Out of Scope (v1 RAG)
 
@@ -49,14 +49,14 @@ RAG extends — does not replace — existing structured outputs (`meeting_ai_ou
 
 ### 3.2 Chunk Parameters
 
-| Content Type | Target Size | Overlap | Splitter |
-|--------------|-------------|---------|----------|
-| Transcript | 512 tokens | 64 tokens | Recursive: `\n\n`, `\n`, `. ` |
-| Summary | 256 tokens | 0 | Whole summary if < 512 tokens |
-| Decision | 128 tokens | 0 | One decision per chunk |
-| Risk | 128 tokens | 0 | One risk per chunk |
-| Action item | 128 tokens | 0 | One item per chunk |
-| Task + comments | 256 tokens | 32 tokens | Title+desc first; comments appended |
+| Content Type    | Target Size | Overlap   | Splitter                            |
+| --------------- | ----------- | --------- | ----------------------------------- |
+| Transcript      | 512 tokens  | 64 tokens | Recursive: `\n\n`, `\n`, `. `       |
+| Summary         | 256 tokens  | 0         | Whole summary if < 512 tokens       |
+| Decision        | 128 tokens  | 0         | One decision per chunk              |
+| Risk            | 128 tokens  | 0         | One risk per chunk                  |
+| Action item     | 128 tokens  | 0         | One item per chunk                  |
+| Task + comments | 256 tokens  | 32 tokens | Title+desc first; comments appended |
 
 ### 3.3 Chunk Identity
 
@@ -134,15 +134,15 @@ sequenceDiagram
 
 ### 5.2 Retrieval Parameters
 
-| Parameter | Default | Configurable |
-|-----------|---------|--------------|
-| `topK` | 10 | 5–30 |
-| `similarityThreshold` | 0.72 (cosine) | Per workspace |
-| `maxContextTokens` | 8000 | Per workflow |
-| `sourceTypes` | all | Filter array |
-| `dateFrom` / `dateTo` | null | ISO dates |
-| `meetingId` | null | Single meeting scope |
-| `tags` | [] | Tag filter |
+| Parameter             | Default       | Configurable         |
+| --------------------- | ------------- | -------------------- |
+| `topK`                | 10            | 5–30                 |
+| `similarityThreshold` | 0.72 (cosine) | Per workspace        |
+| `maxContextTokens`    | 8000          | Per workflow         |
+| `sourceTypes`         | all           | Filter array         |
+| `dateFrom` / `dateTo` | null          | ISO dates            |
+| `meetingId`           | null          | Single meeting scope |
+| `tags`                | []            | Tag filter           |
 
 **FR-RAG-RET-001:** All retrieval scoped by `workspace_id` — mandatory filter  
 **FR-RAG-RET-002:** Return empty set (not error) when no chunks exceed threshold  
@@ -182,13 +182,13 @@ User question: {query}
 
 ## 7. Prompt Construction
 
-| Workflow | System Prompt Focus | Context Source |
-|----------|---------------------|----------------|
-| Workspace chat | Q&A, citations required | RAG retrieval |
-| Per-meeting chat | Meeting-specific | Meeting transcript + AI output + RAG within meeting |
-| Weekly report | Synthesis, structured | SQL aggregates + RAG top chunks |
-| Cross-meeting analysis | Comparison | RAG multi-query |
-| Agent extraction | Structured JSON | Full transcript (not RAG) |
+| Workflow               | System Prompt Focus     | Context Source                                      |
+| ---------------------- | ----------------------- | --------------------------------------------------- |
+| Workspace chat         | Q&A, citations required | RAG retrieval                                       |
+| Per-meeting chat       | Meeting-specific        | Meeting transcript + AI output + RAG within meeting |
+| Weekly report          | Synthesis, structured   | SQL aggregates + RAG top chunks                     |
+| Cross-meeting analysis | Comparison              | RAG multi-query                                     |
+| Agent extraction       | Structured JSON         | Full transcript (not RAG)                           |
 
 **FR-RAG-PRM-001:** Chat prompts MUST instruct model to cite sources  
 **FR-RAG-PRM-002:** Extraction agents use full transcript (existing behavior) — RAG not used for initial extraction
@@ -252,15 +252,15 @@ flowchart LR
 
 ## 10. Metadata Filters
 
-| Filter | Field | Example |
-|--------|-------|---------|
-| Date range | `meetingDate` | Last 7 days |
-| Tags | `tags[]` | `authentication` |
-| Source type | `sourceType` | `decision` |
-| Meeting | `meetingId` | Single meeting chat |
-| Assignee | `assigneeId` | Tasks for Sarah |
-| Severity | `severity` | `high` risks |
-| Status | `taskStatus` | `TODO` |
+| Filter      | Field         | Example             |
+| ----------- | ------------- | ------------------- |
+| Date range  | `meetingDate` | Last 7 days         |
+| Tags        | `tags[]`      | `authentication`    |
+| Source type | `sourceType`  | `decision`          |
+| Meeting     | `meetingId`   | Single meeting chat |
+| Assignee    | `assigneeId`  | Tasks for Sarah     |
+| Severity    | `severity`    | `high` risks        |
+| Status      | `taskStatus`  | `TODO`              |
 
 **FR-RAG-FILT-001:** Filters applied pre-retrieval in SQL WHERE clause  
 **FR-RAG-FILT-002:** Invalid filter combinations return 400
@@ -273,10 +273,10 @@ flowchart LR
 
 ### 11.2 Stage 2: Re-ranker (top 10)
 
-| Phase | Re-ranker | Detail |
-|-------|-----------|--------|
-| MVP RAG | Score boost rules | Recency + decision/risk type boost |
-| RAG v2 | Cross-encoder model | `bge-reranker` or Cohere rerank API |
+| Phase   | Re-ranker           | Detail                              |
+| ------- | ------------------- | ----------------------------------- |
+| MVP RAG | Score boost rules   | Recency + decision/risk type boost  |
+| RAG v2  | Cross-encoder model | `bge-reranker` or Cohere rerank API |
 
 **FR-RAG-RERANK-001:** Boost decisions and risks by 10% for "what did we decide" queries  
 **FR-RAG-RERANK-002:** Boost recency: meetings in last 14 days +5%  
@@ -286,12 +286,12 @@ flowchart LR
 
 ## 12. Context Windows & Token Budgeting
 
-| Workflow | Max Input Tokens | Allocation |
-|----------|------------------|------------|
-| Workspace chat | 32,000 | System 500 + history 4000 + RAG 8000 + query 200 |
-| Per-meeting chat | 16,000 | System 500 + meeting full 10000 + RAG 3000 + history 2000 |
-| Weekly report | 200,000 | Aggregates 2000 + RAG 50000 + instructions 1000 |
-| Agent extraction | 120,000 | Transcript chunks (existing) |
+| Workflow         | Max Input Tokens | Allocation                                                |
+| ---------------- | ---------------- | --------------------------------------------------------- |
+| Workspace chat   | 32,000           | System 500 + history 4000 + RAG 8000 + query 200          |
+| Per-meeting chat | 16,000           | System 500 + meeting full 10000 + RAG 3000 + history 2000 |
+| Weekly report    | 200,000          | Aggregates 2000 + RAG 50000 + instructions 1000           |
+| Agent extraction | 120,000          | Transcript chunks (existing)                              |
 
 **FR-RAG-BUDGET-001:** Token counter uses `tiktoken` or provider tokenizer  
 **FR-RAG-BUDGET-002:** Exceeding budget truncates lowest-relevance chunks first  
@@ -301,11 +301,11 @@ flowchart LR
 
 ## 13. Caching
 
-| Cache | Key | TTL |
-|-------|-----|-----|
-| Query embedding | `rag:qemb:{hash(query)}` | 1h |
-| Retrieval results | `rag:ret:{workspaceId}:{hash(query+filters)}` | 15min |
-| Chunk set | `rag:chunks:{meetingId}:{contentHash}` | Until content change |
+| Cache             | Key                                           | TTL                  |
+| ----------------- | --------------------------------------------- | -------------------- |
+| Query embedding   | `rag:qemb:{hash(query)}`                      | 1h                   |
+| Retrieval results | `rag:ret:{workspaceId}:{hash(query+filters)}` | 15min                |
+| Chunk set         | `rag:chunks:{meetingId}:{contentHash}`        | Until content change |
 
 **FR-RAG-CACHE-001:** Invalidate retrieval cache on new meeting processed in workspace  
 **FR-RAG-CACHE-002:** Cache bypass for Owner reprocess operations
@@ -314,13 +314,13 @@ flowchart LR
 
 ## 14. Failure Handling
 
-| Failure | Behavior |
-|---------|----------|
-| Embedding API down | Queue retry; search falls back to keyword-only |
-| pgvector query timeout | Retry once; return keyword results |
-| Empty retrieval | Chat responds with "no relevant context found" |
-| Partial retrieval (< 3 chunks) | Proceed with warning in metadata |
-| Re-embedding migration | Background job; dual-read during transition |
+| Failure                        | Behavior                                       |
+| ------------------------------ | ---------------------------------------------- |
+| Embedding API down             | Queue retry; search falls back to keyword-only |
+| pgvector query timeout         | Retry once; return keyword results             |
+| Empty retrieval                | Chat responds with "no relevant context found" |
+| Partial retrieval (< 3 chunks) | Proceed with warning in metadata               |
+| Re-embedding migration         | Background job; dual-read during transition    |
 
 **FR-RAG-FAIL-001:** RAG failures must not block meeting extraction (independent pipelines)  
 **FR-RAG-FAIL-002:** Degraded mode flag in API response: `retrievalMode: "keyword_only"`
@@ -329,15 +329,15 @@ flowchart LR
 
 ## 15. Scalability Requirements
 
-| Metric | Target |
-|--------|--------|
-| Chunks per workspace | 500,000 (≈ 5,000 meetings) |
-| Embedding ingestion | 1,000 chunks/minute |
-| Concurrent retrievals | 100/sec per workspace |
-| Index rebuild | < 4 hours for 1M chunks (background) |
-| Storage per 1k meetings | < 500 MB vectors (1536-dim float32) |
+| Metric                  | Target                               |
+| ----------------------- | ------------------------------------ |
+| Chunks per workspace    | 500,000 (≈ 5,000 meetings)           |
+| Embedding ingestion     | 1,000 chunks/minute                  |
+| Concurrent retrievals   | 100/sec per workspace                |
+| Index rebuild           | < 4 hours for 1M chunks (background) |
+| Storage per 1k meetings | < 500 MB vectors (1536-dim float32)  |
 
-**FR-RAG-SCALE-001:** HNSW index parameters tuned for recall/latency tradeoff (see vector-db-requirements.md)  
+**FR-RAG-SCALE-001:** HNSW index parameters tuned for recall/latency tradeoff (see [vector-db-design.md](./vector-db-design.md))  
 **FR-RAG-SCALE-002:** Partition `document_chunks` by `workspace_id` hash (v2, > 10M chunks)
 
 ---
@@ -355,18 +355,18 @@ flowchart LR
 
 ## 17. New Data Entities (Documentation Only)
 
-| Table | Purpose |
-|-------|---------|
-| `document_chunks` | Chunk text + metadata + vector |
-| `embedding_jobs` | Async embed job tracking |
-| `rag_queries` | Audit log of retrievals (observability) |
+| Table             | Purpose                                 |
+| ----------------- | --------------------------------------- |
+| `document_chunks` | Chunk text + metadata + vector          |
+| `embedding_jobs`  | Async embed job tracking                |
+| `rag_queries`     | Audit log of retrievals (observability) |
 
-Schema details: [vector-db-requirements.md](./vector-db-requirements.md)
+Schema details: [vector-db-design.md](./vector-db-design.md)
 
 ---
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-06-18 | Initial RAG requirements |
+| Version | Date       | Changes                  |
+| ------- | ---------- | ------------------------ |
+| 1.0     | 2026-06-18 | Initial RAG requirements |

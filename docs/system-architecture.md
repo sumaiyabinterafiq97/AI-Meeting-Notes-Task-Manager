@@ -377,6 +377,5 @@ sequenceDiagram
 
 - [security-architecture.md](./security-architecture.md)
 - [database-architecture.md](./database-architecture.md)
-- [scalability-design.md](./scalability-design.md)
-- [api-architecture-review.md](./api-architecture-review.md)
+- [api-design.md](./api-design.md)
 - [project-structure.md](./project-structure.md)
