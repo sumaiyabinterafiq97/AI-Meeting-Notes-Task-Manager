@@ -177,9 +177,9 @@ See [`.env.example`](./.env.example) for the full list. Key variables:
 
 See [backend/README.md](./backend/README.md) for LLM agents, tools, memory, and testing details.  
 Recording flow: upload stores file → user clicks **Translate & Transcribe** — [`docs/transcription-flow.md`](./docs/transcription-flow.md).  
-Meeting chat: hybrid RAG + meeting corpus fallback for summarize/overview — see [`CHANGELOG.md`](./CHANGELOG.md) v0.7.1 and [`backend/README.md`](./backend/README.md).  
-Google Meet: [`docs/google-meet-integration.md`](./docs/google-meet-integration.md).  
-Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
+Meeting chat: hybrid RAG + meeting corpus fallback for summarize/overview — see [`CHANGELOG.md`](./CHANGELOG.md) v0.7.1+ and [`backend/README.md`](./backend/README.md).  
+Screen recorder: tab/system + mic mix — [`docs/screen-recorder.md`](./docs/screen-recorder.md).
+Google Meet: [`docs/google-meet-integration.md`](./docs/google-meet-integration.md).
 
 ## Development Commands
 
@@ -215,7 +215,7 @@ Screen recorder: [`docs/screen-recorder.md`](./docs/screen-recorder.md).
 
 ## API Endpoints
 
-**MeetingMind AI v0.7.1** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
+**MeetingMind AI v0.7.2** — see [`docs/api-design.md`](./docs/api-design.md) for core API reference, [`backend/README.md`](./backend/README.md) for LLM agents and orchestration, and [`frontend/README.md`](./frontend/README.md) for UI routes.
 
 | Domain                      | Base Path                                        | Backend | Frontend |
 | --------------------------- | ------------------------------------------------ | ------- | -------- |
@@ -271,7 +271,7 @@ Full architecture and requirements live in [`docs/`](./docs/):
 
 ## Next Steps
 
-MeetingMind AI **v0.7.1** (includes v0.7.0 Translate & Transcribe) is feature-complete for capture, deferred transcription, and grounded meeting chat. Recommended next phase:
+MeetingMind AI **v0.7.2** is feature-complete for capture (including mic-mixed screen recording), Translate & Transcribe, and grounded meeting chat. Recommended next phase:
 
 1. **E2E tests** — Playwright for Google mock auth, Translate & Transcribe, and meeting chat summarize
 2. **Email delivery** — Wire invitation and password-reset emails (Resend; `EMAIL_API_KEY`)
