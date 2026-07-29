@@ -1,10 +1,12 @@
 # Requirements
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.1  
-**Status:** Approved for Implementation
+**Product:** MeetingMind AI  
+**Version:** 1.2  
+**Status:** Approved for Implementation · **Current UX:** Meetings + Settings (v0.7.3)
 
 > **Note:** Functional and non-functional requirements have been split into dedicated documents for maintainability. See [functional-requirements.md](./functional-requirements.md) and [non-functional-requirements.md](./non-functional-requirements.md).
+
+> **Current product focus:** Capture → Translate & Transcribe → English transcript → meeting chat. Tasks, dashboard, search, and insights remain long-term / backend capabilities; they are soft-hidden in the primary nav.
 
 ---
 
@@ -12,7 +14,7 @@
 
 ### Problem Statement
 
-Teams spend significant time in meetings but lose context afterward. Notes are inconsistent, action items are buried in transcripts, ownership is unclear, and follow-through is poor. Existing tools either handle meetings (transcription/summarization) or tasks (Kanban/project management) — rarely both in a unified, workspace-aware workflow.
+Teams spend significant time in meetings but lose context afterward. Notes are inconsistent, decisions are hard to find later, and mixed-language recordings (e.g. Bengali + English) are painful to reuse. MeetingMind focuses first on reliable capture and an English transcript you can read, download, and ask about in chat — with structured AI and task follow-through available on the backend for later product surfaces.
 
 ### Target Users
 
@@ -25,18 +27,18 @@ Teams spend significant time in meetings but lose context afterward. Notes are i
 
 ### Business Value
 
-- **Time savings:** Reduce post-meeting admin from 15–30 min to under 2 min per meeting
-- **Accountability:** Auto-extracted action items with assignees and due dates
-- **Institutional memory:** Searchable summaries, decisions, and meeting history
-- **Velocity:** Fewer dropped tasks and fewer "what did we decide?" follow-ups
+- **Time savings:** Skip manual note-taking and ad-hoc translation of mixed-language meetings
+- **Reusable transcript:** English document you can read, download, and chat against
+- **Grounded answers:** Meeting chat with RAG / corpus fallback instead of “what did we decide?” guesswork
+- **Path to accountability:** Action items and tasks remain in the platform APIs for when the UI re-surfaces them
 
 ### Core Objectives
 
-1. Ingest meeting content (paste transcript **or** recording → Translate & Transcribe) and produce structured AI outputs (summary, decisions, risks, action items)
-2. Convert action items into trackable tasks with assignment and status workflow
-3. Provide workspace-scoped collaboration with role-based access
-4. Deliver a fast, accessible UI with real-time-feeling updates via React Query
-5. Ship an MVP in ~14–18 weeks with clear path to production SaaS (capture loop shipped post-MVP as v0.7.0)
+1. Ingest meeting content (paste transcript **or** recording → Translate & Transcribe) into an English transcript
+2. Provide meeting-scoped chat grounded on that transcript
+3. Produce structured AI outputs server-side (summary, decisions, risks, action items) for future / soft-hidden surfaces
+4. Provide workspace-scoped collaboration with role-based access (Meetings + Settings primary UX)
+5. Keep a clear path to production SaaS (capture loop shipped as v0.7.x)
 
 ### Success Metrics
 
@@ -60,11 +62,11 @@ Teams spend significant time in meetings but lose context afterward. Notes are i
 
 **Profile:** IC on an 8-person product squad; attends 4–6 meetings/week.
 
-|                 |                                                                                                                                   |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Goals**       | Know what was decided and what they own; minimize note-taking; track personal action items                                        |
-| **Pain Points** | Forgotten action items; disputed decisions; duplicate data entry across tools                                                     |
-| **Workflows**   | Record/upload or paste → Translate & Transcribe if needed → review AI summary → accept tasks; meeting chat; search past decisions |
+|                 |                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Goals**       | Know what was decided and what they own; minimize note-taking; track personal action items                                  |
+| **Pain Points** | Forgotten action items; disputed decisions; duplicate data entry across tools                                               |
+| **Workflows**   | Record/upload or paste → Translate & Transcribe if needed → read transcript → meeting chat (tasks/search soft-hidden today) |
 
 ### Team Lead — Jordan (Engineering Manager)
 
@@ -74,7 +76,7 @@ Teams spend significant time in meetings but lose context afterward. Notes are i
 | --------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Goals**       | Ensure follow-through; surface risks early; maintain alignment without micromanaging                                   |
 | **Pain Points** | No single source of truth; chasing status updates; retro items never closed                                            |
-| **Workflows**   | Create meeting → capture recording or paste → Translate & Transcribe → edit AI output; assign tasks; monitor dashboard |
+| **Workflows**   | Create meeting (Meet link) → capture recording or paste → Translate & Transcribe → review transcript; use meeting chat |
 
 ### Project Manager — Sam (Technical PM)
 

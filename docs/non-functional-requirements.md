@@ -1,23 +1,25 @@
 # Non-Functional Requirements
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.1  
-**Status:** Approved for Implementation  
+**Product:** MeetingMind AI  
+**Version:** 1.2  
+**Status:** Targets for quality — not all measured in CI today  
 **Related:** [functional-requirements.md](./functional-requirements.md) · [security-architecture.md](./security-architecture.md) · [system-architecture.md](./system-architecture.md)
+
+> **Runtime today:** Local Docker Compose (Postgres pgvector, Redis, API, SPA) or host `npm run dev`. NFR hosts such as Neon pooling / Railway are **aspirational** unless/until production is wired.
 
 ---
 
 ## 1. Performance
 
-| ID           | Requirement                   | Target                              | Measurement     |
-| ------------ | ----------------------------- | ----------------------------------- | --------------- |
-| NFR-PERF-001 | API response time (excl. AI)  | p95 < 300ms                         | APM / load test |
-| NFR-PERF-002 | API response time (dashboard) | p95 < 500ms                         | APM             |
-| NFR-PERF-003 | AI job completion             | p95 < 60s for ≤ 50k char transcript | Job metrics     |
-| NFR-PERF-004 | Frontend initial load (LCP)   | < 2.5s on 4G                        | Lighthouse      |
-| NFR-PERF-005 | Kanban board render           | < 1s for 500 tasks                  | Manual / RUM    |
-| NFR-PERF-006 | Search results                | < 400ms p95                         | APM             |
-| NFR-PERF-007 | Database connection pool      | Max 20 connections per API instance | Neon pooling    |
+| ID           | Requirement                   | Target                              | Measurement        |
+| ------------ | ----------------------------- | ----------------------------------- | ------------------ |
+| NFR-PERF-001 | API response time (excl. AI)  | p95 < 300ms                         | APM / load test    |
+| NFR-PERF-002 | API response time (dashboard) | p95 < 500ms                         | APM                |
+| NFR-PERF-003 | AI job completion             | p95 < 60s for ≤ 50k char transcript | Job metrics        |
+| NFR-PERF-004 | Frontend initial load (LCP)   | < 2.5s on 4G                        | Lighthouse         |
+| NFR-PERF-005 | Kanban board render           | < 1s for 500 tasks                  | Manual / RUM       |
+| NFR-PERF-006 | Search results                | < 400ms p95                         | APM                |
+| NFR-PERF-007 | Database connection pool      | Max 20 connections per API instance | Prisma pool / host |
 
 ---
 

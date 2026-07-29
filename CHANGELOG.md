@@ -3,6 +3,13 @@
 All notable changes to this project are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.3] - 2026-07-29
+
+### Changed
+
+- Root **README** rewritten for portfolio clarity: primary Meetings loop, soft-hidden surfaces, architecture diagram, tighter setup/API/AI sections
+- Docs synced to implementation: feature inventory, documentation audit/cleanup/validation, Prisma `database-design.md`, API design Google auth + UI notes, requirements/architecture updates
+
 ## [0.7.2] - 2026-07-29
 
 ### Added

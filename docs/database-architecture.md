@@ -1,10 +1,11 @@
 # Database Architecture
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.0  
-**Database:** PostgreSQL 16 (Neon)  
+**Product:** MeetingMind AI  
+**Version:** 1.2  
+**Synced:** 2026-07-29  
+**Database:** PostgreSQL 16 + pgvector (Docker `pgvector/pgvector:pg16` locally; managed hosts optional)  
 **ORM:** Prisma  
-**Canonical ERD:** [erd.md](./erd.md)
+**Summary:** [database-design.md](./database-design.md) · **ERD:** [erd.md](./erd.md)
 
 ---
 

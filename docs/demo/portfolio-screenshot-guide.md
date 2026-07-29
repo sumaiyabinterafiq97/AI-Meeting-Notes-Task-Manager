@@ -1,61 +1,63 @@
 # Portfolio Screenshot Guide — MeetingMind AI
 
-Use this flow to populate the app for LinkedIn Featured images, demo GIFs, and resume portfolio.
+Use this flow for LinkedIn Featured images, demo GIFs, and resume portfolio.
+
+**Current product UI (v0.7.3):** Meetings + Settings. Meeting detail tabs: **Record & upload · Transcript · Chat · Details**. Soft-hidden routes (Dashboard, Tasks, Insights, Search, Workspace chat, Reports, Knowledge) **redirect to Meetings** — do not plan screenshots of those pages unless you temporarily restore routes.
 
 ## Prerequisites
 
 - App running: `npm run dev` from repo root
 - `.env` has `AI_USE_MOCK=true` (no OpenAI key required for demo)
-- Logged in with a workspace (rename "QA Test Workspace" → "Acme Engineering" in Settings if desired)
+- Logged in with a workspace
+- Optional: Connect Google Calendar in Settings (or keep `CALENDAR_USE_MOCK=true`)
 
 ## Demo transcript
 
-Copy-paste from [`portfolio-demo-transcript.txt`](./portfolio-demo-transcript.txt) (~1,200 chars).
+Copy-paste from [`portfolio-demo-transcript.txt`](./portfolio-demo-transcript.txt).
 
-**Also in repo (shorter sources):**
+**Also in repo:**
 
-| File                                                   | Use                                                   |
-| ------------------------------------------------------ | ----------------------------------------------------- |
-| `backend/scripts/load-test-meeting-jobs.ts`            | `SAMPLE_TRANSCRIPT` (3 lines, minimal)                |
-| `backend/prompts/evaluations/fixtures/summarizer.yaml` | TC-SUM-001 sprint planning snippet                    |
-| `backend/tests/helpers/meeting-helper.ts`              | Test payload only (`'A'.repeat(120)` — not realistic) |
+| File                                                   | Use                     |
+| ------------------------------------------------------ | ----------------------- |
+| `backend/prompts/evaluations/fixtures/summarizer.yaml` | Sprint planning snippet |
+| `npm run seed:portfolio-demo`                          | One-command seed        |
 
-## Step-by-step (5 minutes)
+## Step-by-step (~5 minutes)
 
-**One-command demo seed** (uploads transcript + runs AI with mock provider):
+**Seed:**
 
 ```bash
 npm run seed:portfolio-demo
 ```
 
-Then open the printed URLs in your browser (log in first if needed).
+Open the printed meeting URL (log in first if needed).
 
-Manual flow: (optional): Title `Sprint Planning`, attendees `Alex Chen, Jordan Park, Maria Santos, Sarah Kim` 2. Open meeting → **Recording & transcript** → paste transcript from `portfolio-demo-transcript.txt` **or** upload a recording then click **Translate & Transcribe** 3. Wait until status is **Processed** / `READY` (not Draft) 4. Open **Insights** / AI panel → confirm summary, decisions, risks, action items 5. Open **Chat** tab → ask: `What blockers were raised about production launch?` 6. Accept 1–2 action items → creates tasks for kanban screenshot 7. Revisit **Dashboard** if enabled — metrics should show Meetings: 1, AI Summaries: 1, etc.
+**Manual flow:**
 
-## Routes to screenshot (replace `{workspaceId}` and `{meetingId}`)
+1. Create meeting (title e.g. `Sprint Planning`) — Meet link appears if Calendar connected
+2. **Record & upload** — paste transcript from `portfolio-demo-transcript.txt` **or** upload / screen-record (share tab + allow mic) then **Translate & Transcribe**
+3. Wait until status is `READY`
+4. Open **Transcript** — confirm English text; download `.txt` / `.md`
+5. Open **Chat** — ask: `Summarize this meeting` or `What blockers were raised about production launch?`
+6. Open **Settings** — show workspace + Google Calendar connect card
 
-| Priority | Route                                                               | What to capture                                                 |
-| -------- | ------------------------------------------------------------------- | --------------------------------------------------------------- |
-| **1**    | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Insights** tab | Summary, decisions, risks, action items                         |
-| **2**    | `/workspaces/{workspaceId}/meetings/{meetingId}` → **Chat** tab     | Grounded answer with citations                                  |
-| **3**    | `/workspaces/{workspaceId}/dashboard`                               | AI metrics, recommendations, recent meetings (after processing) |
-| **4**    | `/workspaces/{workspaceId}/search?q=API+latency`                    | Semantic search snippets                                        |
-| **5**    | `/workspaces/{workspaceId}/tasks`                                   | Kanban with accepted action items                               |
-| **6**    | `/workspaces/{workspaceId}/chat`                                    | Workspace-level chat (optional)                                 |
-| **7**    | `/workspaces/{workspaceId}/insights`                                | Workspace insights hub (optional)                               |
+## Routes to screenshot
 
-**Get IDs from the browser URL** after opening any workspace/meeting page.
+| Priority | Route                                                     | What to capture                            |
+| -------- | --------------------------------------------------------- | ------------------------------------------ |
+| **1**    | `/workspaces/{id}/meetings`                               | Meeting list                               |
+| **2**    | `/workspaces/{id}/meetings/{meetingId}` → Record & upload | Recorder / upload / Translate & Transcribe |
+| **3**    | same → **Transcript**                                     | Document + download                        |
+| **4**    | same → **Chat**                                           | Grounded answer / citations                |
+| **5**    | `/workspaces/{id}/settings`                               | Calendar connect                           |
+| **6**    | `/login` or `/register`                                   | Auth (optional)                            |
+
+**Do not rely on** `/dashboard`, `/tasks`, `/insights`, `/search`, `/chat`, `/reports`, `/knowledge` — they soft-redirect.
 
 ## LinkedIn Featured recommendation
 
-| Slot | Asset                                                 |
-| ---- | ----------------------------------------------------- |
-| 1    | GitHub repo link                                      |
-| 2    | Carousel: Dashboard → Meeting Insights → Chat         |
-| 3    | Architecture PNG from `docs/agent-flow.md` (optional) |
+Order: Meeting list → Record/Translate → Transcript → Chat → Settings (Calendar).
 
-**Avoid:** Empty transcript upload page, Draft status, "QA Test Workspace" name.
+## Agent pipeline diagram (backend)
 
-## Dashboard-only screenshot
-
-Your dashboard layout is fine for a **carousel slide** only **after** step 7 above (non-zero AI Summaries, recommendations filled). Before processing, it looks empty — do not use as the only Featured image.
+For architecture slides, use [`meetingmind-agent-pipeline.png`](./meetingmind-agent-pipeline.png) / [`agent-pipeline.mmd`](./agent-pipeline.mmd) — this documents the **server-side** pipeline, not soft-hidden UI pages.

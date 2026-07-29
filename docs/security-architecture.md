@@ -1,8 +1,11 @@
 # Security Architecture
 
-**Product:** AI Meeting Notes & Task Manager  
-**Version:** 1.0  
+**Product:** MeetingMind AI  
+**Version:** 1.1  
+**Synced:** 2026-07-29  
 **Classification:** Internal — Engineering
+
+> **Deployment note:** Secrets and TLS hosts below describe **intended production posture**. Current repo runtime is local Docker / `.env`. There is no in-repo Vercel/Railway deploy. Prefer Docker Compose + env files for local; treat cloud secret managers as future.
 
 ---
 
@@ -224,13 +227,13 @@ Additional security rate limits:
 
 ## 9. Secrets Management
 
-| Secret               | Storage            | Rotation      |
-| -------------------- | ------------------ | ------------- |
-| `JWT_ACCESS_SECRET`  | Railway/Vercel env | Quarterly     |
-| `JWT_REFRESH_SECRET` | Railway env        | Quarterly     |
-| `DATABASE_URL`       | Railway env        | On compromise |
-| `OPENAI_API_KEY`     | Railway env        | Quarterly     |
-| `EMAIL_API_KEY`      | Railway env        | Quarterly     |
+| Secret               | Storage                      | Rotation      |
+| -------------------- | ---------------------------- | ------------- |
+| `JWT_ACCESS_SECRET`  | `.env` / future host secrets | Quarterly     |
+| `JWT_REFRESH_SECRET` | Railway env                  | Quarterly     |
+| `DATABASE_URL`       | Railway env                  | On compromise |
+| `OPENAI_API_KEY`     | Railway env                  | Quarterly     |
+| `EMAIL_API_KEY`      | Railway env                  | Quarterly     |
 
 ### Rules
 
@@ -243,7 +246,7 @@ Additional security rate limits:
 
 ## 10. Transport Security
 
-- TLS 1.2+ enforced (Vercel, Railway default)
+- TLS 1.2+ enforced in production hosts (when deployed); local HTTP for development
 - HSTS header: `Strict-Transport-Security: max-age=31536000; includeSubDomains`
 - No mixed content
 - Secure cookie flag in production
